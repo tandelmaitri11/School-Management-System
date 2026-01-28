@@ -3,28 +3,9 @@ import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 import { Pie, Bar, Line } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Tooltip,
-  Legend
-} from "chart.js";
+import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend } from "chart.js";
 
-ChartJS.register(
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Tooltip,
-  Legend
-);
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
 export default function AdminClassAttendance() {
   const [classes, setClasses] = useState([]);
@@ -58,7 +39,7 @@ export default function AdminClassAttendance() {
     setLoading(false);
   };
 
-  // ✅ Monthly Bar Chart Data (Modern Colors + Animations)
+  // Monthly Bar Chart Data (Modern Colors + Animations)
   const monthlyChartData = (() => {
     if (!attendanceData.length) return null;
 

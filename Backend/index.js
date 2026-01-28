@@ -7,10 +7,7 @@ const adminDashboardRoutes = require("./routes/adminDashboardRoutes");
 
 const authRoutes = require("./routes/authRoutes");
 
-// in server.js or app.js
 const studentDashboardRoutes = require("./routes/studentDashboardRoute");
-
-
 
 const ClassRoutes = require("./routes/classRoutes");
 const SubjectRoutes = require("./routes/subjectRoutes");
