@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import api from "../../api/api"; // axios instance
+import api from "../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
@@ -11,7 +11,6 @@ export default function TeacherProfile() {
   const [allClasses, setAllClasses] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Fetch teacher profile
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -20,7 +19,6 @@ export default function TeacherProfile() {
         const data = res.data;
         setProfile(data);
 
-        // Prepare form data
         setFormData({
           teacherName: data.teacherName || "",
           mobile: data.mobile || "",
@@ -40,22 +38,22 @@ export default function TeacherProfile() {
           subjects: data.subjects?.join(", ") || "",
           classes: data.classes || [],
         });
+
         setImagePreview(data.picture || "");
       } catch (err) {
-        console.error("Failed to fetch profile:", err);
+        console.error(err);
       }
     };
     fetchProfile();
   }, []);
 
-  // Fetch all classes
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const res = await api.get("/api/classes");
         setAllClasses(res.data);
       } catch (err) {
-        console.error("Failed to fetch classes:", err);
+        console.error(err);
       }
     };
     fetchClasses();
@@ -73,79 +71,56 @@ export default function TeacherProfile() {
   const handleSave = async () => {
     try {
       const data = new FormData();
-
       Object.keys(formData).forEach((key) => {
-        if (key === "subjects") {
-          data.append(key, formData[key]);
-        } else if (key === "classes") {
-          // Convert classes array to JSON string for backend
-          data.append(key, JSON.stringify(formData[key]));
-        } else {
-          data.append(key, formData[key]);
-        }
+        if (key === "classes") data.append(key, JSON.stringify(formData[key]));
+        else data.append(key, formData[key]);
       });
 
-      const res = await api.put(
-        `/api/teachers/updateTeacherById/${profile.teacherInfoId}`, // TeacherInfo _id
+      await api.put(
+        `/api/teachers/updateTeacherById/${profile.teacherInfoId}`,
         data,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      // Update profile and formData immediately
-      setProfile((prev) => ({
-        ...prev,
-        ...res.data.teacher,
-        classes: res.data.classesFull.map((cls) => cls._id), // update classes array with IDs
-      }));
-
-      setFormData((prev) => ({
-        ...prev,
-        subjects: res.data.teacher.subjects?.join(", ") || "",
-        classes: res.data.classesFull.map((cls) => cls._id),
-      }));
-
       setEditing(false);
       alert("Profile updated successfully!");
     } catch (err) {
-      console.error(err);
-      alert("Failed to update profile.");
+      alert("Failed to update profile");
     }
   };
-
 
   if (!profile) return <div className="text-center mt-5">Loading...</div>;
 
   return (
-    <div className="container-fluid min-vh-100 bg-white">
-      <main className="px-5 py-4">
-        <h3 className="fw-bold mb-4">Teacher Profile</h3>
+    <div className="container-fluid px-2 px-md-4 bg-white min-vh-100">
+      <main className="py-3 py-md-4">
+        <h3 className="fw-bold mb-4 text-center text-md-start">
+          Teacher Profile
+        </h3>
 
+        {/* PROFILE CARD */}
         <div className="card mb-4 shadow-sm border-0">
-          <div className="card-body d-flex gap-4 align-items-center">
-            {/* PROFILE ICON / IMAGE */}
-            <div
-              className="rounded-circle d-flex justify-content-center align-items-center bg-light border"
-              style={{ width: "120px", height: "120px", overflow: "hidden", flexShrink: 0 }}
-            >
+          <div className="card-body d-flex flex-column flex-md-row gap-4 align-items-center">
+            {/* IMAGE */}
+            <div className="text-center">
               <img
                 src={
                   imagePreview.startsWith("blob:")
                     ? imagePreview
                     : `http://localhost:3000/${imagePreview}`
                 }
-                alt="Teacher Profile"
+                alt="Teacher"
                 className="rounded-circle border shadow-sm"
                 style={{ width: "120px", height: "120px", objectFit: "cover" }}
                 onError={(e) => {
-                  e.target.onerror = null;
                   e.target.src =
                     "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
                 }}
               />
             </div>
 
-            {/* PROFILE DETAILS */}
-            <div className="flex-grow-1">
+            {/* BASIC INFO */}
+            <div className="flex-grow-1 w-100">
               {editing ? (
                 <>
                   <input
@@ -154,7 +129,6 @@ export default function TeacherProfile() {
                     className="form-control mb-2"
                     value={formData.teacherName}
                     onChange={handleChange}
-                    placeholder="Full Name"
                   />
                   <input
                     type="text"
@@ -162,7 +136,6 @@ export default function TeacherProfile() {
                     className="form-control mb-2"
                     value={formData.education}
                     onChange={handleChange}
-                    placeholder="Education"
                   />
                   <input
                     type="file"
@@ -173,25 +146,23 @@ export default function TeacherProfile() {
                 </>
               ) : (
                 <>
-                  <h4 className="fw-bold mb-1">
-                    {profile.teacherName || "Teacher Name"}
-                  </h4>
-                  <p className="mb-1 text-muted">{profile.education || "-"}</p>
-                  <p className="mb-0 text-muted">
+                  <h4 className="fw-bold">{profile.teacherName}</h4>
+                  <p className="text-muted mb-1">{profile.education}</p>
+                  <small className="text-muted">
                     Joined{" "}
                     {profile.joiningDate
                       ? new Date(profile.joiningDate).toLocaleDateString()
                       : "-"}
-                  </p>
+                  </small>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* PERSONAL INFORMATION */}
+        {/* PERSONAL INFO */}
         <section className="mb-4">
-          <h5 className="fw-bold mb-3">Personal Information</h5>
+          <h5 className="fw-bold">Personal Information</h5>
           <div className="row border-top pt-3">
             {[
               "teacherName",
@@ -203,8 +174,8 @@ export default function TeacherProfile() {
               "dob",
               "address",
             ].map((field) => (
-              <div className="col-md-6 mb-3" key={field}>
-                <p className="text-muted mb-1">{field}</p>
+              <div className="col-12 col-md-6 mb-3" key={field}>
+                <small className="text-muted">{field}</small>
                 {editing && field !== "email" ? (
                   <input
                     type={field === "dob" ? "date" : "text"}
@@ -221,40 +192,38 @@ export default function TeacherProfile() {
           </div>
         </section>
 
-        {/* TEACHING DETAILS */}
+        {/* TEACHING */}
         <section className="mb-4">
-          <h5 className="fw-bold mb-3">Teaching Details</h5>
+          <h5 className="fw-bold">Teaching Details</h5>
           <div className="row border-top pt-3">
-            {/* Subjects */}
-            <div className="col-md-6 mb-3">
-              <p className="text-muted mb-1">Subjects</p>
+            <div className="col-12 col-md-6 mb-3">
+              <small className="text-muted">Subjects</small>
               {editing ? (
                 <input
-                  type="text"
-                  name="subjects"
                   className="form-control"
+                  name="subjects"
                   value={formData.subjects}
                   onChange={handleChange}
-                  placeholder="Separate with commas"
                 />
               ) : (
-                <p className="mb-0">{profile.subjects?.join?.(", ") || "-"}</p>
+                <p>{profile.subjects?.join(", ") || "-"}</p>
               )}
             </div>
 
-            {/* Classes */}
-            <div className="col-md-6 mb-3">
-              <p className="text-muted mb-1">Classes</p>
+            <div className="col-12 col-md-6 mb-3">
+              <small className="text-muted">Classes</small>
               {editing ? (
                 <select
-                  name="classes"
                   multiple
                   className="form-control"
                   value={formData.classes}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      classes: Array.from(e.target.selectedOptions, (option) => option.value),
+                      classes: Array.from(
+                        e.target.selectedOptions,
+                        (o) => o.value
+                      ),
                     })
                   }
                 >
@@ -265,11 +234,14 @@ export default function TeacherProfile() {
                   ))}
                 </select>
               ) : (
-                <p className="mb-0">
+                <p>
                   {profile.classes?.length
                     ? profile.classes
-                      .map((id) => allClasses.find((cls) => cls._id === id)?.className)
-                      .join(", ")
+                        .map(
+                          (id) =>
+                            allClasses.find((c) => c._id === id)?.className
+                        )
+                        .join(", ")
                     : "-"}
                 </p>
               )}
@@ -277,13 +249,13 @@ export default function TeacherProfile() {
           </div>
         </section>
 
-        {/* PROFESSIONAL INFO */}
+        {/* PROFESSIONAL */}
         <section className="mb-4">
-          <h5 className="fw-bold mb-3">Professional Information</h5>
+          <h5 className="fw-bold">Professional Information</h5>
           <div className="row border-top pt-3">
             {["experience", "salary"].map((field) => (
-              <div className="col-md-6 mb-3" key={field}>
-                <p className="text-muted mb-1">{field}</p>
+              <div className="col-12 col-md-6 mb-3" key={field}>
+                <small className="text-muted">{field}</small>
                 {editing ? (
                   <input
                     type="number"
@@ -293,26 +265,32 @@ export default function TeacherProfile() {
                     onChange={handleChange}
                   />
                 ) : (
-                  <p className="mb-0">{profile[field] || "-"}</p>
+                  <p>{profile[field] || "-"}</p>
                 )}
               </div>
             ))}
           </div>
         </section>
 
-        {/* ACTION BUTTONS */}
-        <div className="d-flex justify-content-end mb-5">
+        {/* ACTIONS */}
+        <div className="d-flex flex-column flex-sm-row justify-content-end gap-2">
           {editing ? (
             <>
-              <button className="btn btn-success me-2" onClick={handleSave}>
+              <button className="btn btn-success w-100 w-sm-auto" onClick={handleSave}>
                 Save
               </button>
-              <button className="btn btn-secondary" onClick={() => setEditing(false)}>
+              <button
+                className="btn btn-secondary w-100 w-sm-auto"
+                onClick={() => setEditing(false)}
+              >
                 Cancel
               </button>
             </>
           ) : (
-            <button className="btn btn-outline-secondary" onClick={() => setEditing(true)}>
+            <button
+              className="btn btn-outline-secondary w-100 w-sm-auto"
+              onClick={() => setEditing(true)}
+            >
               Edit Profile
             </button>
           )}

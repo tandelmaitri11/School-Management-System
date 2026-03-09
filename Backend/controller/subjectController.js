@@ -1,4 +1,4 @@
-const Subject = require("../models/Subject");
+const Subject = require("../models/subject");
 const Class = require("../models/class");
 
 // Create or update subjects for a class
@@ -16,15 +16,25 @@ exports.createSubject = async (req, res) => {
     const classDoc = await Class.findOne({ className });
     if (!classDoc) return res.status(404).json({ error: "Class not found" });
 
+    const normalizedSubjects = (subjects || [])
+      .map((s) => ({
+        subjectName: String(s.subjectName || "").trim(),
+      }))
+      .filter((s) => s.subjectName);
+
+    if (normalizedSubjects.length === 0) {
+      return res.status(400).json({ error: "At least one subject is required" });
+    }
+
     // Check if Subject document already exists for this class
     let subjectDoc = await Subject.findOne({ className });
     if (subjectDoc) {
-      subjectDoc.subjects = subjects;
+      subjectDoc.subjects = normalizedSubjects;
       await subjectDoc.save();
       return res.status(200).json({ message: "Subjects updated successfully" });
     }
 
-    const newSubject = new Subject({ className, subjects });
+    const newSubject = new Subject({ className, subjects: normalizedSubjects });
     await newSubject.save();
     res.status(201).json({ message: "Subjects created successfully" });
   } catch (err) {
@@ -90,7 +100,17 @@ exports.updateSubject = async (req, res) => {
     const subjectDoc = await Subject.findById(id);
     if (!subjectDoc) return res.status(404).json({ error: "Class subjects not found" });
 
-    subjectDoc.subjects = subjects;
+    const normalizedSubjects = (subjects || [])
+      .map((s) => ({
+        subjectName: String(s.subjectName || "").trim(),
+      }))
+      .filter((s) => s.subjectName);
+
+    if (normalizedSubjects.length === 0) {
+      return res.status(400).json({ error: "At least one subject is required" });
+    }
+
+    subjectDoc.subjects = normalizedSubjects;
     await subjectDoc.save();
 
     res.status(200).json({ message: "Subjects updated successfully", updatedDoc: subjectDoc });

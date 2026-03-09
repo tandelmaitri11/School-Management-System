@@ -14,12 +14,10 @@ export default function StudentAttendance() {
   const [toast, setToast] = useState({ show: false, message: "", variant: "primary" });
   const teacherId = localStorage.getItem("teacherId");
 
-  // ✅ Helper to show toast
   const showToast = (message, variant = "primary") => {
     setToast({ show: true, message, variant });
   };
 
-  // ✅ Fetch classes of teacher
   useEffect(() => {
     if (teacherId) fetchClasses();
   }, [teacherId]);
@@ -29,12 +27,11 @@ export default function StudentAttendance() {
       const res = await api.get(`/api/classes/by-teacher/${teacherId}`);
       setClasses(res.data);
     } catch (err) {
-      console.error("Error fetching classes:", err);
+      console.error(err);
       showToast("❌ Failed to fetch classes", "danger");
     }
   };
 
-  // ✅ Fetch students for selected class
   const fetchStudents = async (classId) => {
     try {
       setLoading(true);
@@ -45,7 +42,7 @@ export default function StudentAttendance() {
       setAttendance(initialAttendance);
       showToast("✅ Students loaded successfully", "success");
     } catch (err) {
-      console.error("Error fetching students:", err);
+      console.error(err);
       setStudents([]);
       showToast("❌ Failed to load students", "danger");
     } finally {
@@ -53,12 +50,10 @@ export default function StudentAttendance() {
     }
   };
 
-  // ✅ Handle attendance change
   const handleAttendanceChange = (studentId, status) => {
     setAttendance((prev) => ({ ...prev, [studentId]: status }));
   };
 
-  // ✅ Submit attendance
   const handleSubmit = async () => {
     if (!selectedClass || !date) {
       showToast("⚠️ Please select a class and date", "warning");
@@ -79,22 +74,22 @@ export default function StudentAttendance() {
       });
       showToast("✅ Attendance saved successfully", "success");
     } catch (err) {
-      console.error("Error submitting attendance:", err);
-      showToast("❌ Failed to save attendance. Try again.", "danger");
+      console.error(err);
+      showToast("❌ Failed to save attendance", "danger");
     }
   };
 
   return (
-    <div className="container mt-4 mb-5">
-      <div className="card shadow-lg border-0">
-        <div className="card-body">
-          <h3 className="text-center text-primary mb-4">
+    <div className="container-fluid px-2 px-md-4 mt-3 mb-5">
+      <div className="card shadow-lg border-0 rounded-4">
+        <div className="card-body p-3 p-md-4">
+          <h3 className="text-center text-primary mb-4 fs-5 fs-md-3">
             <i className="bi bi-check2-square me-2"></i>Mark Attendance
           </h3>
 
-          {/* --- Selection Section --- */}
+          {/* 🔹 Selection Section */}
           <div className="row g-3 mb-4">
-            <div className="col-md-5">
+            <div className="col-12 col-md-6">
               <label className="form-label fw-semibold">Select Class</label>
               <select
                 className="form-select"
@@ -113,38 +108,38 @@ export default function StudentAttendance() {
               </select>
             </div>
 
-            <div className="col-md-4">
+            <div className="col-12 col-md-4">
               <label className="form-label fw-semibold">Select Date</label>
               <input
                 type="date"
                 className="form-control"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                max={new Date().toISOString().split("T")[0]} // today
+                max={new Date().toISOString().split("T")[0]}
                 min={(() => {
                   const d = new Date();
-                  d.setDate(d.getDate() - 2); // 2 days before today
+                  d.setDate(d.getDate() - 2);
                   return d.toISOString().split("T")[0];
                 })()}
               />
             </div>
           </div>
 
-          {/* --- Student List --- */}
+          {/* 🔹 Student Table */}
           {loading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary"></div>
             </div>
           ) : students.length === 0 ? (
-            <div className="alert alert-warning text-center mt-3">
+            <div className="alert alert-warning text-center">
               No students found for selected class.
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-bordered align-middle">
+              <table className="table table-bordered align-middle text-nowrap">
                 <thead className="table-primary text-center">
                   <tr>
-                    <th>Roll No.</th>
+                    <th>#</th>
                     <th>Student Name</th>
                     <th>Email</th>
                     <th>Status</th>
@@ -154,25 +149,31 @@ export default function StudentAttendance() {
                   {students.map((stu, index) => (
                     <tr key={stu._id}>
                       <td className="text-center">{index + 1}</td>
-                      <td>{stu.name}</td>
-                      <td>{stu.email}</td>
+                      <td className="fw-medium">{stu.name}</td>
+                      <td className="small">{stu.email}</td>
                       <td className="text-center">
-                        <div className="btn-group" role="group">
+                        <div className="btn-group btn-group-sm flex-wrap">
                           <button
-                            className={`btn btn-sm ${attendance[stu._id] === "Present"
+                            className={`btn ${
+                              attendance[stu._id] === "Present"
                                 ? "btn-success"
                                 : "btn-outline-success"
-                              }`}
-                            onClick={() => handleAttendanceChange(stu._id, "Present")}
+                            }`}
+                            onClick={() =>
+                              handleAttendanceChange(stu._id, "Present")
+                            }
                           >
                             Present
                           </button>
                           <button
-                            className={`btn btn-sm ${attendance[stu._id] === "Absent"
+                            className={`btn ${
+                              attendance[stu._id] === "Absent"
                                 ? "btn-danger"
                                 : "btn-outline-danger"
-                              }`}
-                            onClick={() => handleAttendanceChange(stu._id, "Absent")}
+                            }`}
+                            onClick={() =>
+                              handleAttendanceChange(stu._id, "Absent")
+                            }
                           >
                             Absent
                           </button>
@@ -185,17 +186,20 @@ export default function StudentAttendance() {
             </div>
           )}
 
-          {/* --- Submit Button --- */}
+          {/* 🔹 Submit Button */}
           <div className="text-center mt-4">
-            <button className="btn btn-primary px-5" onClick={handleSubmit}>
+            <button
+              className="btn btn-primary px-4 px-md-5 py-2 fw-semibold"
+              onClick={handleSubmit}
+            >
               <i className="bi bi-save2 me-2"></i>Submit Attendance
             </button>
           </div>
         </div>
       </div>
 
-      {/* 🔔 Toast Notification */}
-      <ToastContainer position="bottom-end" className="p-4">
+      {/* 🔔 Toast */}
+      <ToastContainer position="bottom-end" className="p-3">
         <Toast
           onClose={() => setToast({ ...toast, show: false })}
           show={toast.show}
@@ -203,7 +207,7 @@ export default function StudentAttendance() {
           delay={3000}
           autohide
         >
-          <Toast.Body className="text-white fw-semibold fs-6">
+          <Toast.Body className="text-white fw-semibold">
             {toast.message}
           </Toast.Body>
         </Toast>

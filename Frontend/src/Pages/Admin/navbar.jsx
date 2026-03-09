@@ -1,11 +1,15 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 function Navbar({ children }) {
   const navigate = useNavigate();
+
   const [openMenu, setOpenMenu] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const userName = localStorage.getItem("userName") || "Admin";
   const userRole = localStorage.getItem("userRole") || "Administrator";
@@ -19,6 +23,27 @@ function Navbar({ children }) {
     setOpenMenu(openMenu === menu ? null : menu);
   };
 
+  // Optional: close submenu when collapsing
+  useEffect(() => {
+    if (sidebarCollapsed) setOpenMenu(null);
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 991.98px)");
+    const update = () => {
+      setIsMobile(media.matches);
+      if (media.matches) {
+        setSidebarOpen(false);
+        setSidebarCollapsed(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
   const menuItems = [
     { label: "Dashboard", icon: "bi-speedometer2", path: "/Dashboard" },
     {
@@ -31,18 +56,25 @@ function Navbar({ children }) {
     },
     {
       label: "Subject",
-      icon: "bi-easel",
+      icon: "bi-journal-bookmark",
       submenu: [
         { label: "All Subject", path: "/subject/allsubject" },
         { label: "Add New Subject", path: "/subject/newsubject" },
       ],
     },
     {
+      label: "TimeTable",
+      icon: "bi-calendar2-week",
+      submenu: [
+        { label: "Manage TimeTable", path: "/admin/timetable" },
+        { label: "View Class TimeTable", path: "/admin/view/timetable" },
+      ],
+    },
+    {
       label: "Students",
-      icon: "bi-person-badge",
+      icon: "bi-people",
       submenu: [
         { label: "All Students", path: "/Students/allstudents" },
-        
         { label: "Search Student", path: "/Students/search" },
       ],
     },
@@ -67,197 +99,394 @@ function Navbar({ children }) {
       label: "Fees",
       icon: "bi-wallet2",
       submenu: [
-        { label: "Fees Stucture", path: "/admin/fees" },
+        { label: "Fees Structure", path: "/admin/fees" },
         { label: "Student Fees", path: "/studentfees" },
       ],
     },
     {
       label: "Salary",
-      icon: "bi-wallet",
+      icon: "bi-cash-coin",
       submenu: [
-        { label: "Teacher Salary", path: "/pay-salary" },
-        { label: "Manage Salary", path: "/approve-salary" },
+        { label: "Teacher Salary", path: "/approve-salary" },
+        { label: "Teacher Salary Record", path: "/teacher-salary-record" },
         { label: "Salary Lists", path: "/salarylist" },
       ],
     },
-    // {
-    //   label: "Reports",
-    //   icon: "bi-bar-chart-line-fill",
-    //   path: "/reports",
-    // },
+    {
+      label: "LMS",
+      icon: "bi-collection-play",
+      submenu: [{ label: "LMS Control", path: "/admin/lms" }],
+    },
     {
       label: "Settings",
       icon: "bi-gear",
-      submenu: [
-        { label: "Logout", action: handleLogout },
-      ],
+      submenu: [{ label: "Logout", action: handleLogout }],
     },
   ];
 
-  const sidebarStyle = {
-    minWidth: "270px",
-    maxWidth: "270px",
-    backgroundColor: "#ffffff", // changed to white
-    overflowY: "auto",
-    borderRight: "1px solid #ddd",
-    padding: "1rem",
+  const shellStyle = {
+    minHeight: "100vh",
+    background: "#f6f7fb",
   };
 
-  const sidebarItemStyle = {
-    cursor: "pointer",
-    transition: "0.3s",
-    padding: "0.6rem 1rem",
-    borderRadius: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  };
-
-  const sidebarItemHover = {
-    backgroundColor: "#f0f0f0",
-  };
-
-  const activeLinkStyle = {
-    backgroundColor: "#0d6efd",
+  const headerStyle = {
+    height: "70px",
+    position: "sticky",
+    top: 0,
+    zIndex: 1030,
+    background: "linear-gradient(90deg, #0d6efd 0%, #6f42c1 100%)",
     color: "white",
-    fontWeight: "600",
-    borderRadius: "8px",
+  };
+
+  const sidebarWidth = isMobile ? 280 : sidebarCollapsed ? 84 : 280;
+
+  const sidebarStyle = {
+    width: sidebarWidth,
+    transition: "width .2s ease",
+    background: "#ffffff",
+    borderRight: "1px solid #e9ecef",
+    position: isMobile ? "fixed" : "sticky",
+    top: 70,
+    left: 0,
+    height: "calc(100vh - 70px)",
+    overflowY: "auto",
+    zIndex: 1040,
+    transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
+    transitionProperty: "transform, width",
+    boxShadow: isMobile ? "0 16px 40px rgba(0,0,0,0.18)" : "none",
+  };
+
+  const mainStyle = {
+    minHeight: "calc(100vh - 70px - 44px)",
+    padding: "1.25rem",
+    overflow: "auto",
+  };
+
+  const footerStyle = {
+    height: "44px",
+    background: "#ffffff",
+    borderTop: "1px solid #e9ecef",
+    color: "#6c757d",
+  };
+
+  const navItemBase = {
+    borderRadius: 12,
+    padding: "10px 12px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    textDecoration: "none",
+    transition: "all .15s ease",
+    border: "1px solid transparent",
+  };
+
+  const navItemInactive = {
+    color: "#495057",
+  };
+
+  const navItemActive = {
+    color: "#0d6efd",
+    background: "rgba(13,110,253,.10)",
+    border: "1px solid rgba(13,110,253,.20)",
+    fontWeight: 600,
+  };
+
+  const navIconStyle = {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f1f3f5",
+    color: "#212529",
+    flex: "0 0 auto",
+  };
+
+  const sectionTitleStyle = {
+    fontSize: 11,
+    letterSpacing: ".08em",
+    color: "#adb5bd",
+    fontWeight: 700,
+    padding: sidebarCollapsed ? "10px 12px" : "12px 18px 6px",
+    textTransform: "uppercase",
+  };
+
+  const submenuWrapStyle = {
+    marginLeft: sidebarCollapsed ? 0 : 44,
+    paddingLeft: sidebarCollapsed ? 0 : 10,
+    borderLeft: sidebarCollapsed ? "none" : "1px dashed #dee2e6",
+  };
+
+  const submenuLinkBase = (isActive) => ({
     display: "block",
-    padding: "0.6rem 1rem",
+    textDecoration: "none",
+    borderRadius: 10,
+    padding: sidebarCollapsed ? "8px 10px" : "8px 12px",
+    margin: "6px 0",
+    color: isActive ? "#0d6efd" : "#6c757d",
+    background: isActive ? "rgba(13,110,253,.10)" : "transparent",
+    border: isActive ? "1px solid rgba(13,110,253,.20)" : "1px solid transparent",
+    fontWeight: isActive ? 600 : 500,
+    transition: "all .15s ease",
+    textAlign: sidebarCollapsed ? "center" : "left",
+  });
+
+  const chevronBtnStyle = {
+    marginLeft: "auto",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    display: sidebarCollapsed ? "none" : "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f8f9fa",
+    border: "1px solid #e9ecef",
+    color: "#495057",
+  };
+
+  const handleNavClick = () => {
+    if (isMobile) setSidebarOpen(false);
   };
 
   return (
-    <div className="d-flex flex-column vh-100">
+    <div style={shellStyle}>
       {/* HEADER */}
-      <header
-        className="d-flex justify-content-between align-items-center px-4 shadow-sm"
-        style={{
-          height: "65px",
-          background: "linear-gradient(90deg, #0d6efd, #003b9f)",
-          color: "white",
-        }}
-      >
-        <h4 className="m-0 fw-bold" style={{ fontSize: "1.5rem" }}>
-          <i className="bi bi-mortarboard-fill me-2"></i>SchoolY Admin
-        </h4>
-        <div className="dropdown">
+      <header style={headerStyle} className="d-flex align-items-center px-3 px-md-4 shadow-sm">
+        <div className="d-flex align-items-center gap-2">
           <button
-            className="btn rounded-pill dropdown-toggle px-3 py-1"
-            style={{
-              backgroundColor: "#f8f9fa",
-              border: "1px solid #0d6efd",
-              color: "#0d6efd",
-            }}
-            data-bs-toggle="dropdown"
+            className="btn btn-light btn-sm rounded-pill d-lg-none"
+            onClick={() => setSidebarOpen((s) => !s)}
+            title="Menu"
+            style={{ border: "1px solid rgba(255,255,255,.35)" }}
           >
-            {userName} ({userRole})
+            <i className="bi bi-list" />
           </button>
-          <ul className="dropdown-menu dropdown-menu-end shadow">
-            <li>
-              <NavLink className="dropdown-item" to="/profile">
-                <i className="bi bi-person me-2"></i>Profile
-              </NavLink>
-            </li>
-            <li>
-              <NavLink className="dropdown-item" to="/Settings/account">
-                <i className="bi bi-gear me-2"></i>Settings
-              </NavLink>
-            </li>
-            <li>
-              <hr className="dropdown-divider" />
-            </li>
-            <li>
-              <button className="dropdown-item text-danger" onClick={handleLogout}>
-                <i className="bi bi-box-arrow-right me-2"></i>Logout
-              </button>
-            </li>
-          </ul>
+          <button
+            className="btn btn-light btn-sm rounded-pill d-none d-lg-inline-flex"
+            onClick={() => setSidebarCollapsed((s) => !s)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{ border: "1px solid rgba(255,255,255,.35)" }}
+          >
+            <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-inset" : "bi-layout-sidebar"}`} />
+          </button>
+
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="d-flex align-items-center justify-content-center rounded-3"
+              style={{
+                width: 38,
+                height: 38,
+                background: "rgba(255,255,255,.18)",
+                border: "1px solid rgba(255,255,255,.22)",
+              }}
+            >
+              <i className="bi bi-mortarboard-fill text-white" />
+            </div>
+            <div className="text-white">
+              <div className="fw-bold" style={{ lineHeight: 1.1 }}>
+                SchoolY Admin
+              </div>
+              <div className="small opacity-75" style={{ lineHeight: 1.1 }}>
+                Smart Education Management
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ms-auto d-flex align-items-center gap-2">
+         
+
+          <div className="dropdown">
+            <button
+              className="btn btn-light btn-sm rounded-pill dropdown-toggle"
+              data-bs-toggle="dropdown"
+              style={{ border: "1px solid rgba(255,255,255,.35)" }}
+            >
+              <span className="fw-semibold">{userName}</span>
+              <span className="opacity-75 ms-2 d-none d-md-inline">({userRole})</span>
+            </button>
+            <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 overflow-hidden">
+              <li>
+                <NavLink className="dropdown-item py-2" to="/profile">
+                  <i className="bi bi-person me-2" />
+                  Profile
+                </NavLink>
+              </li>
+              <li>
+                <NavLink className="dropdown-item py-2" to="/Settings/account">
+                  <i className="bi bi-gear me-2" />
+                  Settings
+                </NavLink>
+              </li>
+              <li>
+                <hr className="dropdown-divider my-1" />
+              </li>
+              <li>
+                <button className="dropdown-item py-2 text-danger" onClick={handleLogout}>
+                  <i className="bi bi-box-arrow-right me-2" />
+                  Logout
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </header>
 
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: 70,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.35)",
+            zIndex: 1035,
+          }}
+        />
+      )}
+
       {/* BODY */}
-      <div className="d-flex flex-grow-1 overflow-hidden">
+      <div className="d-flex">
         {/* SIDEBAR */}
-        <aside style={sidebarStyle}>
-          <ul className="nav flex-column">
+        <aside style={sidebarStyle} className="shadow-sm">
+          <div className="p-3">
+            <div
+              className="d-flex align-items-center justify-content-between"
+              style={{
+                padding: sidebarCollapsed ? "6px 6px" : "10px 12px",
+                borderRadius: 14,
+                background: "#f8f9fa",
+                border: "1px solid #e9ecef",
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    background: "linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%)",
+                    color: "#fff",
+                    fontWeight: 800,
+                  }}
+                  title={userName}
+                >
+                  {(userName || "A").slice(0, 1).toUpperCase()}
+                </div>
+                {!sidebarCollapsed && (
+                  <div>
+                    <div className="fw-semibold" style={{ lineHeight: 1.1 }}>
+                      {userName}
+                    </div>
+                    <div className="small text-muted" style={{ lineHeight: 1.1 }}>
+                      {userRole}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={sectionTitleStyle}>{sidebarCollapsed ? "MENU" : "Main Menu"}</div>
+
+          <div className="px-2 pb-3">
             {menuItems.map((item, idx) => (
-              <li key={idx} className="nav-item mb-1">
+              <div key={idx} className="mb-1">
+                {/* SUBMENU ITEM */}
                 {item.submenu ? (
                   <>
-                    <div
+                    <button
+                      type="button"
+                      className="w-100 bg-transparent border-0 text-start"
                       onClick={() => toggleMenu(item.label)}
                       style={{
-                        ...sidebarItemStyle,
-                        ...(openMenu === item.label ? sidebarItemHover : {}),
+                        ...navItemBase,
+                        ...(openMenu === item.label ? navItemActive : navItemInactive),
                       }}
+                      title={sidebarCollapsed ? item.label : undefined}
                     >
-                      <div className="d-flex align-items-center">
-                        <i className={`bi ${item.icon} me-2`} style={{ color: "#333" }}></i>
-                        <span className="fw-semibold" style={{ color: "#333" }}>{item.label}</span>
-                      </div>
-                      <i
-                        className={`bi ${
-                          openMenu === item.label ? "bi-chevron-up" : "bi-chevron-down"
-                        }`}
-                        style={{ color: "#333" }}
-                      ></i>
-                    </div>
+                      <span style={navIconStyle}>
+                        <i className={`bi ${item.icon}`} />
+                      </span>
+
+                      {!sidebarCollapsed && (
+                        <>
+                          <span className="flex-grow-1">{item.label}</span>
+                          <span style={chevronBtnStyle}>
+                            <i className={`bi ${openMenu === item.label ? "bi-chevron-up" : "bi-chevron-down"}`} />
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* submenu */}
                     {openMenu === item.label && (
-                      <ul className="nav flex-column ms-3 mt-1">
+                      <div style={{ ...submenuWrapStyle, marginTop: 6 }}>
                         {item.submenu.map((sub, i) => (
-                          <li key={i} className="nav-item">
+                          <div key={i}>
                             {sub.action ? (
                               <button
-                                onClick={sub.action}
-                                className="btn btn-link nav-link text-secondary py-1 px-2 text-start w-100"
+                                onClick={() => {
+                                  sub.action();
+                                  handleNavClick();
+                                }}
+                                className="w-100 bg-transparent border-0"
+                                style={submenuLinkBase(false)}
+                                title={sidebarCollapsed ? sub.label : undefined}
                               >
-                                {sub.label}
+                                {sidebarCollapsed ? <i className="bi bi-box-arrow-right" /> : sub.label}
                               </button>
                             ) : (
                               <NavLink
                                 to={sub.path}
-                                style={({ isActive }) =>
-                                  isActive
-                                    ? activeLinkStyle
-                                    : { color: "#555", padding: "0.6rem 1rem", display: "block" }
-                                }
+                                onClick={handleNavClick}
+                                style={({ isActive }) => submenuLinkBase(isActive)}
+                                title={sidebarCollapsed ? sub.label : undefined}
                               >
-                                {sub.label}
+                                {sidebarCollapsed ? <i className="bi bi-dot" /> : sub.label}
                               </NavLink>
                             )}
-                          </li>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     )}
                   </>
                 ) : (
+                  /* SINGLE LINK ITEM */
                   <NavLink
                     to={item.path}
-                    style={({ isActive }) =>
-                      isActive
-                        ? activeLinkStyle
-                        : { color: "#555", padding: "0.6rem 1rem", display: "block" }
-                    }
+                    onClick={handleNavClick}
+                    style={({ isActive }) => ({
+                      ...navItemBase,
+                      ...(isActive ? navItemActive : navItemInactive),
+                    })}
+                    title={sidebarCollapsed ? item.label : undefined}
                   >
-                    <i className={`bi ${item.icon} me-2`} style={{ color: "#333" }}></i>
-                    {item.label}
+                    <span style={navIconStyle}>
+                      <i className={`bi ${item.icon}`} />
+                    </span>
+                    {!sidebarCollapsed && <span className="flex-grow-1">{item.label}</span>}
+                    {!sidebarCollapsed && <i className="bi bi-arrow-right-short opacity-50" />}
                   </NavLink>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-grow-1 bg-light p-4 overflow-auto">{children}</main>
+        <main style={mainStyle} className="flex-grow-1">
+          <div className="container-fluid">{children}</div>
+        </main>
       </div>
 
       {/* FOOTER */}
-      <footer
-        className="text-center py-2 small"
-        style={{ background: "#f8f9fa", color: "#555", borderTop: "1px solid #ddd" }}
-      >
-        © 2025 <strong>SchoolY</strong> — Smart Education Management System
+      <footer style={footerStyle} className="d-flex align-items-center justify-content-center small">
+        © 2025 <strong className="ms-1 me-1">SchoolY</strong> — Smart Education Management System
       </footer>
     </div>
   );

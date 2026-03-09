@@ -5,7 +5,6 @@ const TeacherAttendanceSchema = new mongoose.Schema(
     date: {
       type: String, // normalized YYYY-MM-DD
       required: true,
-      index: true
     },
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,

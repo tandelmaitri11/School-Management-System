@@ -7,15 +7,16 @@ function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ backgroundColor: "#f8f9fc" }}>
+    <div className="bg-light">
+
       {/* ===== Navbar ===== */}
-      <header className="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top px-4 py-3">
-        <div className="container-fluid">
+      <header className="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top px-3 px-lg-4 py-3">
+        <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between">
           <h2 className="fw-bold text-uppercase mb-0">
             <span style={{ color: "#d17b27" }}>School</span>Y
           </h2>
 
-          <div className="d-flex gap-3">
+          <div className="d-flex gap-2 mt-2 mt-lg-0">
             <button
               className="btn btn-outline-dark fw-semibold px-3"
               onClick={() => navigate("/login")}
@@ -36,18 +37,17 @@ function HomePage() {
       {/* ===== HERO SECTION ===== */}
       <section className="container py-5">
         <div className="row align-items-center">
-          
+
           {/* Left Text Side */}
-          <div className="col-md-6">
+          <div className="col-12 col-md-6 text-center text-md-start">
             <h1 className="fw-bold display-5 mb-3">
               Smart School Management Made Simple
             </h1>
             <p className="text-muted fs-5 mb-4">
-              Manage students, staff, attendance, exams, fees and more — all in one
-              modern digital platform.
+              Manage students, staff, attendance, exams, fees and more — all in one modern digital platform.
             </p>
 
-            <div className="d-flex gap-3">
+            <div className="d-flex flex-column flex-sm-row gap-2 justify-content-center justify-content-md-start">
               <button
                 className="btn text-white fw-semibold px-4"
                 style={{ backgroundColor: "#d17b27" }}
@@ -65,8 +65,8 @@ function HomePage() {
             </div>
           </div>
 
-          {/* Right Side Illustration - UPDATED TO BOOK IMAGE */}
-          <div className="col-md-6">
+          {/* Right Side Illustration */}
+          <div className="col-12 col-md-6 mt-4 mt-md-0 text-center">
             <img
               src="https://img.freepik.com/free-photo/book-stack-with-apple-education-concept_23-2148898685.jpg"
               alt="books illustration"
@@ -86,33 +86,14 @@ function HomePage() {
 
         <div className="row g-4">
           {[
-            {
-              icon: "bi-people-fill",
-              title: "Student Records",
-              desc: "Easily manage student data, academics and progress."
-            },
-            {
-              icon: "bi-book",
-              title: "Digital Library",
-              desc: "Provide e-books and digital study material."
-            },
-            {
-              icon: "bi-cash-stack",
-              title: "Fee Management",
-              desc: "Handle fee payments, receipts and reminders effortlessly."
-            },
-            {
-              icon: "bi-calendar-event",
-              title: "Attendance & Scheduling",
-              desc: "Track attendance, exams and classes."
-            }
+            { icon: "bi-people-fill", title: "Student Records", desc: "Easily manage student data, academics and progress." },
+            { icon: "bi-book", title: "Digital Library", desc: "Provide e-books and digital study material." },
+            { icon: "bi-cash-stack", title: "Fee Management", desc: "Handle fee payments, receipts and reminders effortlessly." },
+            { icon: "bi-calendar-event", title: "Attendance & Scheduling", desc: "Track attendance, exams and classes." }
           ].map((card, idx) => (
-            <div className="col-md-3 col-sm-6" key={idx}>
+            <div className="col-6 col-md-3" key={idx}>
               <div className="card border-0 shadow-sm p-4 text-center h-100 rounded-4">
-                <i
-                  className={`${card.icon} fs-1 mb-3`}
-                  style={{ color: "#d17b27" }}
-                ></i>
+                <i className={`${card.icon} fs-1 mb-3`} style={{ color: "#d17b27" }}></i>
                 <h5 className="fw-bold">{card.title}</h5>
                 <p className="text-muted small">{card.desc}</p>
               </div>
@@ -122,14 +103,11 @@ function HomePage() {
       </section>
 
       {/* ===== ABOUT SECTION ===== */}
-      <section
-        className="py-5"
-        style={{ backgroundColor: "#fff8f1", borderTop: "2px solid #ffe5cc" }}
-      >
+      <section className="py-5 bg-light border-top border-warning border-opacity-25">
         <div className="container row align-items-center mx-auto">
 
-          {/* LEFT IMAGE - UPDATED TO BOOK IMAGE */}
-          <div className="col-md-6">
+          {/* Left Image */}
+          <div className="col-12 col-md-6 text-center">
             <img
               src="https://img.freepik.com/free-photo/front-view-books-stack-education-day_23-2149241030.jpg"
               className="img-fluid rounded shadow-sm"
@@ -137,12 +115,11 @@ function HomePage() {
             />
           </div>
 
-          <div className="col-md-6 ps-md-5 mt-4 mt-md-0">
+          {/* Right Text */}
+          <div className="col-12 col-md-6 ps-md-5 mt-4 mt-md-0 text-center text-md-start">
             <h2 className="fw-bold mb-3">A Better Experience for Schools</h2>
             <p className="text-muted fs-5">
-              SchoolY helps simplify daily operations, improve communication,
-              support teachers, and provide parents with better transparency —
-              creating a smarter learning environment.
+              SchoolY helps simplify daily operations, improve communication, support teachers, and provide parents with better transparency — creating a smarter learning environment.
             </p>
 
             <button
@@ -157,11 +134,12 @@ function HomePage() {
       </section>
 
       {/* ===== FOOTER ===== */}
-      <footer className="text-center py-4" style={{ backgroundColor: "#2c2c2c" }}>
-        <p className="small text-light mb-0">
+      <footer className="text-center py-4 bg-dark text-light">
+        <p className="small mb-0">
           © 2025 SchoolY — School Management System
         </p>
       </footer>
+
     </div>
   );
 }

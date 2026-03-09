@@ -10,6 +10,12 @@ const {
   getStudentsByClassId,
   getAllStudentsForAdmin,
   searchStudents,
+  getTimetableForStudent,
+  getStudentsForAssignment,
+  assignStudentsManual,
+  assignStudentsBulk,
+  assignStudentsAuto,
+  promoteStudents
 } = require("../controller/studentController");
 
 // ✅ Get all students grouped by class (Admin)
@@ -38,6 +44,14 @@ router.put("/:id", updateStudent);
 router.get("/by-class/:classId", getStudentsByClassId);
 
 router.get("/search", searchStudents);
+router.get("/timetable/:studentId", getTimetableForStudent);
+
+// Section assignment & promotion
+router.get("/assignment", getStudentsForAssignment);
+router.post("/assign/manual", assignStudentsManual);
+router.post("/assign/bulk", assignStudentsBulk);
+router.post("/assign/auto", assignStudentsAuto);
+router.post("/promote", promoteStudents);
 
 
 module.exports = router;

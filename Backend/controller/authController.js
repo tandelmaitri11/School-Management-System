@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const Student = require("../models/studentregister");
 const Teacher = require("../models/techerregister");
 const Admin = require("../models/admin");
+const Class = require("../models/class");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
@@ -19,9 +20,51 @@ const generateId = async (Model, prefix) => {
 };
 
 // ------------------- REGISTER USER -------------------
+// ✅ helper: pick section with free seats
+const pickAvailableSection = async ({ cls, classNumber, streamName }) => {
+  const allSections = (cls.sections || [])
+    .filter((s) => s?.isActive !== false && !s.isLocked)
+    .map((s) => ({
+      name: String(s.name || "").toUpperCase(),
+      capacity: Number(s.capacity || 40),
+      stream: String(s.stream || "").trim(),
+    }));
+
+  if (!allSections.length) return null;
+
+  // ✅ for 11-12: match stream sections (Science → A,B)
+  // If section.stream is empty => treat as general pool
+  let candidates = allSections;
+
+  if (classNumber >= 11 && streamName) {
+    const matched = allSections.filter(
+      (s) => s.stream && s.stream.toLowerCase() === streamName.toLowerCase()
+    );
+    // if admin didn’t assign stream on sections, fallback to general ones
+    candidates = matched.length ? matched : allSections.filter((s) => !s.stream);
+  } else {
+    // ✅ class 1-10: prefer general sections only
+    const general = allSections.filter((s) => !s.stream);
+    candidates = general.length ? general : allSections;
+  }
+
+  // stable order: A, B, C...
+  candidates.sort((a, b) => a.name.localeCompare(b.name));
+
+  // pick first with seats
+  for (const sec of candidates) {
+    const used = await Student.countDocuments({ studentClass: classNumber, section: sec.name });
+    if (used < sec.capacity) {
+      return sec.name; // ✅ chosen section letter
+    }
+  }
+
+  return null; // all full
+};
+
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password, role, studentClass } = req.body;
+    const { name, email, password, role, studentClass, stream, subjectChoice } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "All fields are required!" });
@@ -29,33 +72,65 @@ exports.registerUser = async (req, res) => {
 
     const existingStudent = await Student.findOne({ email });
     const existingTeacher = await Teacher.findOne({ email });
-
-    if (existingStudent)
-      return res.status(409).json({ error: "Email already exists as Student!" });
-    if (existingTeacher)
-      return res.status(409).json({ error: "Email already exists as Teacher!" });
+    if (existingStudent) return res.status(409).json({ error: "Email already exists as Student!" });
+    if (existingTeacher) return res.status(409).json({ error: "Email already exists as Teacher!" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (role.toLowerCase() === "student") {
-      if (studentClass === undefined || studentClass === "")
-        return res.status(400).json({ error: "Student class is required!" });
-
+    if (String(role).toLowerCase() === "student") {
       const classNumber = Number(studentClass);
-      if (!Number.isInteger(classNumber) || classNumber < 1 || classNumber > 12)
-        return res
-          .status(400)
-          .json({ error: "Student class must be an integer between 1 and 12" });
+      if (!Number.isInteger(classNumber) || classNumber < 1 || classNumber > 12) {
+        return res.status(400).json({ error: "Student class must be between 1 and 12" });
+      }
 
-      const studentId = await generateId(Student, "STU");
+      const cls = await Class.findOne({ className: classNumber }).sort({ createdAt: -1 });
+      if (!cls) return res.status(404).json({ error: "Class not found. Create class first." });
+
+      // ✅ stream validations for 11-12
+      let safeStream = "";
+      let safeSubjectChoice = "";
+
+      const isSenior = classNumber >= 11;
+      const activeStreams = (cls.streams || []).filter((s) => s?.isActive !== false);
+
+      if (isSenior && activeStreams.length > 0) {
+        safeStream = String(stream || "").trim();
+        if (!safeStream) return res.status(400).json({ error: "Stream is required for class 11-12" });
+
+        const streamDoc = activeStreams.find(
+          (st) => String(st.name).toLowerCase() === safeStream.toLowerCase()
+        );
+        if (!streamDoc) return res.status(400).json({ error: "Invalid stream for selected class" });
+
+        safeSubjectChoice = String(subjectChoice || "").trim();
+        if (safeSubjectChoice) {
+          const ok = (streamDoc.subjectOptions || []).some(
+            (x) => String(x).toLowerCase() === safeSubjectChoice.toLowerCase()
+          );
+          if (!ok) return res.status(400).json({ error: "Invalid subject choice for selected stream" });
+        }
+      }
+
+      // ✅ AUTO ASSIGN SECTION (based on stream + capacity)
+      const autoSection = await pickAvailableSection({
+        cls,
+        classNumber,
+        streamName: safeStream,
+      });
+
+      if (!autoSection) {
+        return res.status(400).json({ error: "All sections are full. Registration closed." });
+      }
 
       const newStudent = new Student({
         name,
         email,
         password: hashedPassword,
-        role,
+        role: "Student",
         studentClass: classNumber,
-        studentId,
+        section: autoSection,        // ✅ auto assigned here
+        stream: safeStream,
+        subjectChoice: safeSubjectChoice,
       });
 
       await newStudent.save();
@@ -63,41 +138,27 @@ exports.registerUser = async (req, res) => {
       return res.status(201).json({
         message: "Student registered successfully!",
         studentId: newStudent.studentId,
-      });
-    } else if (role.toLowerCase() === "teacher") {
-      const teacherId = await generateId(Teacher, "TEA");
-
-      const newTeacher = new Teacher({
-        name,
-        email,
-        password: hashedPassword,
-        role,
-        teacherId,
-      });
-
-      await newTeacher.save();
-
-      return res.status(201).json({
-        message: "Teacher registered successfully!",
-        teacherId: newTeacher.teacherId,
+        assignedSection: autoSection, // ✅ show in UI
       });
     }
 
     return res.status(400).json({ error: "Invalid role!" });
   } catch (err) {
     console.error("Registration error:", err.message);
+    if (err?.code === 11000) return res.status(409).json({ error: "Duplicate value (email/studentId)" });
     res.status(500).json({ error: "Server error, please try again later." });
   }
 };
+
 
 // ------------------- LOGIN USER -------------------
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res
-        .status(400)
-        .json({ error: "Email and password are required!" });
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required!" });
+    }
 
     let user = await Student.findOne({ email });
     let userType = "Student";
@@ -117,13 +178,26 @@ exports.loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials!" });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    // ✅ TOKEN PAYLOAD
+    const tokenPayload = 
+      {  id: user._id,
+    role: user.role,
+    email: user.email,
+    className: userType === "Student" ? user.studentClass : null,
+    teacherId: userType === "Teacher" ? user.teacherId : null,
+  };
 
-    let userInfo = {
+    if (userType === "Student") {
+      tokenPayload.className = user.studentClass;
+}
+    if (userType === "Teacher") {
+  tokenPayload.teacherId = user.teacherId;
+} 
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    // ✅ USER INFO
+    const userInfo = {
       id: user._id,
       name: user.name,
       email: user.email,
@@ -132,7 +206,9 @@ exports.loginUser = async (req, res) => {
 
     if (userType === "Student") {
       userInfo.studentId = user.studentId;
-      userInfo.studentClass = user.studentClass;
+      userInfo.studentClass = user.studentClass; // ✅ fixed
+      userInfo.section = user.section || "";
+      userInfo.stream = user.stream || "";
     }
 
     if (userType === "Teacher") {
@@ -149,6 +225,7 @@ exports.loginUser = async (req, res) => {
     res.status(500).json({ error: "Server error, please try again later." });
   }
 };
+
 
 // ===========================================================
 // 🔹 NEW: FORGOT PASSWORD FLOW (EMAIL OTP + RESET PASSWORD)

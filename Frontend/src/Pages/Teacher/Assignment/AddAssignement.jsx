@@ -32,14 +32,12 @@ export default function AddAssignment() {
     variant: "",
   });
 
-  // ✅ Fetch teacher's classes
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const res = await api.get(`/api/classes/by-teacher/${teacherId}`);
         setClasses(res.data);
       } catch (err) {
-        console.error(err);
         showToast("❌ Could not fetch classes", "danger");
       } finally {
         setLoading(false);
@@ -48,7 +46,6 @@ export default function AddAssignment() {
     fetchClasses();
   }, [teacherId]);
 
-  // ✅ Fetch subjects for selected class
   useEffect(() => {
     const fetchSubjects = async () => {
       if (!formData.classAssigned) return;
@@ -71,8 +68,7 @@ export default function AddAssignment() {
           setSubjectsError("⚠️ No subjects available for this class");
           setFormData((prev) => ({ ...prev, subject: "" }));
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
         setSubjectsError("❌ Could not fetch subjects");
       } finally {
         setSubjectsLoading(false);
@@ -82,7 +78,6 @@ export default function AddAssignment() {
     fetchSubjects();
   }, [formData.classAssigned]);
 
-  // ✅ Helper for toast messages
   const showToast = (message, variant = "info") => {
     setToast({ show: true, message, variant });
   };
@@ -110,12 +105,8 @@ export default function AddAssignment() {
 
     try {
       const data = new FormData();
-      data.append("title", formData.title);
-      data.append("description", formData.description);
-      data.append("subject", formData.subject);
-      data.append("dueDate", formData.dueDate);
+      Object.entries(formData).forEach(([k, v]) => data.append(k, v));
       data.append("teacherId", teacherId);
-      data.append("classAssigned", formData.classAssigned);
       if (file) data.append("file", file);
 
       await api.post("/api/assignments/create", data, {
@@ -134,8 +125,10 @@ export default function AddAssignment() {
       setFile(null);
       setSubjects([]);
     } catch (err) {
-      console.error(err);
-      showToast(err.response?.data?.message || "❌ Error creating assignment", "danger");
+      showToast(
+        err.response?.data?.message || "❌ Error creating assignment",
+        "danger"
+      );
     }
   };
 
@@ -147,134 +140,116 @@ export default function AddAssignment() {
     );
 
   return (
-    <div className="container py-4">
-      <Card
-        className="p-4 shadow-sm border-0 rounded-4"
-        style={{ backgroundColor: "#fafafa" }}
-      >
-        <h4 className="mb-4 fw-semibold text-center" style={{ color: "#333" }}>
-          Assign New Assignment
-        </h4>
+    <div className="container py-3 py-md-4">
+      <div className="row justify-content-center">
+        <div className="col-12 col-lg-8 col-xl-7">
+          <Card className="p-3 p-md-4 shadow-sm border-0 rounded-4 bg-light">
+            <h4 className="mb-4 fw-semibold text-center text-dark">
+              Assign New Assignment
+            </h4>
 
-        <Form onSubmit={handleSubmit} className="px-2">
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-medium text-secondary">Title</Form.Label>
-            <Form.Control
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              required
-              placeholder="Enter assignment title"
-              className="rounded-3 border-0 shadow-sm"
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-medium text-secondary">Description</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter assignment description"
-              className="rounded-3 border-0 shadow-sm"
-            />
-          </Form.Group>
-
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <Form.Label className="fw-medium text-secondary">Class</Form.Label>
-              <Form.Select
-                name="classAssigned"
-                value={formData.classAssigned}
-                onChange={handleChange}
-                required
-                className="rounded-3 border-0 shadow-sm"
-              >
-                <option value="">-- Select Class --</option>
-                {classes.map((cls) => (
-                  <option key={cls._id} value={cls.className}>
-                    Class {cls.className}
-                  </option>
-                ))}
-              </Form.Select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <Form.Label className="fw-medium text-secondary">Subject</Form.Label>
-              {subjectsLoading ? (
-                <div className="d-flex align-items-center">
-                  <Spinner animation="border" size="sm" variant="secondary" className="me-2" />
-                  <span>Loading...</span>
-                </div>
-              ) : (
-                <Form.Select
-                  name="subject"
-                  value={formData.subject}
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3">
+                <Form.Label>Title</Form.Label>
+                <Form.Control
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
                   required
-                  className="rounded-3 border-0 shadow-sm"
-                >
-                  <option value="">{subjectsError || "-- Select Subject --"}</option>
-                  {subjects.map((sub, idx) => (
-                    <option key={idx} value={sub.subjectName}>
-                      {sub.subjectName} ({sub.marks} marks)
-                    </option>
-                  ))}
-                </Form.Select>
-              )}
-            </div>
-          </div>
+                />
+              </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-medium text-secondary">Upload File</Form.Label>
-            <Form.Control
-              type="file"
-              onChange={handleFileChange}
-              className="rounded-3 border-0 shadow-sm"
-            />
-          </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                />
+              </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-medium text-secondary">Due Date</Form.Label>
-            <Form.Control
-              type="date"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              className="rounded-3 border-0 shadow-sm"
-            />
-          </Form.Group>
+              <div className="row">
+                <div className="col-12 col-md-6 mb-3">
+                  <Form.Label>Class</Form.Label>
+                  <Form.Select
+                    name="classAssigned"
+                    value={formData.classAssigned}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">-- Select Class --</option>
+                    {classes.map((cls) => (
+                      <option key={cls._id} value={cls.className}>
+                        Class {cls.className}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </div>
 
-          <div className="text-center">
-            <Button
-              type="submit"
-              className="px-4 py-2 rounded-3 fw-semibold border-0"
-              style={{
-                backgroundColor: "#444",
-                color: "white",
-                transition: "0.3s",
-              }}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = "#222")}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = "#444")}
-            >
-              Create Assignment
-            </Button>
-          </div>
-        </Form>
-      </Card>
+                <div className="col-12 col-md-6 mb-3">
+                  <Form.Label>Subject</Form.Label>
+                  {subjectsLoading ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <Form.Select
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">
+                        {subjectsError || "-- Select Subject --"}
+                      </option>
+                      {subjects.map((sub, idx) => (
+                        <option key={idx} value={sub.subjectName}>
+                          {sub.subjectName} ({sub.marks} marks)
+                        </option>
+                      ))}
+                    </Form.Select>
+                  )}
+                </div>
+              </div>
 
-      {/* ✅ Professional Toast Notification */}
+              <Form.Group className="mb-3">
+                <Form.Label>Upload File</Form.Label>
+                <Form.Control type="file" onChange={handleFileChange} />
+              </Form.Group>
+
+              <Form.Group className="mb-4">
+                <Form.Label>Due Date</Form.Label>
+                <Form.Control
+                  type="date"
+                  name="dueDate"
+                  value={formData.dueDate}
+                  onChange={handleChange}
+                />
+              </Form.Group>
+
+              <Button
+                type="submit"
+                className="w-100 fw-semibold py-2"
+                variant="dark"
+              >
+                Create Assignment
+              </Button>
+            </Form>
+          </Card>
+        </div>
+      </div>
+
       <ToastContainer position="bottom-end" className="p-3">
         <Toast
-          onClose={() => setToast({ ...toast, show: false })}
           show={toast.show}
           bg={toast.variant}
           delay={2500}
           autohide
+          onClose={() => setToast({ ...toast, show: false })}
         >
-          <Toast.Body className="text-white fw-semibold">{toast.message}</Toast.Body>
+          <Toast.Body className="text-white fw-semibold">
+            {toast.message}
+          </Toast.Body>
         </Toast>
       </ToastContainer>
     </div>

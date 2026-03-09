@@ -1,24 +1,78 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
+import "bootstrap-icons/font/bootstrap-icons.css";
+import QRCode from "react-qr-code";
 
 export default function StudentPaymentPage() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Payment states
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMode, setPaymentMode] = useState("Cash");
-  const [message, setMessage] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash"); // Cash | QR
+  const [utr, setUtr] = useState(""); // for QR (UPI UTR)
+
+  // Reminder states
+  const [dueDate, setDueDate] = useState("");
+  const [lateFee, setLateFee] = useState("");
+  const [sendingReminder, setSendingReminder] = useState(false);
+
+  // UI states
+  const [activeTab, setActiveTab] = useState("pay");
+  const [message, setMessage] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(false);
 
-  // Load all classes
+  // ✅ Set your UPI details (static QR)
+  const UPI_VPA = "myschool@upi";
+  const PAYEE_NAME = "MySchoolY";
+
+  const showToast = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+  };
+
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount || 0);
+
+  const isFullyPaid = useMemo(
+    () => (selectedStudent?.fees?.remainingAmount ?? 0) <= 0,
+    [selectedStudent]
+  );
+
+  const remaining = useMemo(
+    () => Number(selectedStudent?.fees?.remainingAmount || 0),
+    [selectedStudent]
+  );
+
+  // ✅ Build UPI QR string (upi://pay?...), includes amount & note
+  const upiQrValue = useMemo(() => {
+    const amt = paymentAmount ? Number(paymentAmount) : 0;
+    const safeAmt = amt > 0 ? amt.toFixed(2) : "";
+    const note = selectedStudent?.name ? `Fees-${selectedStudent.name}` : "School Fees";
+
+    const params = new URLSearchParams();
+    params.set("pa", UPI_VPA);
+    params.set("pn", PAYEE_NAME);
+    if (safeAmt) params.set("am", safeAmt);
+    params.set("cu", "INR");
+    params.set("tn", note);
+
+    return `upi://pay?${params.toString()}`;
+  }, [paymentAmount, selectedStudent]);
+
+  // -------------------
+  // API Calls
+  // -------------------
   const loadClasses = async () => {
     try {
-      const res = await api.get("/api/fees/all-class-fees");
+      // ✅ correct route from your router: GET /class-fee
+      const res = await api.get("/api/fees/class-fee");
       setClasses(res.data.classFees || []);
     } catch (err) {
       console.error(err);
-      setMessage("Error loading classes");
+      showToast("error", err?.response?.data?.message || "Error loading classes");
     }
   };
 
@@ -26,7 +80,6 @@ export default function StudentPaymentPage() {
     loadClasses();
   }, []);
 
-  // Load students for selected class
   const loadStudents = async (cls) => {
     if (!cls) return;
     setSelectedClass(cls);
@@ -34,14 +87,16 @@ export default function StudentPaymentPage() {
     setSelectedStudent(null);
 
     try {
+      // ✅ correct route: GET /students/:className
       const res = await api.get(`/api/fees/students/${cls}`);
       const allStudents = res.data.students || [];
 
-      // Fetch fees for each student to determine status
+      // attach fees snapshot
       const studentsWithFees = await Promise.all(
         allStudents.map(async (student) => {
           try {
-            const feesRes = await api.get(`/api/fees/student-fees/${student._id}`);
+            // ✅ correct route: GET /student/:studentId
+            const feesRes = await api.get(`/api/fees/student/${student._id}`);
             return { ...student, fees: feesRes.data.fees || null };
           } catch {
             return { ...student, fees: null };
@@ -52,231 +107,494 @@ export default function StudentPaymentPage() {
       setStudents(studentsWithFees);
     } catch (err) {
       console.error(err);
-      setMessage(err?.response?.data?.message || "Error fetching students");
+      showToast("error", err?.response?.data?.message || "Error fetching students");
       setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Select a student to pay
   const handleSelectStudent = async (student) => {
-    setSelectedStudent(null);
+    setSelectedStudent({ ...student, fees: student.fees || {} });
+
     try {
-      const res = await api.get(`/api/fees/student-fees/${student._id}`);
-      setSelectedStudent({
-        ...student,
-        fees: res.data.fees || {
+      // ✅ correct route: GET /student/:studentId
+      const res = await api.get(`/api/fees/student/${student._id}`);
+      const feesData =
+        res.data.fees || {
           totalFees: 0,
           paidAmount: 0,
           remainingAmount: 0,
           paymentHistory: [],
-        },
-      });
+        };
+
+      setSelectedStudent({ ...student, fees: feesData });
+
+      // reset forms
       setPaymentAmount("");
       setPaymentMode("Cash");
+      setUtr("");
+      setDueDate("");
+      setLateFee("");
+
+      // auto tab
+      setActiveTab(feesData.remainingAmount <= 0 ? "history" : "pay");
     } catch (err) {
       console.error(err);
-      setMessage(err?.response?.data?.message || "Error fetching student fees");
+      showToast("error", err?.response?.data?.message || "Error fetching student fees");
     }
   };
 
-  // Submit payment
+  // -------------------
+  // Cash / QR manual payment
+  // -------------------
   const handleSubmitPayment = async () => {
-    if (!paymentAmount || paymentAmount <= 0) {
-      return setMessage("Enter a valid payment amount");
+    if (!selectedStudent?._id) return;
+
+    const amt = Number(paymentAmount);
+    if (!amt || amt <= 0) return showToast("error", "Enter a valid payment amount");
+
+    if (amt > remaining) {
+      return showToast("error", `Amount exceeds remaining balance of ${formatMoney(remaining)}`);
+    }
+
+    const isQr = paymentMode === "QR";
+
+    // ✅ If QR: UTR required
+    if (isQr) {
+      if (!utr.trim() || utr.trim().length < 6) {
+        return showToast("error", "Enter valid UTR / Transaction ID");
+      }
     }
 
     try {
-      await api.post("/api/fees/student-payment", {
+      // ✅ correct route from your router: POST /payment/cash
+      await api.post("/api/fees/payment/cash", {
         studentId: selectedStudent._id,
-        amount: Number(paymentAmount),
-        mode: paymentMode,
+        amount: amt,
+        mode: isQr ? "UPI (QR)" : "Cash",
+        transactionId: isQr ? utr.trim() : undefined, // needs controller update
       });
-      setMessage("Payment added successfully");
-      handleSelectStudent(selectedStudent); // refresh student fees
+
+      showToast("success", isQr ? "QR payment recorded" : "Cash payment recorded");
+      handleSelectStudent(selectedStudent); // refresh
     } catch (err) {
       console.error(err);
-      setMessage(err?.response?.data?.message || "Error adding payment");
+      showToast("error", err?.response?.data?.message || "Error adding payment");
     }
   };
 
-  return (
-    <div className="container my-5">
-      <h2 className="mb-4 text-primary">Student Payments</h2>
+  // -------------------
+  // Reminder
+  // -------------------
+  const handleSendReminder = async () => {
+    if (!selectedStudent?._id) return;
+    setSendingReminder(true);
+    try {
+      const payload = {};
+      if (dueDate) payload.dueDate = dueDate;
+      if (lateFee) payload.lateFee = Number(lateFee);
 
-      {/* Message Alert */}
-      {message && (
-        <div className="alert alert-info alert-dismissible fade show" role="alert">
-          {message}
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setMessage("")}
-          ></button>
+      // ✅ correct route: POST /reminder/:studentId
+      const res = await api.post(`/api/fees/reminder/${selectedStudent._id}`, payload);
+      showToast("success", res.data?.message || "Reminder email sent");
+    } catch (err) {
+      console.error(err);
+      showToast("error", err?.response?.data?.message || "Error sending reminder");
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
+  // -------------------
+  // UI
+  // -------------------
+  return (
+    <div className="container-fluid bg-light min-vh-100 py-4 px-md-5">
+      {/* HEADER */}
+      <div className="d-flex justify-content-between align-items-center mb-5">
+        <div>
+          <h2 className="fw-bold text-dark mb-1">
+            <i className="bi bi-wallet2 text-primary me-2"></i> Fees Management
+          </h2>
+          <p className="text-muted mb-0 small">Manage student fees, receipts, and reminders.</p>
+        </div>
+
+        <div className="bg-white p-2 rounded shadow-sm d-flex align-items-center" style={{ minWidth: "250px" }}>
+          <i className="bi bi-funnel text-muted ms-2 me-2"></i>
+          <select
+            className="form-select border-0 fw-bold text-primary"
+            style={{ boxShadow: "none", cursor: "pointer" }}
+            value={selectedClass}
+            onChange={(e) => loadStudents(e.target.value)}
+          >
+            <option value="">Select Class</option>
+            {classes.map((c) => (
+              <option key={c._id} value={c.className}>
+                {c.className}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* TOAST */}
+      {message.text && (
+        <div
+          className={`position-fixed top-0 end-0 m-4 p-3 rounded shadow text-white fade show ${
+            message.type === "error" ? "bg-danger" : "bg-success"
+          }`}
+          style={{ zIndex: 1050 }}
+        >
+          <div className="d-flex align-items-center">
+            <i className={`bi ${message.type === "error" ? "bi-exclamation-circle" : "bi-check-circle"} me-2 fs-5`}></i>
+            <div>{message.text}</div>
+          </div>
         </div>
       )}
 
-      {/* Step 1: Select Class */}
-      <div className="card p-3 mb-4 shadow-sm border-0">
-        <label className="form-label fw-semibold">Select Class</label>
-        <select
-          className="form-select form-select-lg"
-          value={selectedClass}
-          onChange={(e) => loadStudents(e.target.value)}
-        >
-          <option value="">-- Choose Class --</option>
-          {classes.map((c) => (
-            <option key={c._id} value={c.className}>
-              {c.className}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Step 2: Students List */}
+      {/* VIEW 1: STUDENT LIST */}
       {!selectedStudent && (
-        <>
+        <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
           {loading ? (
             <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
+              <div className="spinner-border text-primary" role="status"></div>
+              <p className="mt-2 text-muted">Fetching student records...</p>
             </div>
-          ) : students.length > 0 ? (
-            <div className="card shadow-sm mb-4 border-0">
-              <div className="card-header bg-primary text-white fw-bold">
-                Students in Class {selectedClass}
-              </div>
-              <div className="card-body p-0">
-                <table className="table table-hover mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Name</th>
-                      <th>Class</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((s) => {
-                      const status =
-                        s.fees && s.fees.remainingAmount <= 0 ? "Paid" : "Pending";
-                      const isPaid = status === "Paid";
-                      return (
-                        <tr key={s._id}>
-                          <td>{s.name}</td>
-                          <td>{s.studentClass}</td>
-                          <td
-                            className={
-                              isPaid ? "text-success fw-bold" : "text-danger fw-bold"
-                            }
-                          >
-                            {status}
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => handleSelectStudent(s)}
-                              disabled={isPaid} // disable if fully paid
-                            >
-                              Pay Fees
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : selectedClass ? (
-            <p className="text-center text-muted">No students found for this class</p>
-          ) : null}
-        </>
-      )}
-
-      {/* Step 3: Payment Form for Selected Student */}
-      {selectedStudent && (
-        <div className="card shadow-sm p-4 border-0">
-          <h4 className="mb-3 text-success">Pay Fees for {selectedStudent.name}</h4>
-
-          {/* Student Fees Info */}
-          <div className="mb-3">
-            <p className="mb-1">
-              <strong>Class:</strong> {selectedStudent.studentClass}
-            </p>
-            <p className="mb-1">
-              <strong>Total Fees:</strong> {selectedStudent.fees.totalFees}
-            </p>
-            <p className="mb-1">
-              <strong>Paid Amount:</strong> {selectedStudent.fees.paidAmount}
-            </p>
-            <p className="mb-1">
-              <strong>Remaining Amount:</strong> {selectedStudent.fees.remainingAmount}
-            </p>
-          </div>
-
-          {/* Payment History */}
-          <div className="mb-3">
-            <h6>Payment History</h6>
-            {selectedStudent.fees.paymentHistory.length > 0 ? (
-              <table className="table table-bordered table-sm">
-                <thead>
+          ) : selectedClass && students.length > 0 ? (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light text-secondary text-uppercase small">
                   <tr>
-                    <th>#</th>
-                    <th>Amount</th>
-                    <th>Mode</th>
-                    <th>Date</th>
+                    <th className="py-3 ps-4">Student Name</th>
+                    <th className="py-3">Roll / ID</th>
+                    <th className="py-3 text-end">Total</th>
+                    <th className="py-3 text-end">Paid</th>
+                    <th className="py-3 text-end">Balance</th>
+                    <th className="py-3 text-center">Status</th>
+                    <th className="py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedStudent.fees.paymentHistory.map((p, index) => (
-                    <tr key={index}>
-                      <td>{index + 1}</td>
-                      <td>{p.amount}</td>
-                      <td>{p.mode}</td>
-                      <td>{new Date(p.date).toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {students.map((s) => {
+                    const balance = s.fees?.remainingAmount || 0;
+                    const paidOk = balance <= 0;
+                    return (
+                      <tr key={s._id} style={{ cursor: "pointer" }} onClick={() => handleSelectStudent(s)}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center">
+                            <div
+                              className={`bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3 ${
+                                paidOk ? "bg-success text-success" : "bg-primary text-primary"
+                              }`}
+                              style={{ width: "40px", height: "40px" }}
+                            >
+                              <span className="fw-bold">{(s.name || "S").charAt(0)}</span>
+                            </div>
+                            <span className="fw-semibold text-dark">{s.name}</span>
+                          </div>
+                        </td>
+                        <td className="text-muted small">{s.studentId || "N/A"}</td>
+                        <td className="text-end text-secondary">{formatMoney(s.fees?.totalFees)}</td>
+                        <td className="text-end text-success">{formatMoney(s.fees?.paidAmount)}</td>
+                        <td className="text-end fw-bold text-dark">{formatMoney(balance)}</td>
+                        <td className="text-center">
+                          <span
+                            className={`badge rounded-pill px-3 py-2 ${
+                              paidOk ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger"
+                            }`}
+                          >
+                            {paidOk ? "Fully Paid" : "Pending"}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <button className={`btn btn-sm rounded-pill px-3 ${paidOk ? "btn-outline-success" : "btn-outline-primary"}`}>
+                            {paidOk ? <i className="bi bi-eye"></i> : "Pay Now"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            ) : (
-              <p className="text-muted">No payments made yet.</p>
-            )}
+            </div>
+          ) : (
+            <div className="text-center py-5 text-muted">
+              <i className="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+              {selectedClass ? "No students found in this class." : "Please select a class from the top right corner."}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 2: SELECTED STUDENT DETAIL */}
+      {selectedStudent && (
+        <div className="row g-4">
+          {/* LEFT COL: Student Summary Card */}
+          <div className="col-lg-4">
+            <button className="btn btn-link text-decoration-none text-muted mb-3 ps-0" onClick={() => setSelectedStudent(null)}>
+              <i className="bi bi-arrow-left me-1"></i> Back to List
+            </button>
+
+            <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100">
+              <div className="mx-auto bg-light rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: "80px", height: "80px" }}>
+                {isFullyPaid ? <i className="bi bi-patch-check-fill fs-1 text-success"></i> : <i className="bi bi-person fs-1 text-secondary"></i>}
+              </div>
+              <h4 className="fw-bold mb-1">{selectedStudent.name}</h4>
+              <p className="text-muted small mb-4">
+                {selectedStudent.studentClass} | Roll: {selectedStudent.studentId || "N/A"}
+              </p>
+
+              <div className={`card border-0 rounded-3 p-3 mb-3 ${isFullyPaid ? "bg-success text-white" : "bg-primary text-white"}`}>
+                <span className="opacity-75 small">Remaining Balance</span>
+                <h2 className="fw-bold my-1">{formatMoney(selectedStudent.fees.remainingAmount)}</h2>
+                {isFullyPaid && <small className="opacity-75">All fees cleared!</small>}
+              </div>
+
+              <div className="d-flex justify-content-between px-3 mt-2">
+                <div className="text-start">
+                  <div className="small text-muted">Total Fees</div>
+                  <div className="fw-bold text-dark">{formatMoney(selectedStudent.fees.totalFees)}</div>
+                </div>
+                <div className="text-end">
+                  <div className="small text-muted">Paid So Far</div>
+                  <div className="fw-bold text-success">{formatMoney(selectedStudent.fees.paidAmount)}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Payment Form */}
-          <div className="row g-3 align-items-end">
-            <div className="col-md-3">
-              <input
-                type="number"
-                className="form-control form-control-lg"
-                placeholder="Payment Amount"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-              />
-            </div>
-            <div className="col-md-3">
-              <select
-                className="form-select form-select-lg"
-                value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
-              >
-                <option value="Cash">Cash</option>
-                <option value="Online">Online</option>
-                <option value="Card">Card</option>
-              </select>
-            </div>
-            <div className="col-md-3">
-              <button className="btn btn-success btn-lg" onClick={handleSubmitPayment}>
-                Submit Payment
-              </button>
-            </div>
-            <div className="col-md-3">
-              <button className="btn btn-secondary btn-lg" onClick={() => setSelectedStudent(null)}>
-                Back to Students
-              </button>
+          {/* RIGHT COL: Action Tabs */}
+          <div className="col-lg-8">
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+              <div className="card-header bg-white border-bottom p-0">
+                <ul className="nav nav-tabs nav-justified border-0">
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link py-3 rounded-0 border-0 ${
+                        activeTab === "pay" ? "active text-primary fw-bold border-bottom border-primary border-3" : "text-muted"
+                      }`}
+                      onClick={() => setActiveTab("pay")}
+                    >
+                      <i className="bi bi-cash-coin me-2"></i>New Payment
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link py-3 rounded-0 border-0 ${
+                        activeTab === "history" ? "active text-primary fw-bold border-bottom border-primary border-3" : "text-muted"
+                      }`}
+                      onClick={() => setActiveTab("history")}
+                    >
+                      <i className="bi bi-clock-history me-2"></i>History
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button
+                      className={`nav-link py-3 rounded-0 border-0 ${
+                        activeTab === "reminder" ? "active text-primary fw-bold border-bottom border-primary border-3" : "text-muted"
+                      }`}
+                      onClick={() => setActiveTab("reminder")}
+                    >
+                      <i className="bi bi-bell me-2"></i>Reminders
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="card-body p-4">
+                {/* TAB 1: MAKE PAYMENT */}
+                {activeTab === "pay" && (
+                  <>
+                    {isFullyPaid ? (
+                      <div className="text-center py-5">
+                        <div className="mb-3">
+                          <i className="bi bi-check-circle-fill text-success display-1"></i>
+                        </div>
+                        <h3 className="fw-bold text-dark">Payment Complete</h3>
+                        <p className="text-muted col-md-8 mx-auto">This student has cleared all pending dues.</p>
+                        <button className="btn btn-outline-secondary mt-3" onClick={() => setActiveTab("history")}>
+                          View Receipt History
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h5 className="mb-4">Record New Transaction (Cash / QR)</h5>
+
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label className="form-label text-muted small">Amount</label>
+                            <div className="input-group input-group-lg">
+                              <span className="input-group-text bg-light border-end-0">₹</span>
+                              <input
+                                type="number"
+                                className="form-control border-start-0 ps-0"
+                                placeholder="0.00"
+                                value={paymentAmount}
+                                onChange={(e) => setPaymentAmount(e.target.value)}
+                              />
+                            </div>
+                            <div className="form-text">
+                              Remaining: <b>{formatMoney(remaining)}</b>
+                            </div>
+                          </div>
+
+                          <div className="col-md-6">
+                            <label className="form-label text-muted small">Payment Mode</label>
+                            <select
+                              className="form-select form-select-lg"
+                              value={paymentMode}
+                              onChange={(e) => {
+                                setPaymentMode(e.target.value);
+                                setUtr("");
+                              }}
+                            >
+                              <option value="Cash">Cash</option>
+                              <option value="QR">Scan & Pay (UPI QR)</option>
+                            </select>
+                          </div>
+
+                          {/* QR PANEL */}
+                          {paymentMode === "QR" && (
+                            <div className="col-12">
+                              <div className="border rounded-4 p-3 bg-light">
+                                <div className="row g-3 align-items-center">
+                                  <div className="col-12 col-md-5 text-center">
+                                    <div className="bg-white p-3 rounded-4 shadow-sm d-inline-block">
+                                      <QRCode value={upiQrValue} size={160} />
+                                    </div>
+                                    <div className="small text-muted mt-2">Scan with any UPI app</div>
+                                  </div>
+
+                                  <div className="col-12 col-md-7">
+                                    <div className="mb-2">
+                                      <div className="small text-muted">UPI ID</div>
+                                      <div className="fw-bold">{UPI_VPA}</div>
+                                    </div>
+                                    <div className="mb-2">
+                                      <div className="small text-muted">Payee Name</div>
+                                      <div className="fw-semibold">{PAYEE_NAME}</div>
+                                    </div>
+
+                                    <div className="mt-3">
+                                      <label className="form-label text-muted small">
+                                        UTR / Transaction ID <span className="text-danger">*</span>
+                                      </label>
+                                      <input
+                                        className="form-control"
+                                        placeholder="Example: 321654987123"
+                                        value={utr}
+                                        onChange={(e) => setUtr(e.target.value)}
+                                      />
+                                      <div className="form-text">After payment, enter UTR from UPI app.</div>
+                                    </div>
+
+                                    <div className="alert alert-warning mt-3 mb-0 small">
+                                      QR payment is recorded manually (no auto bank verification).
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="col-12 mt-4">
+                            <button className="btn btn-primary btn-lg w-100 rounded-3" onClick={handleSubmitPayment} disabled={!paymentAmount}>
+                              {paymentMode === "QR" ? "Confirm QR Payment" : "Confirm Cash Payment"}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* TAB 2: HISTORY */}
+                {activeTab === "history" && (
+                  <>
+                    <h5 className="mb-3">Transaction History</h5>
+                    {selectedStudent?.fees?.paymentHistory?.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="table table-striped table-hover align-middle">
+                          <thead>
+                            <tr>
+                              <th className="text-muted small">Date & Time</th>
+                              <th className="text-muted small">Mode</th>
+                              <th className="text-muted small">Receipt No</th>
+                              <th className="text-muted small">Txn/UTR</th>
+                              <th className="text-end text-muted small">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedStudent.fees.paymentHistory.map((p, idx) => (
+                              <tr key={p._id || idx}>
+                                <td>{new Date(p.date).toLocaleString("en-IN")}</td>
+                                <td>
+                                  <span className="badge bg-light text-dark border">{p.mode}</span>
+                                </td>
+                                <td>{p.receiptNo || "-"}</td>
+                                <td className="text-truncate" style={{ maxWidth: 220 }}>
+                                  {p.transactionId || "-"}
+                                </td>
+                                <td className="text-end fw-bold">{formatMoney(p.amount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted py-4">No transactions found.</div>
+                    )}
+                  </>
+                )}
+
+                {/* TAB 3: REMINDERS */}
+                {activeTab === "reminder" && (
+                  <>
+                    {isFullyPaid ? (
+                      <div className="text-center py-5">
+                        <i className="bi bi-emoji-smile text-warning display-4 mb-3"></i>
+                        <p className="text-muted">No reminders needed. Fees are fully paid.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <h5 className="mb-4">Send Payment Reminder</h5>
+
+                        <div className="bg-light p-3 rounded-3 border mb-3">
+                          <div className="row g-3">
+                            <div className="col-md-6">
+                              <label className="form-label small">Due Date</label>
+                              <input type="date" className="form-control" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                            </div>
+                            <div className="col-md-6">
+                              <label className="form-label small">Late Fee Charge (Optional)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                placeholder="0"
+                                value={lateFee}
+                                onChange={(e) => setLateFee(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <button className="btn btn-warning w-100 py-2 text-dark fw-bold" onClick={handleSendReminder} disabled={sendingReminder}>
+                          {sendingReminder ? (
+                            <span>
+                              <span className="spinner-border spinner-border-sm me-2"></span>Sending...
+                            </span>
+                          ) : (
+                            <span>
+                              <i className="bi bi-envelope-paper me-2"></i> Send Reminder Email
+                            </span>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

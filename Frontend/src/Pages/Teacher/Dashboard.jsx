@@ -1,28 +1,8 @@
 import React, { useState, useEffect } from "react";
 import api from "../../api/api";
 import TeacherNavbarMuted from "./teacher_navbar";
-import {
-  Card,
-  Row,
-  Col,
-  Table,
-  Badge,
-  Spinner,
-  Container,
-} from "react-bootstrap";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { Card, Row, Col, Table, Badge, Spinner, Container,} from "react-bootstrap";
+import {LineChart,Line,XAxis,YAxis,CartesianGrid,Tooltip,Legend,ResponsiveContainer,PieChart,Pie,Cell,} from "recharts";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
@@ -52,14 +32,7 @@ export default function TeacherDashboard() {
     fetchData();
   }, [teacherId]);
 
-  const pieColors = [
-    "#4e73df",
-    "#1cc88a",
-    "#36b9cc",
-    "#f6c23e",
-    "#e74a3b",
-    "#8e44ad",
-  ];
+  const pieColors = ["#4e73df","#1cc88a","#36b9cc","#f6c23e","#e74a3b","#8e44ad",];
 
   if (loading)
     return (
@@ -80,12 +53,7 @@ export default function TeacherDashboard() {
       </TeacherNavbarMuted>
     );
 
-  // Inline hover style for cards
-  const hoverStyle = {
-    transition: "all 0.3s ease",
-    cursor: "pointer",
-  };
-
+  const hoverStyle = { transition: "all 0.3s ease", cursor: "pointer" };
   const hoverEffect = (e, enter) => {
     if (enter) {
       e.currentTarget.style.transform = "translateY(-5px)";
@@ -98,37 +66,34 @@ export default function TeacherDashboard() {
 
   return (
     <TeacherNavbarMuted>
-      <Container className="py-4">
-        <h3 className="fw-bold text-secondary mb-4">
-          <i className="bi bi-speedometer2 me-2 text-primary"></i>Teacher Dashboard
+      <Container fluid className="py-4">
+        <h3 className="fw-bold text-secondary mb-4 text-center text-md-start">
+          <i className="bi bi-speedometer2 me-2 text-primary"></i>
+          Teacher Dashboard
         </h3>
 
         {/* Summary Cards */}
-        <Row className="g-4 mb-4">
+        <Row className="g-3 mb-4">
           {[
             { label: "Classes", value: data.totalClasses, icon: "bi-easel2-fill", color: "primary" },
             { label: "Students", value: data.totalStudents, icon: "bi-people-fill", color: "success" },
             { label: "Assignments", value: data.totalAssignments, icon: "bi-journal-text", color: "warning" },
             { label: "Pending", value: data.pendingAssignments, icon: "bi-hourglass-split", color: "danger" },
           ].map((card, i) => (
-            <Col md={3} sm={6} key={i}>
+            <Col xs={12} sm={6} md={3} key={i}>
               <Card
-                className="border-0 rounded-4 shadow-sm"
+                className="border-0 rounded-4 shadow-sm h-100"
                 style={hoverStyle}
                 onMouseEnter={(e) => hoverEffect(e, true)}
                 onMouseLeave={(e) => hoverEffect(e, false)}
               >
-                <Card.Body className="d-flex align-items-center justify-content-between p-4">
+                <Card.Body className="d-flex align-items-center justify-content-between p-3 p-md-4">
                   <div>
-                    <h6 className="text-uppercase text-muted fw-semibold mb-1">
-                      {card.label}
-                    </h6>
-                    <h2 className={`fw-bold text-${card.color}`}>
-                      {card.value || 0}
-                    </h2>
+                    <h6 className="text-uppercase text-muted fw-semibold mb-1">{card.label}</h6>
+                    <h2 className={`fw-bold text-${card.color}`}>{card.value || 0}</h2>
                   </div>
                   <div
-                    className={`d-flex align-items-center justify-content-center rounded-circle bg-${card.color}-subtle text-${card.color}`}
+                    className={`d-flex align-items-center justify-content-center rounded-circle text-${card.color}`}
                     style={{
                       width: "60px",
                       height: "60px",
@@ -144,21 +109,16 @@ export default function TeacherDashboard() {
         </Row>
 
         {/* Charts */}
-        <Row className="g-4 mb-4">
+        <Row className="g-3 mb-4">
           {/* Line Chart */}
-          <Col md={8}>
+          <Col xs={12} md={8}>
             <Card
-              className="border-0 rounded-4 shadow-sm"
+              className="border-0 rounded-4 shadow-sm h-100"
               style={hoverStyle}
               onMouseEnter={(e) => hoverEffect(e, true)}
               onMouseLeave={(e) => hoverEffect(e, false)}
             >
-              <Card.Header
-                className="text-white rounded-top-4"
-                style={{
-                  background: "linear-gradient(90deg, #4e73df, #1cc88a)",
-                }}
-              >
+              <Card.Header className="text-white rounded-top-4" style={{ background: "linear-gradient(90deg, #4e73df, #1cc88a)" }}>
                 <h6 className="mb-0 fw-semibold">
                   <i className="bi bi-graph-up me-2"></i>Assignments Over Months
                 </h6>
@@ -166,26 +126,13 @@ export default function TeacherDashboard() {
               <Card.Body>
                 {data.assignmentsByMonth?.length ? (
                   <ResponsiveContainer width="100%" height={280}>
-                    <LineChart
-                      data={data.assignmentsByMonth}
-                      margin={{ top: 15, right: 20, left: 10, bottom: 5 }}
-                    >
+                    <LineChart data={data.assignmentsByMonth} margin={{ top: 15, right: 20, left: 10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
                       <XAxis dataKey="month" tick={{ fill: "#555" }} />
                       <YAxis tick={{ fill: "#555" }} />
-                      <Tooltip
-                        formatter={(val) => [`${val} Assignments`, "Count"]}
-                        contentStyle={{ backgroundColor: "#fff", borderRadius: "10px" }}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: "#fff", borderRadius: "10px" }} formatter={(val) => [`${val} Assignments`, "Count"]} />
                       <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="assignments"
-                        stroke="#4e73df"
-                        strokeWidth={3}
-                        dot={{ r: 5 }}
-                        activeDot={{ r: 8 }}
-                      />
+                      <Line type="monotone" dataKey="assignments" stroke="#4e73df" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 8 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -196,25 +143,20 @@ export default function TeacherDashboard() {
           </Col>
 
           {/* Pie Chart */}
-          <Col md={4}>
+          <Col xs={12} md={4}>
             <Card
-              className="border-0 rounded-4 shadow-sm"
+              className="border-0 rounded-4 shadow-sm h-100"
               style={hoverStyle}
               onMouseEnter={(e) => hoverEffect(e, true)}
               onMouseLeave={(e) => hoverEffect(e, false)}
             >
-              <Card.Header
-                className="text-white rounded-top-4"
-                style={{
-                  background: "linear-gradient(90deg, #36b9cc, #8e44ad)",
-                }}
-              >
+              <Card.Header className="text-white rounded-top-4" style={{ background: "linear-gradient(90deg, #36b9cc, #8e44ad)" }}>
                 <h6 className="mb-0 fw-semibold">
                   <i className="bi bi-pie-chart me-2"></i>Students Per Class
                 </h6>
               </Card.Header>
               <Card.Body>
-                {data.studentsPerClass?.length > 0 ? (
+                {data.studentsPerClass?.length ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -236,9 +178,7 @@ export default function TeacherDashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-center text-muted mb-0">
-                    No student data available.
-                  </p>
+                  <p className="text-center text-muted mb-0">No student data available.</p>
                 )}
               </Card.Body>
             </Card>
@@ -246,24 +186,14 @@ export default function TeacherDashboard() {
         </Row>
 
         {/* Recent Assignments */}
-        <Card
-          className="border-0 rounded-4 shadow-sm"
-          style={hoverStyle}
-          onMouseEnter={(e) => hoverEffect(e, true)}
-          onMouseLeave={(e) => hoverEffect(e, false)}
-        >
-          <Card.Header
-            className="text-white rounded-top-4"
-            style={{
-              background: "linear-gradient(90deg, #f6c23e, #e74a3b)",
-            }}
-          >
+        <Card className="border-0 rounded-4 shadow-sm mb-4" style={hoverStyle} onMouseEnter={(e) => hoverEffect(e, true)} onMouseLeave={(e) => hoverEffect(e, false)}>
+          <Card.Header className="text-white rounded-top-4" style={{ background: "linear-gradient(90deg, #f6c23e, #e74a3b)" }}>
             <h6 className="mb-0 fw-semibold">
               <i className="bi bi-list-check me-2"></i>Recent Assignments
             </h6>
           </Card.Header>
-          <Card.Body>
-            <Table hover responsive className="align-middle">
+          <Card.Body className="p-2 p-md-3">
+            <Table hover responsive className="align-middle mb-0">
               <thead className="table-light">
                 <tr>
                   <th>#</th>
@@ -275,47 +205,24 @@ export default function TeacherDashboard() {
               <tbody>
                 {data.recentAssignments?.length ? (
                   data.recentAssignments.map((a, idx) => (
-                    <tr
-                      key={idx}
-                      style={{
-                        transition: "background-color 0.3s ease",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f8f9fa")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "")
-                      }
-                    >
+                    <tr key={idx} className="align-middle">
                       <td>{idx + 1}</td>
                       <td className="fw-semibold">{a.title}</td>
                       <td>{a.classAssigned}</td>
                       <td>
                         <Badge
-                          bg={
-                            a.dueDate && new Date(a.dueDate) > new Date()
-                              ? "warning"
-                              : "success"
-                          }
-                          text={
-                            a.dueDate && new Date(a.dueDate) > new Date()
-                              ? "dark"
-                              : "light"
-                          }
+                          bg={a.dueDate && new Date(a.dueDate) > new Date() ? "warning" : "success"}
+                          text={a.dueDate && new Date(a.dueDate) > new Date() ? "dark" : "light"}
                           className="px-3 py-2 rounded-pill"
                         >
-                          {a.dueDate && new Date(a.dueDate) > new Date()
-                            ? "Pending"
-                            : "Completed"}
+                          {a.dueDate && new Date(a.dueDate) > new Date() ? "Pending" : "Completed"}
                         </Badge>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="text-center text-muted">
-                      No recent assignments.
-                    </td>
+                    <td colSpan="4" className="text-center text-muted">No recent assignments.</td>
                   </tr>
                 )}
               </tbody>

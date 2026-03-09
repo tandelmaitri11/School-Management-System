@@ -48,25 +48,40 @@ import AdminTeacherAttendance from "./Pages/Admin/attendance/teacher_attendance"
 import ClassFeesPage from "./Pages/Admin/fess/ClassFeesPage";
 import StudentPaymentPage from "./Pages/Admin/fess/StudentPaymentPage";
 import StudentFees from "./Pages/Student/Fees/StudentFees";
-import PaySalary from "./Pages/Admin/salary/PaySalary";
 import ApproveSalary from "./Pages/Admin/salary/ApproveSalary";
 import SalaryHistory from "./Pages/Admin/salary/SalaryHistory";
+import TeacherSalaryRecord from "./Pages/Admin/salary/TeacherSalaryRecord";
+import ManageTimetable from "./Pages/Admin/TimeTable/ManageTimetable";
+import ViewClassTimetable from "./Pages/Admin/TimeTable/ViewClassTimetable";
+import StudentTimeTable from "./Pages/Student/TimeTable/Timetable";
+import TeacherTimeTable from "./Pages/Teacher/TimeTable/TeacherTimeTable";
+import AddExam from "./Pages/Teacher/Exam/AddExam";
+import ManageExams from "./Pages/Teacher/Exam/ManageExams";
+import StudentExams from "./Pages/Student/Exam/StudentExamList";
+import StudentExamResult from "./Pages/Student/Exam/StudentExamResult";
+import StudentStartExam from "./Pages/Student/Exam/StudentStartExam";
+import TeacherExamResults from "./Pages/Teacher/Exam/TeacherExamResults";
+import { ToastContainer } from "react-toastify";
+import TeacherLms from "./Pages/Teacher/LMS/TeacherLms";
+import StudentLms from "./Pages/Student/LMS/StudentLms";
+import AdminLmsProgress from "./Pages/Admin/LMS/AdminLmsProgress";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route path="/dashboard" element={<Navbar> <Dashboard /> </Navbar>} />
       <Route path="/adminDashboard" element={<Navbar> <AdminDashboard /> </Navbar>} />
       <Route path="/profile" element={<Navbar> <AdminProfile /> </Navbar>} />
 
       <Route path="/Settings/fees" element={<Navbar> <Fees /> </Navbar>} />
-      <Route path="/pay-salary" element={<Navbar> <PaySalary /> </Navbar>} />
       <Route path="/approve-salary" element={<Navbar><ApproveSalary /></Navbar>} />
+      <Route path="/teacher-salary-record" element={<Navbar><TeacherSalaryRecord /></Navbar>} />
       <Route path="/salarylist" element={<Navbar><SalaryHistory /></Navbar>} />
 
 
@@ -75,14 +90,18 @@ function App() {
 
       <Route path="/subject/newsubject" element={<Navbar> <SubjectNew /> </Navbar>} />
       <Route path="/subject/allsubject" element={<Navbar> <SubjectAll /> </Navbar>} />
-      
-      <Route path="/Students/allstudents" element={<Navbar> <AllStudents/> </Navbar>} />
-      <Route path="/Students/search" element={<Navbar> <StudentSearch/> </Navbar>} />
-      <Route path="/attendance/student_attendance" element={<Navbar> <AdminStudentAttendance/> </Navbar>} />
-      <Route path="/attendance/teacher_attendance" element={<Navbar> <AdminTeacherAttendance/> </Navbar>} />
 
-      <Route path="/admin/fees" element={<Navbar> <ClassFeesPage/> </Navbar>} />
-      <Route path="/studentfees" element={<Navbar> <StudentPaymentPage/> </Navbar>} />
+      <Route path="/Students/allstudents" element={<Navbar> <AllStudents /> </Navbar>} />
+      <Route path="/Students/search" element={<Navbar> <StudentSearch /> </Navbar>} />
+      <Route path="/attendance/student_attendance" element={<Navbar> <AdminStudentAttendance /> </Navbar>} />
+      <Route path="/attendance/teacher_attendance" element={<Navbar> <AdminTeacherAttendance /> </Navbar>} />
+      <Route path="/admin/lms" element={<Navbar><AdminLmsProgress /></Navbar>} />
+
+      <Route path="/admin/fees" element={<Navbar> <ClassFeesPage /> </Navbar>} />
+      <Route path="/studentfees" element={<Navbar> <StudentPaymentPage /> </Navbar>} />
+     
+      <Route path="/admin/timetable" element={<Navbar> <ManageTimetable /> </Navbar>} />
+      <Route path="/admin/view/timetable" element={<Navbar> <ViewClassTimetable /> </Navbar>} />
 
 
 
@@ -91,15 +110,16 @@ function App() {
       <Route path="/teacher/allteacher" element={<Navbar> <AllTeachers /> </Navbar>} />
       <Route path="/teachers/viewteacher/:id" element={<Navbar> <TeacherDetails /> </Navbar>} />
       <Route path="/teachers/editteacher/:id" element={<Navbar> <EditTeacher /> </Navbar>} />
-      <Route path="/teacher/attendance" element={<Navbar> <TeacherAttendance/> </Navbar>} />
+      <Route path="/teacher/attendance" element={<Navbar> <TeacherAttendance /> </Navbar>} />
 
       <Route path="/teacherDashboard" element={<TeacherNavbar> <TeacherDashboard /> </TeacherNavbar>} />
-      <Route path="/teacher/dashboard" element={ < TeacherDashboard/> } />
-      <Route path="/teacher/profile" element={ <TeacherNavbar><TeacherProfile/></TeacherNavbar> } />
-      <Route path="/teacher/assignment" element={ <TeacherNavbar><AddAssignment/></TeacherNavbar> } />
-      <Route path="/teacher/viewassignment" element={ <TeacherNavbar><ViewAssignments/></TeacherNavbar> } />
-      <Route path="/teacher/viewmangestudents" element={ <TeacherNavbar><ViewStudentsByClass/></TeacherNavbar> } />
-      <Route path="/teacher/classes" element={ <TeacherNavbar><TeacherClasses/></TeacherNavbar> } />
+      <Route path="/teacher/dashboard" element={< TeacherDashboard />} />
+      <Route path="/teacher/profile" element={<TeacherNavbar><TeacherProfile /></TeacherNavbar>} />
+      <Route path="/teacher/assignment" element={<TeacherNavbar><AddAssignment /></TeacherNavbar>} />
+      <Route path="/teacher/viewassignment" element={<TeacherNavbar><ViewAssignments /></TeacherNavbar>} />
+      <Route path="/teacher/viewmangestudents" element={<TeacherNavbar><ViewStudentsByClass /></TeacherNavbar>} />
+      <Route path="/teacher/classes" element={<TeacherNavbar><TeacherClasses /></TeacherNavbar>} />
+      <Route path="/teacher/timetable" element={<TeacherNavbar><TeacherTimeTable /></TeacherNavbar>} />
       <Route path="/teacher/student/attendance" element={<TeacherNavbar><StudentAttendance /></TeacherNavbar>} />
       <Route path="/teacher/attendance-history" element={<TeacherNavbar><StudentAttendanceHistory /></TeacherNavbar>} />
       <Route path="/teacher/my-attendance" element={<TeacherNavbar><MyAttendance /></TeacherNavbar>} />
@@ -107,20 +127,31 @@ function App() {
       <Route path="/teacher/reports/attendance" element={<TeacherNavbar><AttendanceReport /></TeacherNavbar>} />
       <Route path="/teacher/reports/performance" element={<TeacherNavbar><PerformanceReport /></TeacherNavbar>} />
       <Route path="/teacher/reports/salary" element={<TeacherNavbar><SalaryReport /></TeacherNavbar>} />
-      
+      <Route path="/teacher/addexam" element={<TeacherNavbar><AddExam /></TeacherNavbar>} />
+      <Route path="/teacher/mangeexam" element={<TeacherNavbar><ManageExams /></TeacherNavbar>} />
+      <Route path="/teacher/exam-results/:examId" element={<TeacherNavbar><TeacherExamResults /></TeacherNavbar>} />
+      <Route path="/teacher/lms" element={<TeacherNavbar><TeacherLms /></TeacherNavbar>} />
 
 
 
 
       <Route path="/student/dashboard" element={<StudentNavbar><SDashboard /></StudentNavbar>} />
       <Route path="/studentprofile" element={<StudentNavbar><StudentProfile /></StudentNavbar>} />
-      <Route path="/student/assignments" element={<StudentNavbar><AssignmentsList/></StudentNavbar>} />
-      <Route path="/student/submitassignments" element={<StudentNavbar><SubmitAssignmentPage/></StudentNavbar>} />
-      <Route path="/student/attendance/view" element={<StudentNavbar><ViewAttendance/></StudentNavbar>} />
-      <Route path="/student/report" element={<StudentNavbar><StudentReport/></StudentNavbar>} />
-      <Route path="/student/fees" element={<StudentNavbar><StudentFees/></StudentNavbar>} />
+      <Route path="/student/assignments" element={<StudentNavbar><AssignmentsList /></StudentNavbar>} />
+      <Route path="/student/submitassignments" element={<StudentNavbar><SubmitAssignmentPage /></StudentNavbar>} />
+      <Route path="/student/attendance/view" element={<StudentNavbar><ViewAttendance /></StudentNavbar>} />
+      <Route path="/student/report" element={<StudentNavbar><StudentReport /></StudentNavbar>} />
+      <Route path="/student/fees" element={<StudentNavbar><StudentFees /></StudentNavbar>} />
+      <Route path="/timetable" element={<StudentNavbar><StudentTimeTable /></StudentNavbar>} />
+      <Route path="/student/exams" element={<StudentNavbar><StudentExams /></StudentNavbar>} />
+      <Route path="/student/start-exam/:examId" element={<StudentNavbar><StudentStartExam /></StudentNavbar>} />
+      <Route path="/student/exam-result/:examId" element={<StudentNavbar><StudentExamResult /></StudentNavbar>} />
+      <Route path="/student/lms" element={<StudentNavbar><StudentLms /></StudentNavbar>} />
+      
 
-    </Routes>
+      </Routes>
+      <ToastContainer position="top-right" autoClose={3000} />
+    </>
   );
 }
 export default App;

@@ -44,8 +44,7 @@ export default function MyAttendance() {
     setLoading(true);
     try {
       const res = await api.get(`/api/teacher-attendance/teacher/${teacherId}`);
-      const data = res.data || [];
-      setAttendance(data);
+      setAttendance(res.data || []);
     } catch (err) {
       console.error("Error fetching attendance:", err);
     } finally {
@@ -75,7 +74,6 @@ export default function MyAttendance() {
     setSummary({ present, absent });
   };
 
-  // Group by date for timeline
   const groupedByDate = filteredAttendance.reduce((acc, entry) => {
     const date = new Date(entry.date).toDateString();
     if (!acc[date]) acc[date] = [];
@@ -83,27 +81,16 @@ export default function MyAttendance() {
     return acc;
   }, {});
 
-  // ------------------------------
-  // 📌 Line Chart Data
-  // ------------------------------
-  const lineLabels = filteredAttendance.map((item) =>
-    new Date(item.date).toLocaleDateString()
-  );
-
-  const presentData = filteredAttendance.map((item) =>
-    item.status === "Present" ? 1 : 0
-  );
-
-  const absentData = filteredAttendance.map((item) =>
-    item.status === "Absent" ? 1 : 0
-  );
-
   const lineData = {
-    labels: lineLabels,
+    labels: filteredAttendance.map((item) =>
+      new Date(item.date).toLocaleDateString()
+    ),
     datasets: [
       {
         label: "Present",
-        data: presentData,
+        data: filteredAttendance.map((i) =>
+          i.status === "Present" ? 1 : 0
+        ),
         borderColor: "green",
         borderWidth: 2,
         tension: 0.3,
@@ -111,7 +98,9 @@ export default function MyAttendance() {
       },
       {
         label: "Absent",
-        data: absentData,
+        data: filteredAttendance.map((i) =>
+          i.status === "Absent" ? 1 : 0
+        ),
         borderColor: "red",
         borderWidth: 2,
         tension: 0.3,
@@ -121,18 +110,18 @@ export default function MyAttendance() {
   };
 
   return (
-    <div className="container mt-4 mb-5">
+    <div className="container-fluid px-2 px-md-4 mt-3 mb-5">
       <div className="card shadow border-0">
-        <div className="card-body">
-          <h3 className="text-center text-primary mb-4">
+        <div className="card-body p-3 p-md-4">
+          <h3 className="text-center text-primary mb-4 fs-5 fs-md-3">
             <i className="bi bi-calendar-check me-2"></i>
             My Attendance Record
           </h3>
 
-          {/* Summary Cards */}
-          <div className="row text-center mb-2">
-            <div className="col-md-6 mb-3">
-              <div className="card border-success shadow-sm">
+          {/* Summary */}
+          <div className="row text-center g-3 mb-3">
+            <div className="col-12 col-md-6">
+              <div className="card border-success shadow-sm h-100">
                 <div className="card-body">
                   <h5 className="text-success mb-0">{summary.present}</h5>
                   <small className="text-muted">Days Present</small>
@@ -140,8 +129,8 @@ export default function MyAttendance() {
               </div>
             </div>
 
-            <div className="col-md-6 mb-3">
-              <div className="card border-danger shadow-sm">
+            <div className="col-12 col-md-6">
+              <div className="card border-danger shadow-sm h-100">
                 <div className="card-body">
                   <h5 className="text-danger mb-0">{summary.absent}</h5>
                   <small className="text-muted">Days Absent</small>
@@ -150,18 +139,20 @@ export default function MyAttendance() {
             </div>
           </div>
 
-          {/* 📌 Line Chart */}
-          <div className="card p-3 shadow-sm mb-4">
-            <h5 className="text-center fw-bold mb-3">
+          {/* Chart */}
+          <div className="card p-2 p-md-3 shadow-sm mb-4">
+            <h6 className="text-center fw-bold mb-2 mb-md-3">
               Attendance Trend (Day-wise)
-            </h5>
-            <Line data={lineData} height={80} />
+            </h6>
+            <div className="w-100 overflow-auto">
+              <Line data={lineData} height={90} />
+            </div>
           </div>
 
-          {/* Month Filter */}
-          <div className="mb-4 text-end">
+          {/* Filter */}
+          <div className="mb-4 d-flex justify-content-end">
             <select
-              className="form-select w-25 ms-auto shadow-sm"
+              className="form-select w-100 w-sm-75 w-md-25 shadow-sm"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -176,11 +167,11 @@ export default function MyAttendance() {
 
           <hr />
 
-          {/* Timeline Section */}
-          <h5 className="fw-bold mb-3">
+          {/* Timeline */}
+          <h6 className="fw-bold mb-3">
             <i className="bi bi-clock-history me-2"></i>
             Day-wise Attendance
-          </h5>
+          </h6>
 
           {loading ? (
             <div className="text-center py-5">
@@ -199,10 +190,9 @@ export default function MyAttendance() {
                   ></div>
 
                   <div className="timeline-content">
-                    <h6 className="fw-bold mb-2">{date}</h6>
-
+                    <h6 className="fw-bold mb-1">{date}</h6>
                     <p
-                      className={`fw-semibold ${
+                      className={`fw-semibold mb-1 ${
                         groupedByDate[date][0].status === "Present"
                           ? "text-success"
                           : "text-danger"
@@ -210,8 +200,7 @@ export default function MyAttendance() {
                     >
                       {groupedByDate[date][0].status}
                     </p>
-
-                    <small className="text-muted">
+                    <small className="text-muted d-block text-break">
                       {groupedByDate[date][0].remarks || "No remarks"}
                     </small>
                   </div>
@@ -230,29 +219,39 @@ export default function MyAttendance() {
       <style>{`
         .timeline {
           position: relative;
-          margin-left: 25px;
+          margin-left: 18px;
           border-left: 2px solid #d1d5db;
-          padding-left: 20px;
+          padding-left: 18px;
         }
         .timeline-item {
           position: relative;
-          margin-bottom: 25px;
+          margin-bottom: 20px;
         }
         .timeline-dot {
-          width: 15px;
-          height: 15px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
           position: absolute;
-          left: -29px;
-          top: 5px;
+          left: -26px;
+          top: 6px;
         }
-        .timeline-dot.present { background-color: #4ade80; box-shadow: 0 0 10px #4ade80; }
-        .timeline-dot.absent { background-color: #f87171; box-shadow: 0 0 10px #f87171; }
+        .timeline-dot.present { background-color: #4ade80; }
+        .timeline-dot.absent { background-color: #f87171; }
         .timeline-content {
           background: #fff;
-          padding: 12px 18px;
+          padding: 10px 14px;
           border-radius: 10px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        @media (max-width: 576px) {
+          .timeline {
+            margin-left: 12px;
+            padding-left: 14px;
+          }
+          .timeline-dot {
+            left: -22px;
+          }
         }
       `}</style>
     </div>

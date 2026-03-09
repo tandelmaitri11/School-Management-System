@@ -37,11 +37,7 @@ exports.getAssignmentsByClass = async (req, res) => {
     const { studentClass } = req.params;
     const assignments = await Assignment.find({ classAssigned: studentClass });
 
-    if (!assignments || assignments.length === 0) {
-      return res.status(404).json({ message: "No assignments found for this class" });
-    }
-
-    res.status(200).json(assignments);
+    res.status(200).json(assignments || []);
   } catch (error) {
     res.status(500).json({ message: "Error fetching assignments", error });
   }
@@ -58,11 +54,7 @@ exports.getAssignmentsByClasses = async (req, res) => {
     const classList = classes.split(",").map((c) => c.trim());
     const assignments = await Assignment.find({ classAssigned: { $in: classList } });
 
-    if (!assignments || assignments.length === 0) {
-      return res.status(404).json({ message: "No assignments found for these classes" });
-    }
-
-    res.status(200).json(assignments);
+    res.status(200).json(assignments || []);
   } catch (error) {
     console.error("❌ Error fetching assignments by classes:", error);
     res.status(500).json({ message: "Error fetching assignments by classes", error });

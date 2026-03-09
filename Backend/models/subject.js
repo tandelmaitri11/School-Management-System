@@ -12,10 +12,6 @@ const subjectSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
-      marks: {
-        type: Number,
-        required: true,
-      },
     },
   ],
 });

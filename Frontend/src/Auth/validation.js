@@ -33,6 +33,10 @@ export function validateRegister(formData) {
     if (!formData.studentClass || !formData.studentClass.trim()) {
       errors.studentClass = "Class is required for students!";
     }
+    if (formData.isSenior && formData.hasStreams && !formData.stream) {
+      errors.stream = "Stream is required for class 11-12!";
+    }
+    // Subject choice is optional even if options exist
   }
 
   // Teacher role checks

@@ -6,6 +6,10 @@ const multer = require("multer");
 const path = require("path");
 const teacherinfo = require("../models/teacherinfo");
 const Class = require("../models/class");
+const Timetable = require("../models/timetable");
+const Exam = require("../models/Exam"); 
+
+
 
 // ✅ Storage configuration
 const storage = multer.diskStorage({
@@ -276,6 +280,81 @@ const getTeacherRegister = async (req, res) => {
   }
 };
 
+const getTeacherTimetable = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const entries = await Timetable.find({ teacherId })
+      .populate("classId", "className")
+      .sort({ day: 1, period: 1 });
+
+    const periodTimes = [
+      { period: 1, start: "09:00", end: "10:00" },
+      { period: 2, start: "10:00", end: "11:00" },
+      { period: 3, start: "11:15", end: "12:15" },
+      { type: "break", start: "12:15", end: "14:00" },
+      { period: 4, start: "14:00", end: "15:00" },
+      { period: 5, start: "15:00", end: "16:00" },
+    ];
+
+    const result = entries.map((e) => {
+      const time = periodTimes.find((p) => p.period === e.period);
+
+      return {
+        day: e.day,
+        period: e.period,
+        time: time ? `${time.start} - ${time.end}` : "N/A",
+        className: e.classId.className,
+        subject: e.subject,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const getMyExams = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const exams = await Exam.find({ teacherId })
+      .populate({
+        path: "classId",
+        select: "className" 
+      })
+      .populate({
+        path: "subjectId",
+        select: "subjectName" 
+      })
+      .sort({ createdAt: -1 });
+
+    console.log("Exams with populated data:", exams); 
+    res.status(200).json(exams);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching exams", error: error.message });
+  }
+};
+
+// 🗑️ Delete an exam
+const deleteExam = async (req, res) => {
+  try {
+    const { id } = req.params; // Exam MongoDB _id
+    const deleted = await Exam.findByIdAndDelete(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ message: "Exam not found." });
+    }
+
+    res.status(200).json({ message: "Exam deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting exam:", error);
+    res.status(500).json({ message: "Failed to delete exam.", error: error.message });
+  }
+};
+
 module.exports = {
   addTeacher,
   getAllTeachers,
@@ -286,4 +365,7 @@ module.exports = {
   updateTeacherByMongoId,
   deleteTeacher,
   getTeacherRegister,
+  getTeacherTimetable,
+  getMyExams,
+  deleteExam
 };

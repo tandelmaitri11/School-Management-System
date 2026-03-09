@@ -7,16 +7,45 @@ const teacherSalarySchema = new mongoose.Schema(
       ref: "TeacherInfo",
       required: true,
     },
-    month: { type: String, required: true },
-    paidAmount: { type: Number, required: true },
 
-    status: { 
-      type: String, 
-      enum: ["Pending", "Paid", "Approved", "Rejected"], 
-      default: "Pending" 
+    month: {
+      type: String,
+      required: true, // e.g. "2026-01"
+    },
+
+    paidAmount: {
+      type: Number,
+      required: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["Pending", "Approved", "Paid", "Rejected"],
+      default: "Pending",
+    },
+
+    payoutStatus: {
+      type: String,
+      enum: ["Pending", "Processing", "Paid", "Failed"],
+      default: "Pending",
+    },
+
+    payoutMode: {
+      type: String,
+      default: "",
+    },
+
+    payoutId: {
+      type: String,
+      default: "",
+    },
+
+    payoutReferenceId: {
+      type: String,
+      default: "",
     },
   },
-  { timestamps: true }
+  { timestamps: true } // must be here
 );
 
 module.exports = mongoose.model("TeacherSalary", teacherSalarySchema);

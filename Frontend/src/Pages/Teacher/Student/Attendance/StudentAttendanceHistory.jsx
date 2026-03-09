@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../../../../api/api";
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
@@ -13,11 +13,10 @@ export default function StudentAttendanceHistory() {
   );
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const teacherId = localStorage.getItem("teacherId");
-
   const [chartData, setChartData] = useState([]);
 
-  // ✅ Fetch teacher's classes on load
+  const teacherId = localStorage.getItem("teacherId");
+
   useEffect(() => {
     if (teacherId) fetchClasses();
   }, [teacherId]);
@@ -26,21 +25,16 @@ export default function StudentAttendanceHistory() {
     try {
       const res = await api.get(`/api/classes/by-teacher/${teacherId}`);
       setClasses(res.data);
-      console.log("✅ Classes fetched:", res.data);
     } catch (err) {
       console.error("Error fetching classes:", err);
     }
   };
 
-  // ✅ Fetch attendance by class and date
   const fetchAttendance = async () => {
     if (!selectedClass || !selectedDate) {
       setMessage("⚠️ Please select both class and date.");
       return;
     }
-
-    console.log("📘 Selected class ID:", selectedClass);
-    console.log("📅 Selected date:", selectedDate);
 
     setLoading(true);
     setMessage("");
@@ -49,12 +43,9 @@ export default function StudentAttendanceHistory() {
 
     try {
       const res = await api.get(`/api/attendance/${selectedClass}/${selectedDate}`);
-      console.log("✅ Attendance response:", res.data);
-
       const data = res.data.attendance || [];
       setAttendanceData(data);
 
-      // 🔢 Count Present vs Absent
       const presentCount = data.filter((d) => d.status === "Present").length;
       const absentCount = data.filter((d) => d.status === "Absent").length;
 
@@ -68,26 +59,25 @@ export default function StudentAttendanceHistory() {
       } else {
         setMessage("Failed to fetch attendance. Please try again later.");
       }
-      console.error("❌ Error fetching attendance:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const COLORS = ["#28a745", "#dc3545"]; // green for present, red for absent
+  const COLORS = ["#28a745", "#dc3545"];
 
   return (
-    <div className="container mt-4 mb-5">
-      <div className="card shadow-lg border-0">
-        <div className="card-body">
-          <h3 className="text-center text-primary mb-4">
+    <div className="container-fluid px-2 px-md-4 mt-4 mb-5">
+      <div className="card shadow-lg border-0 rounded-4">
+        <div className="card-body p-3 p-md-4">
+          <h3 className="text-center text-primary mb-4 fs-5 fs-md-3">
             <i className="bi bi-bar-chart-line me-2"></i>
             Attendance History
           </h3>
 
-          {/* --- Selection Section --- */}
+          {/* 🔹 Selection Section */}
           <div className="row g-3 mb-4">
-            <div className="col-md-5">
+            <div className="col-12 col-md-5">
               <label className="form-label fw-semibold">Select Class</label>
               <select
                 className="form-select"
@@ -103,7 +93,7 @@ export default function StudentAttendanceHistory() {
               </select>
             </div>
 
-            <div className="col-md-4">
+            <div className="col-12 col-md-4">
               <label className="form-label fw-semibold">Select Date</label>
               <input
                 type="date"
@@ -119,51 +109,52 @@ export default function StudentAttendanceHistory() {
               />
             </div>
 
-            <div className="col-md-3 d-flex align-items-end">
-              <button
-                className="btn btn-primary w-100"
-                onClick={fetchAttendance}
-              >
+            <div className="col-12 col-md-3 d-grid">
+              <button className="btn btn-primary" onClick={fetchAttendance}>
                 <i className="bi bi-search me-2"></i>View Attendance
               </button>
             </div>
           </div>
 
-          {/* --- Result Section --- */}
+          {/* 🔹 Result Section */}
           {loading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary"></div>
             </div>
           ) : message ? (
-            <div className="alert alert-warning text-center mt-3">{message}</div>
+            <div className="alert alert-warning text-center">{message}</div>
           ) : attendanceData.length > 0 ? (
             <>
-              {/* 📊 Attendance Chart */}
+              {/* 📊 Responsive Chart */}
               <div className="d-flex justify-content-center mt-4">
-                <PieChart width={300} height={260}>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    dataKey="value"
-                    label
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
+                <div style={{ width: "100%", maxWidth: 400, height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        dataKey="value"
+                        label
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* 📋 Attendance Table */}
               <div className="table-responsive mt-4">
-                <table className="table table-bordered align-middle">
+                <table className="table table-bordered align-middle text-nowrap">
                   <thead className="table-primary text-center">
                     <tr>
                       <th>#</th>
@@ -176,8 +167,12 @@ export default function StudentAttendanceHistory() {
                     {attendanceData.map((entry, index) => (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
-                        <td>{entry.studentId?.name || "N/A"}</td>
-                        <td>{entry.studentId?.email || "N/A"}</td>
+                        <td className="fw-medium">
+                          {entry.studentId?.name || "N/A"}
+                        </td>
+                        <td className="small">
+                          {entry.studentId?.email || "N/A"}
+                        </td>
                         <td
                           className={`fw-bold text-center ${
                             entry.status === "Present"
@@ -194,7 +189,7 @@ export default function StudentAttendanceHistory() {
               </div>
             </>
           ) : (
-            <div className="alert alert-info text-center mt-3">
+            <div className="alert alert-info text-center">
               Select a class and date to view attendance.
             </div>
           )}

@@ -1,23 +1,96 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../../../api/api";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   CartesianGrid,
   XAxis,
-  YAxis,
   Tooltip,
   BarChart,
   Bar,
   ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
+  RadialBarChart,
+  RadialBar,
 } from "recharts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import "bootstrap/dist/css/bootstrap.min.css";
+
+// --- REFINED STYLES ---
+const styles = {
+  page: { backgroundColor: "#f8fafc", minHeight: "100vh", paddingBottom: "80px" },
+  
+  // Floating Action Bar (Sticky)
+  actionBar: {
+    position: "sticky",
+    top: "20px",
+    zIndex: 1000,
+    margin: "0 auto 30px auto",
+    maxWidth: "1000px",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backdropFilter: "blur(10px)",
+    borderRadius: "100px", // Pill shape
+    padding: "10px 25px",
+    boxShadow: "0 10px 30px -10px rgba(0, 0, 0, 0.1)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    border: "1px solid rgba(255,255,255,0.8)"
+  },
+
+  // The Report Area
+  reportContainer: {
+    maxWidth: "1000px",
+    margin: "0 auto",
+    backgroundColor: "#f8fafc", // Matches page bg
+    padding: "20px"
+  },
+
+  // Gradient Profile Card
+  banner: {
+    background: "linear-gradient(120deg, #2563eb 0%, #7c3aed 100%)", // Blue to Purple
+    borderRadius: "24px",
+    padding: "40px",
+    color: "white",
+    boxShadow: "0 20px 40px -10px rgba(37, 99, 235, 0.3)",
+    marginBottom: "30px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+
+  // Standard Card
+  card: {
+    backgroundColor: "white",
+    borderRadius: "20px",
+    padding: "30px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03)",
+    height: "100%",
+    border: "1px solid #f1f5f9"
+  },
+  
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "25px",
+    color: "#1e293b",
+    fontWeight: "700",
+    fontSize: "1.1rem"
+  },
+
+  // Stat Grid Box
+  statBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: "16px",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid #e2e8f0"
+  }
+};
 
 export default function StudentReportPage() {
   const [report, setReport] = useState(null);
@@ -25,228 +98,254 @@ export default function StudentReportPage() {
   const [month, setMonth] = useState("");
   const reportRef = useRef();
 
-  const COLORS = ["#28a745", "#dc3545"]; // Green = Present, Red = Absent
-
-  const fetchReport = async () => {
-    try {
-      setLoading(true);
-      const studentId = localStorage.getItem("studentId");
-      const res = await api.get(`/api/reports/student/${studentId}`, {
-        params: { month },
-      });
-      setReport(res.data);
-    } catch (error) {
-      console.error("Error fetching report:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // --- LOGIC ---
   useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        setLoading(true);
+        const studentId = localStorage.getItem("studentId");
+        const res = await api.get(`/api/reports/student/${studentId}`, { params: { month } });
+        setReport(res.data);
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchReport();
   }, [month]);
 
   const downloadPDF = async () => {
     const element = reportRef.current;
-    const canvas = await html2canvas(element, { scale: 2 });
+    
+    // Scale 3 for High Res, white background for clean print
+    const canvas = await html2canvas(element, { 
+        scale: 3, 
+        useCORS: true, 
+        backgroundColor: "#ffffff" 
+    });
+    
     const imgData = canvas.toDataURL("image/png");
-
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    pdf.setFontSize(20);
-    pdf.setTextColor(0, 51, 153);
-    pdf.text("SchoolY", pdfWidth / 2, 15, { align: "center" });
-    pdf.setFontSize(12);
-    pdf.setTextColor(80);
-    pdf.text("Official Student Performance Report", pdfWidth / 2, 22, { align: "center" });
-    pdf.line(10, 25, pdfWidth - 10, 25);
-    pdf.addImage(imgData, "PNG", 0, 28, pdfWidth, imgHeight);
-    pdf.setFontSize(10);
-    pdf.setTextColor(100);
-    pdf.text("This report is system-generated — no signature required", pdfWidth / 2, pdfHeight - 10, { align: "center" });
-    pdf.save(`${report.studentName}_Report.pdf`);
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    pdf.save(`Report_${report.studentName}.pdf`);
   };
 
-  if (loading)
-    return <div className="text-center mt-5 fw-bold text-secondary">Loading report...</div>;
+  if (loading) return <div className="d-flex justify-content-center pt-5"><div className="spinner-border text-primary"/></div>;
+  if (!report) return <div className="text-center pt-5">No Data</div>;
 
-  if (!report)
-    return <div className="text-center mt-5 text-danger fw-bold">No report found</div>;
-
-  const attendancePieData = [
-    { name: "Present", value: report.attendance.presentDays },
-    { name: "Absent", value: report.attendance.absentDays },
-  ];
-
-  const monthOptions = [
-    { value: "", label: "All Months" },
-    { value: "2025-01", label: "January 2025" },
-    { value: "2025-02", label: "February 2025" },
-    { value: "2025-03", label: "March 2025" },
-    { value: "2025-04", label: "April 2025" },
-    { value: "2025-05", label: "May 2025" },
-    { value: "2025-06", label: "June 2025" },
-    { value: "2025-07", label: "July 2025" },
-    { value: "2025-08", label: "August 2025" },
-    { value: "2025-09", label: "September 2025" },
-    { value: "2025-10", label: "October 2025" },
-    { value: "2025-11", label: "November 2025" },
-    { value: "2025-12", label: "December 2025" },
+  // Score Calculation
+  const score = Math.round((report.attendance.percentage * 0.5) + (report.assignments.avgGrade ? parseFloat(report.assignments.avgGrade) * 10 : 0) * 0.5);
+  
+  const radialData = [
+    { name: 'Score', uv: 100, fill: '#f3f4f6' }, // Background Ring
+    { name: 'Score', uv: score, fill: '#8b5cf6' } // Actual Score
   ];
 
   return (
-    <div className="container my-5">
-      {/* Month Filter */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold text-primary">📊 Student Monthly Report</h4>
-        <div className="d-flex align-items-center">
-          <label className="me-2 fw-semibold text-secondary">Select Month:</label>
-          <select
-            className="form-select form-select-sm"
-            style={{ width: "200px" }}
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          >
-            {monthOptions.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+    <div style={styles.page}>
+      
+      {/* --- FLOATING CONTROLS --- */}
+      <div style={styles.actionBar}>
+        <div className="d-flex align-items-center gap-2">
+           <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width:'35px', height:'35px', fontSize:'0.9rem'}}>
+             {report.studentName.charAt(0)}
+           </div>
+           <span className="fw-bold text-dark d-none d-sm-block">Performance Report</span>
+        </div>
+
+        <div className="d-flex gap-2">
+           <select 
+              className="form-select form-select-sm border-0 bg-secondary-subtle fw-semibold rounded-pill" 
+              style={{width: '140px'}}
+              value={month} 
+              onChange={(e) => setMonth(e.target.value)}
+            >
+              <option value="">Year To Date</option>
+              <option value="2025-01">January</option>
+              <option value="2025-02">February</option>
+              <option value="2025-03">March</option>
+           </select>
+           <button onClick={downloadPDF} className="btn btn-dark btn-sm rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2">
+              <i className="bi bi-download"></i> <span className="d-none d-sm-block">Download</span>
+           </button>
         </div>
       </div>
 
-      {/* Report Content */}
-      <div className="card border-0 shadow-lg p-4 rounded-4" ref={reportRef}>
-        {/* Header */}
-        <div className="text-center border-bottom pb-3 mb-4">
-          <h2 className="fw-bold text-primary mb-1">Student Performance Report</h2>
-          <p className="text-muted mb-0">Academic and Attendance Summary</p>
+      {/* --- REPORT CONTAINER --- */}
+      <div ref={reportRef} style={styles.reportContainer}>
+        
+        {/* PDF Header (Brand) */}
+        <div className="d-flex justify-content-between align-items-center mb-4 px-2">
+            <h4 className="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                <i className="bi bi-mortarboard-fill text-primary"></i> SchoolY
+            </h4>
+            <div className="text-end">
+                <small className="text-muted d-block text-uppercase fw-bold" style={{fontSize:'0.65rem'}}>Generated On</small>
+                <small className="fw-bold text-dark">{new Date().toLocaleDateString()}</small>
+            </div>
         </div>
 
-        {/* Student Info */}
-        <div className="bg-light rounded-3 p-3 mb-4">
-          <div className="row">
-            <div className="col-md-6">
-              <p className="mb-1"><strong>Name:</strong> {report.studentName}</p>
-              <p className="mb-1"><strong>Class:</strong> {report.className}</p>
-            </div>
-            <div className="col-md-6">
-              <p className="mb-1">
-                <strong>Month:</strong> {month ? new Date(month).toLocaleString("default", { month: "long", year: "numeric" }) : "All"}
-              </p>
-              <p className="mb-0"><strong>Generated On:</strong> {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Attendance Section */}
-        <div className="mb-5">
-          <h5 className="text-secondary border-start border-4 border-primary ps-2 mb-3">🕒 Attendance Overview</h5>
-          <div className="row align-items-center">
-            <div className="col-md-7">
-              <table className="table table-bordered text-center table-striped">
-                <thead className="table-primary">
-                  <tr>
-                    <th>Total Days</th>
-                    <th>Present</th>
-                    <th>Absent</th>
-                    <th>Attendance %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{report.attendance.totalDays}</td>
-                    <td className="text-success fw-semibold">{report.attendance.presentDays}</td>
-                    <td className="text-danger fw-semibold">{report.attendance.absentDays}</td>
-                    <td className="fw-bold text-primary">{report.attendance.percentage}%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="col-md-5">
-              <div className="card p-3 shadow-sm border-0">
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={attendancePieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label
-                    >
-                      {attendancePieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+        {/* 1. Student Banner */}
+        <div style={styles.banner}>
+           <div>
+              <div className="badge bg-white bg-opacity-25 text-white mb-2 px-3 py-1 rounded-pill border border-white border-opacity-25">Student Report</div>
+              <h2 className="fw-bold mb-1">{report.studentName}</h2>
+              <div className="opacity-75 small mt-2">
+                 Class: <strong>{report.className}</strong> &nbsp;|&nbsp; ID: <strong>{localStorage.getItem('studentId')}</strong>
               </div>
-            </div>
-          </div>
-
-          <div className="card p-3 shadow-sm border-0 mt-4">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={report.attendance.chart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="Present" stroke="#28a745" strokeWidth={3} />
-                <Line type="monotone" dataKey="Absent" stroke="#dc3545" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+           </div>
+           <div className="text-end d-none d-md-block">
+              <div className="display-4 fw-bold">{score}</div>
+              <div className="small opacity-75">Overall Score</div>
+           </div>
         </div>
 
-        {/* Assignment Section */}
-        <div>
-          <h5 className="text-secondary border-start border-4 border-success ps-2 mb-3">📚 Assignment Performance</h5>
-          <table className="table table-bordered text-center table-striped">
-            <thead className="table-success">
-              <tr>
-                <th>Total</th>
-                <th>Submitted</th>
-                <th>Graded</th>
-                <th>Average Grade</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{report.assignments.totalAssignments}</td>
-                <td className="text-info fw-semibold">{report.assignments.totalSubmitted}</td>
-                <td className="text-warning fw-semibold">{report.assignments.graded}</td>
-                <td className="fw-bold text-success">{report.assignments.avgGrade}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="row g-4">
+           
+           {/* 2. Attendance Graph */}
+           <div className="col-lg-8">
+              <div style={styles.card}>
+                 <div style={styles.cardHeader}>
+                    <div className="bg-success-subtle text-success p-2 rounded-3 d-flex"><i className="bi bi-calendar-check-fill"></i></div>
+                    <span>Attendance Trends</span>
+                 </div>
+                 
+                 <div className="d-flex gap-4 mb-4 border-bottom pb-3">
+                    <div>
+                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Present</small>
+                        <h4 className="fw-bold text-success mb-0">{report.attendance.presentDays} <small className="text-muted fs-6">Days</small></h4>
+                    </div>
+                    <div>
+                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Absent</small>
+                        <h4 className="fw-bold text-danger mb-0">{report.attendance.absentDays} <small className="text-muted fs-6">Days</small></h4>
+                    </div>
+                    <div className="ms-auto text-end">
+                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Rate</small>
+                        <h4 className="fw-bold text-dark mb-0">{report.attendance.percentage}%</h4>
+                    </div>
+                 </div>
 
-          <div className="card p-3 shadow-sm border-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={report.assignments.chart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="title" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="gradeValue" fill="#007bff" name="Grade Score (A→F)" barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+                 <div style={{height: '220px'}}>
+                    <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={report.attendance.chart}>
+                          <defs>
+                             <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                             </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                          <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}/>
+                          <Area type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorPresent)" />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+              </div>
+           </div>
+
+           {/* 3. Performance Radial */}
+           <div className="col-lg-4">
+              <div style={styles.card} className="d-flex flex-column align-items-center justify-content-center text-center">
+                 <h6 className="fw-bold text-dark mb-4">Performance Index</h6>
+                 
+                 <div style={{height: '200px', width: '100%', position: 'relative'}}>
+                    <ResponsiveContainer>
+                       <RadialBarChart innerRadius="80%" outerRadius="100%" barSize={15} data={radialData} startAngle={90} endAngle={-270}>
+                          <RadialBar background dataKey="uv" cornerRadius={10}/>
+                       </RadialBarChart>
+                    </ResponsiveContainer>
+                    {/* Centered Text */}
+                    <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)'}}>
+                       <div className="display-5 fw-bold text-dark">{score}</div>
+                       <div className="small text-muted fw-bold text-uppercase" style={{fontSize:'0.6rem'}}>Points</div>
+                    </div>
+                 </div>
+
+                 <div className="mt-3">
+                    <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Excellent</span>
+                 </div>
+                 <p className="text-muted small mt-3 px-2 mb-0">
+                    Your academic consistency is in the top <strong>10%</strong> of your class.
+                 </p>
+              </div>
+           </div>
+
+           {/* 4. Assignment Metrics Grid */}
+           <div className="col-12">
+              <div style={styles.card}>
+                 <div style={styles.cardHeader}>
+                    <div className="bg-primary-subtle text-primary p-2 rounded-3 d-flex"><i className="bi bi-journal-bookmark-fill"></i></div>
+                    <span>Assignment Analytics</span>
+                 </div>
+
+                 <div className="row g-4">
+                    {/* Metric Cards */}
+                    <div className="col-6 col-md-3">
+                       <div style={styles.statBox}>
+                          <h2 className="fw-bold text-primary mb-0">{report.assignments.totalAssignments}</h2>
+                          <small className="text-muted fw-bold text-uppercase" style={{fontSize:'0.7rem'}}>Total</small>
+                       </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                       <div style={styles.statBox}>
+                          <h2 className="fw-bold text-success mb-0">{report.assignments.totalSubmitted}</h2>
+                          <small className="text-muted fw-bold text-uppercase" style={{fontSize:'0.7rem'}}>Submitted</small>
+                       </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                       <div style={styles.statBox}>
+                          <h2 className="fw-bold text-warning mb-0">{report.assignments.graded}</h2>
+                          <small className="text-muted fw-bold text-uppercase" style={{fontSize:'0.7rem'}}>Graded</small>
+                       </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                       <div style={styles.statBox}>
+                          <h2 className="fw-bold text-info mb-0">{report.assignments.avgGrade}</h2>
+                          <small className="text-muted fw-bold text-uppercase" style={{fontSize:'0.7rem'}}>Avg Grade</small>
+                       </div>
+                    </div>
+
+                    {/* Simple Bar Chart */}
+                    <div className="col-12 mt-4" style={{height: '220px'}}>
+                       <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={report.assignments.chart} barSize={40}>
+                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                             <XAxis dataKey="title" axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#64748b'}} />
+                             <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', border:'none', boxShadow:'0 4px 12px rgba(0,0,0,0.1)'}}/>
+                             <Bar dataKey="gradeValue" fill="#6366f1" radius={[6, 6, 0, 0]} name="Grade" />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
         </div>
-      </div>
 
-      <div className="text-center mt-4">
-        <button className="btn btn-lg btn-outline-primary px-5 py-2 fw-semibold" onClick={downloadPDF}>
-          📄 Download PDF Report
-        </button>
+        {/* Footer for PDF */}
+        <div className="text-center mt-5 pt-4 border-top text-muted small">
+           <p className="mb-1">This report is system generated. Signature is not required.</p>
+           <p className="fw-bold">© {new Date().getFullYear()} SchoolY Portal</p>
+        </div>
+
       </div>
     </div>
   );

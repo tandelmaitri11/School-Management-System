@@ -31,19 +31,16 @@ export default function ViewAssignments() {
   const [grading, setGrading] = useState(null);
   const [gradeValue, setGradeValue] = useState("");
 
-  // ✅ Helper for toast
   const showToast = (message, variant = "primary") => {
     setToast({ show: true, message, variant });
   };
 
-  // ✅ Fetch all teacher assignments
   const fetchAssignments = async () => {
     setLoading(true);
     try {
       const res = await api.get(`/api/assignments/teacher/${teacherId}`);
       setAssignments(res.data);
-    } catch (err) {
-      console.error(err);
+    } catch {
       showToast("Error fetching assignments", "danger");
     } finally {
       setLoading(false);
@@ -54,20 +51,17 @@ export default function ViewAssignments() {
     fetchAssignments();
   }, [teacherId]);
 
-  // ✅ Delete assignment
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this assignment?")) return;
     try {
       await api.delete(`/api/assignments/delete/${id}`);
       showToast("Assignment deleted successfully", "success");
       setAssignments((prev) => prev.filter((a) => a._id !== id));
-    } catch (err) {
-      console.error(err);
+    } catch {
       showToast("Error deleting assignment", "danger");
     }
   };
 
-  // ✅ Edit assignment
   const handleEdit = (assignment) => {
     setEditingAssignment(assignment);
     setEditForm({
@@ -98,34 +92,28 @@ export default function ViewAssignments() {
         else if (editForm[key]) formData.append(key, editForm[key]);
       });
 
-      await api.put(`/api/assignments/update/${editingAssignment._id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.put(`/api/assignments/update/${editingAssignment._id}`, formData);
       fetchAssignments();
       setEditingAssignment(null);
       showToast("Assignment updated successfully", "success");
-    } catch (err) {
-      console.error(err);
-      showToast(" Error updating assignment", "danger");
+    } catch {
+      showToast("Error updating assignment", "danger");
     }
   };
 
-  // ✅ View submissions
   const handleViewSubmissions = async (assignmentId) => {
     setViewingSubmissions(assignmentId);
     setSubmissionsLoading(true);
     try {
       const res = await api.get(`/api/assignments/submissions/${assignmentId}`);
       setSubmissions(res.data);
-    } catch (err) {
-      console.error(err);
+    } catch {
       showToast("Failed to fetch submissions", "danger");
     } finally {
       setSubmissionsLoading(false);
     }
   };
 
-  // ✅ Grade submission
   const handleGrade = async (submissionId) => {
     try {
       await api.put(`/api/assignments/grade/${submissionId}`, { grade: gradeValue });
@@ -133,8 +121,7 @@ export default function ViewAssignments() {
       setGrading(null);
       setGradeValue("");
       handleViewSubmissions(viewingSubmissions);
-    } catch (err) {
-      console.error(err);
+    } catch {
       showToast("Error grading submission", "danger");
     }
   };
@@ -147,26 +134,26 @@ export default function ViewAssignments() {
     );
 
   return (
-    <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-semibold text-dark"> My Assignments</h4>
+    <div className="container py-3 py-md-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <h4 className="fw-semibold mb-3 mb-md-0">My Assignments</h4>
       </div>
 
-      <div className="card border-0 shadow-sm rounded-4 p-3">
+      <div className="card border-0 shadow-sm rounded-4 p-2 p-md-3">
         <div className="table-responsive">
           <Table hover className="align-middle mb-0">
-            <thead className="text-secondary border-bottom">
+            <thead className="text-secondary">
               <tr>
                 <th>Title</th>
                 <th>Subject</th>
                 <th>Class</th>
-                <th>Due Date</th>
+                <th>Due</th>
                 <th>File</th>
-                <th>Actions</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {assignments.length > 0 ? (
+              {assignments.length ? (
                 assignments.map((ass) => (
                   <tr key={ass._id}>
                     <td>{ass.title}</td>
@@ -190,36 +177,36 @@ export default function ViewAssignments() {
                         "—"
                       )}
                     </td>
-                    <td>
-                      <Button
-                        variant="outline-info"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => handleViewSubmissions(ass._id)}
-                      >
-                        Submissions
-                      </Button>
-                      <Button
-                        variant="outline-dark"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => handleEdit(ass)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(ass._id)}
-                      >
-                         Delete
-                      </Button>
+                    <td className="text-center">
+                      <div className="d-flex flex-column flex-md-row gap-2 justify-content-center">
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          onClick={() => handleViewSubmissions(ass._id)}
+                        >
+                          Submissions
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-dark"
+                          onClick={() => handleEdit(ass)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => handleDelete(ass._id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted py-3">
+                  <td colSpan="6" className="text-center text-muted py-4">
                     No assignments found.
                   </td>
                 </tr>
@@ -229,13 +216,8 @@ export default function ViewAssignments() {
         </div>
       </div>
 
-      {/* 🧾 View Submissions Modal */}
-      <Modal
-        show={!!viewingSubmissions}
-        onHide={() => setViewingSubmissions(null)}
-        centered
-        size="lg"
-      >
+      {/* View Submissions Modal */}
+      <Modal show={!!viewingSubmissions} onHide={() => setViewingSubmissions(null)} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Student Submissions</Modal.Title>
         </Modal.Header>
@@ -243,143 +225,105 @@ export default function ViewAssignments() {
           {submissionsLoading ? (
             <div className="text-center my-4">
               <Spinner animation="border" />
-              <p>Loading submissions...</p>
             </div>
-          ) : submissions.length > 0 ? (
-            <Table bordered hover>
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th>Submitted On</th>
-                  <th>File</th>
-                  <th>Grade</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((s) => (
-                  <tr key={s._id}>
-                    <td>{s.name || "Unknown"}</td>
-                    <td>
-                      {s.submittedAt
-                        ? new Date(s.submittedAt).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td>
-                      <a
-                        href={`http://localhost:3000/${s.file}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Download
-                      </a>
-                    </td>
-                    <td>{s.grade || "Not graded"}</td>
-                    <td>
-                      {grading === s._id ? (
-                        <>
-                          <Form.Control
-                            size="sm"
-                            value={gradeValue}
-                            onChange={(e) => setGradeValue(e.target.value)}
-                            placeholder="Enter grade"
-                            className="d-inline-block w-50 me-2"
-                          />
+          ) : submissions.length ? (
+            <div className="table-responsive">
+              <Table bordered hover>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Date</th>
+                    <th>File</th>
+                    <th>Grade</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((s) => (
+                    <tr key={s._id}>
+                      <td>{s.name || "Unknown"}</td>
+                      <td>{s.submittedAt ? new Date(s.submittedAt).toLocaleString() : "—"}</td>
+                      <td>
+                        <a
+                          href={`http://localhost:3000/${s.file}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Download
+                        </a>
+                      </td>
+                      <td>{s.grade || "Not graded"}</td>
+                      <td>
+                        {grading === s._id ? (
+                          <div className="d-flex gap-2">
+                            <Form.Control
+                              size="sm"
+                              value={gradeValue}
+                              onChange={(e) => setGradeValue(e.target.value)}
+                            />
+                            <Button size="sm" onClick={() => handleGrade(s._id)}>
+                              Save
+                            </Button>
+                          </div>
+                        ) : (
                           <Button
                             size="sm"
-                            variant="success"
-                            onClick={() => handleGrade(s._id)}
+                            variant="outline-primary"
+                            onClick={() => setGrading(s._id)}
                           >
-                            Save
+                            Grade
                           </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => setGrading(s._id)}
-                        >
-                          Grade
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
           ) : (
-            <p className="text-center text-muted">
-              No students have submitted yet.
-            </p>
+            <p className="text-center text-muted">No submissions yet.</p>
           )}
         </Modal.Body>
       </Modal>
 
-      {/* ✏️ Edit Assignment Modal */}
+      {/* Edit Assignment Modal */}
       <Modal show={!!editingAssignment} onHide={() => setEditingAssignment(null)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Edit Assignment</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleEditSubmit}>
+            {["title", "description", "subject", "dueDate"].map((field) => (
+              <Form.Group className="mb-3" key={field}>
+                <Form.Label className="text-capitalize">{field}</Form.Label>
+                <Form.Control
+                  type={field === "dueDate" ? "date" : "text"}
+                  name={field}
+                  value={editForm[field]}
+                  onChange={handleEditChange}
+                />
+              </Form.Group>
+            ))}
             <Form.Group className="mb-3">
-              <Form.Label>Title</Form.Label>
-              <Form.Control
-                name="title"
-                value={editForm.title}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                name="description"
-                rows={3}
-                value={editForm.description}
-                onChange={handleEditChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Subject</Form.Label>
-              <Form.Control
-                name="subject"
-                value={editForm.subject}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Due Date</Form.Label>
-              <Form.Control
-                type="date"
-                name="dueDate"
-                value={editForm.dueDate}
-                onChange={handleEditChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>File (optional)</Form.Label>
+              <Form.Label>File</Form.Label>
               <Form.Control type="file" name="file" onChange={handleEditChange} />
             </Form.Group>
-            <Button type="submit" variant="dark" className="w-100">
+            <Button type="submit" className="w-100" variant="dark">
               Update Assignment
             </Button>
           </Form>
         </Modal.Body>
       </Modal>
 
-      {/* 🔔 Toast */}
-      <ToastContainer position="bottom-end" className="p-4">
+      <ToastContainer position="bottom-end" className="p-3">
         <Toast
-          onClose={() => setToast({ ...toast, show: false })}
           show={toast.show}
           bg={toast.variant}
           delay={3000}
           autohide
+          onClose={() => setToast({ ...toast, show: false })}
         >
-          <Toast.Body className="text-white fw-semibold fs-6">
+          <Toast.Body className="text-white fw-semibold">
             {toast.message}
           </Toast.Body>
         </Toast>

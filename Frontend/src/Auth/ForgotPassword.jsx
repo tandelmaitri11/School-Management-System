@@ -1,7 +1,8 @@
 import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function ForgotPassword() {
   const [step, setStep] = useState(1);
@@ -78,155 +79,294 @@ export default function ForgotPassword() {
     setLoading(false);
   };
 
+  const StepPill = ({ n, label, active, done }) => (
+    <div className="d-flex align-items-center gap-2">
+      <div
+        className={`rounded-circle d-flex align-items-center justify-content-center fw-bold ${
+          done ? "bg-success text-white" : active ? "bg-primary text-white" : "bg-light text-muted border"
+        }`}
+        style={{ width: 32, height: 32, fontSize: 14 }}
+      >
+        {done ? <i className="bi bi-check-lg" /> : n}
+      </div>
+      <div className={`small fw-semibold ${active ? "text-dark" : "text-muted"}`}>{label}</div>
+    </div>
+  );
+
   return (
-    <div className="d-flex flex-column min-vh-100 bg-white">
-      <div className="container py-5 d-flex flex-column align-items-center justify-content-center flex-grow-1">
-        <div className="row w-100 justify-content-center">
-
-          {/* Left Image */}
-          <div className="col-md-4 d-none d-md-flex align-items-center justify-content-center">
+    <div
+      className="min-vh-100 d-flex align-items-stretch"
+      style={{
+        background: "linear-gradient(135deg, rgba(13,110,253,0.10) 0%, rgba(111,66,193,0.10) 100%)",
+        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+      }}
+    >
+      <div className="container py-4 py-md-5 d-flex align-items-center">
+        <div className="row g-4 w-100 align-items-stretch justify-content-center">
+          {/* Left info panel */}
+          <div className="col-lg-5 d-none d-lg-block">
             <div
-              className="rounded-4 w-100 h-100"
+              className="h-100 rounded-5 shadow-sm overflow-hidden p-5 text-white position-relative"
               style={{
-                backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCin_ezq1I7Ik4zO6OpuOUIAjiMnw9hJ8Q0f4tNULDrq0Nv_-w5HA3NTX4a9LOTR7cgde0M-KNUGJOkK4HCYTbyKAx8lBfUWpI02n40KUgSEyxJ4G1ULVzgagPLu49lYiGBNZY5ICAwQBoDERNjpD8J3iA93nByb9md3CPVzVoWAFEixKcHuPes692WdeL2jdaLhnqMZo2vMaXrgUHxP2j1YBloujPj7YsH7yhBK2J0R82Y6vzOnGj90gEGJBHAxlxmTSIBL5UH5h8')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                minHeight: "380px",
+                background:
+                  "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)",
+                minHeight: 560,
               }}
-            ></div>
+            >
+              <div className="d-flex align-items-center gap-2 mb-4">
+                <div
+                  className="rounded-4 d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 46,
+                    height: 46,
+                    background: "rgba(255,255,255,0.18)",
+                    border: "1px solid rgba(255,255,255,0.25)",
+                  }}
+                >
+                  <i className="bi bi-shield-lock-fill fs-4" />
+                </div>
+                <div>
+                  <div className="fw-bold fs-4" style={{ lineHeight: 1.1 }}>
+                    Password Recovery
+                  </div>
+                  <div className="opacity-75" style={{ lineHeight: 1.1 }}>
+                    Secure OTP Verification
+                  </div>
+                </div>
+              </div>
+
+              <h2 className="fw-bold mb-2">Reset your password</h2>
+              <p className="opacity-75 mb-0" style={{ maxWidth: 430 }}>
+                Enter your registered email, verify OTP, and set a new password. Your account stays secure.
+              </p>
+
+              <div className="d-flex gap-3 mt-5 flex-column">
+                <StepPill n={1} label="Email" active={step === 1} done={step > 1} />
+                <StepPill n={2} label="OTP" active={step === 2} done={step > 2} />
+                <StepPill n={3} label="New Password" active={step === 3} done={step > 3} />
+                <StepPill n={4} label="Done" active={step === 4} done={step > 4} />
+              </div>
+
+              <div className="position-absolute bottom-0 start-0 end-0 p-4">
+                <div className="d-flex gap-2 flex-wrap">
+                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Encrypted</span>
+                  <span className="badge rounded-pill text-bg-light border px-3 py-2">OTP Based</span>
+                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Fast</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Right Form */}
-          <div className="col-md-6 col-lg-5 d-flex flex-column align-items-center">
-            <h2 className="fw-bold text-center mb-4 mt-3 text-primary">
-              Forgot Password
-            </h2>
-
-            {/* Step 1 – Email */}
-            {step === 1 && (
-              <form onSubmit={handleSendOtp} className="w-100" style={{ maxWidth: "480px" }}>
-                <div className="mb-3">
-                  <input
-                    type="email"
-                    className="form-control bg-light border-0 p-3 rounded-3"
-                    placeholder="Enter your registered email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+          {/* Right form panel */}
+          <div className="col-12 col-md-10 col-lg-6">
+            <div className="card border-0 shadow-sm rounded-5 overflow-hidden">
+              <div className="p-4 p-md-5 border-bottom bg-white">
+                <div className="d-flex align-items-center justify-content-between gap-3">
+                  <div>
+                    <div className="fw-bold fs-3 mb-1">Forgot Password</div>
+                    <div className="text-muted">
+                      {step === 1 && "We will send an OTP to your email."}
+                      {step === 2 && "Enter the 4-digit OTP sent to your email."}
+                      {step === 3 && "Create a new strong password."}
+                      {step === 4 && "Password updated successfully."}
+                    </div>
+                  </div>
+                  <span className="badge rounded-pill bg-light text-dark border px-3 py-2">
+                    Step {step}/4
+                  </span>
                 </div>
 
-                <div className="d-flex justify-content-center mb-3">
-                  <button
-                    className="btn btn-primary px-5 py-2 fw-bold rounded-3 w-100"
-                    disabled={loading}
-                  >
-                    {loading ? "Sending..." : "Send OTP"}
-                  </button>
-                </div>
+                {toast.message && (
+                  <div className={`alert alert-${toast.type} mt-4 mb-0 rounded-4`}>
+                    {toast.message}
+                  </div>
+                )}
+              </div>
 
-                <p className="text-center text-muted small mt-2">
-                  Remembered your password?{" "}
-                  <a href="/login" className="text-decoration-underline">
-                    Go to Login
-                  </a>
-                </p>
-              </form>
-            )}
+              <div className="p-4 p-md-5">
+                {/* Step 1 – Email */}
+                {step === 1 && (
+                  <form onSubmit={handleSendOtp}>
+                    <div className="mb-3">
+                      <label className="small text-muted fw-semibold mb-1">Email</label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text border-0 bg-light rounded-start-4">
+                          <i className="bi bi-envelope" />
+                        </span>
+                        <input
+                          type="email"
+                          className="form-control form-control-lg border-0 bg-light shadow-sm rounded-end-4"
+                          placeholder="Enter your registered email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
 
-            {/* Step 2 – Verify OTP */}
-            {step === 2 && (
-              <form onSubmit={handleVerifyOtp} className="w-100" style={{ maxWidth: "480px" }}>
-                <p className="text-muted small mb-3">
-                  We’ve sent a 4-digit OTP to <strong>{email}</strong>
-                </p>
-
-                <div className="d-flex justify-content-between mb-4">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => (otpRefs.current[index] = el)}
-                      type="text"
-                      maxLength="1"
-                      value={digit}
-                      onChange={(e) => handleOtpChange(e.target.value, index)}
-                      className="form-control text-center mx-1 bg-light border-0 rounded-3 shadow-sm"
+                    <button
+                      className="btn btn-lg w-100 rounded-pill fw-bold"
+                      disabled={loading}
                       style={{
-                        width: "60px",
-                        height: "60px",
-                        fontSize: "22px",
+                        background:
+                          "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)",
+                        border: "none",
+                        color: "#fff",
+                        boxShadow: "0 12px 26px rgba(13,110,253,0.20)",
                       }}
-                      required
-                    />
-                  ))}
-                </div>
+                    >
+                      {loading ? "Sending..." : "Send OTP"}
+                    </button>
 
-                <button
-                  className="btn btn-success w-100 fw-bold rounded-3"
-                  disabled={loading}
-                >
-                  {loading ? "Verifying..." : "Verify OTP"}
-                </button>
+                    <div className="text-center mt-3">
+                      <span className="text-muted small">Remembered your password? </span>
+                      <Link to="/login" className="fw-semibold text-decoration-none small">
+                        Go to Login
+                      </Link>
+                    </div>
+                  </form>
+                )}
 
-                <button
-                  className="btn btn-link mt-3 text-decoration-none"
-                  onClick={() => setStep(1)}
-                  disabled={loading}
-                >
-                  ← Back
-                </button>
-              </form>
-            )}
+                {/* Step 2 – Verify OTP */}
+                {step === 2 && (
+                  <form onSubmit={handleVerifyOtp}>
+                    <div className="mb-3">
+                      <div className="text-muted small">
+                        We sent a 4-digit OTP to <span className="fw-semibold text-dark">{email}</span>
+                      </div>
+                    </div>
 
-            {/* Step 3 – Reset Password */}
-            {step === 3 && (
-              <form onSubmit={handleResetPassword} className="w-100" style={{ maxWidth: "480px" }}>
-                <p className="text-success fw-semibold mb-3">
-                  OTP Verified Successfully!
-                </p>
+                    <div className="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                      {otp.map((digit, index) => (
+                        <input
+                          key={index}
+                          ref={(el) => (otpRefs.current[index] = el)}
+                          type="text"
+                          maxLength="1"
+                          value={digit}
+                          onChange={(e) => handleOtpChange(e.target.value, index)}
+                          className="form-control text-center border-0 bg-light shadow-sm rounded-4"
+                          style={{
+                            height: 58,
+                            width: 64,
+                            fontSize: 22,
+                            fontWeight: 700,
+                          }}
+                          inputMode="numeric"
+                          required
+                        />
+                      ))}
+                    </div>
 
-                <div className="mb-3">
-                  <input
-                    type="password"
-                    className="form-control bg-light border-0 p-3 rounded-3"
-                    placeholder="Enter new password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                  />
-                </div>
+                    <button
+                      className="btn btn-success btn-lg w-100 rounded-pill fw-bold"
+                      disabled={loading}
+                    >
+                      {loading ? "Verifying..." : "Verify OTP"}
+                    </button>
 
-                <div className="d-flex justify-content-center mb-3">
-                  <button
-                    className="btn btn-warning px-5 py-2 fw-bold rounded-3 w-100"
-                    disabled={loading}
-                  >
-                    {loading ? "Updating..." : "Reset Password"}
-                  </button>
-                </div>
-              </form>
-            )}
+                    <button
+                      type="button"
+                      className="btn btn-link mt-3 text-decoration-none"
+                      onClick={() => setStep(1)}
+                      disabled={loading}
+                    >
+                      ← Back
+                    </button>
+                  </form>
+                )}
 
-            {/* Step 4 – Success Message */}
-            {step === 4 && (
-              <div className="text-center mt-4">
-                <h5 className="text-success fw-bold mb-2">
-                 Password Reset Successful!
-                </h5>
-                <p className="text-muted small">Redirecting you to login...</p>
+                {/* Step 3 – Reset Password */}
+                {step === 3 && (
+                  <form onSubmit={handleResetPassword}>
+                    <div className="alert alert-success rounded-4 py-2">
+                      <i className="bi bi-check-circle-fill me-2" />
+                      OTP verified successfully
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="small text-muted fw-semibold mb-1">New Password</label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text border-0 bg-light rounded-start-4">
+                          <i className="bi bi-key" />
+                        </span>
+                        <input
+                          type="password"
+                          className="form-control form-control-lg border-0 bg-light shadow-sm rounded-end-4"
+                          placeholder="Enter new password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-text">
+                        Use at least 8 characters, mix letters & numbers.
+                      </div>
+                    </div>
+
+                    <button
+                      className="btn btn-warning btn-lg w-100 rounded-pill fw-bold"
+                      disabled={loading}
+                      style={{ boxShadow: "0 12px 26px rgba(255,193,7,0.25)" }}
+                    >
+                      {loading ? "Updating..." : "Reset Password"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-link mt-3 text-decoration-none"
+                      onClick={() => setStep(2)}
+                      disabled={loading}
+                    >
+                      ← Back
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 4 – Success */}
+                {step === 4 && (
+                  <div className="text-center py-4">
+                    <div
+                      className="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center"
+                      style={{ width: 72, height: 72 }}
+                    >
+                      <i className="bi bi-check2 fs-1" />
+                    </div>
+                    <h4 className="fw-bold text-success mt-3 mb-1">
+                      Password Reset Successful!
+                    </h4>
+                    <p className="text-muted mb-0">Redirecting you to login...</p>
+
+                    <div className="mt-3">
+                      <Link to="/login" className="btn btn-outline-primary rounded-pill px-4">
+                        Go to Login
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Toast Message */}
-            {toast.message && (
-              <div
-                className={`alert alert-${toast.type} mt-4 text-center py-2 fw-semibold`}
-                style={{ fontSize: "14px" }}
-              >
-                {toast.message}
+              <div className="px-4 px-md-5 pb-4">
+                <div className="small text-muted text-center">
+                  SchoolY • Secure password recovery
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Mobile step indicator */}
+            <div className="d-lg-none mt-3">
+              <div className="card border-0 shadow-sm rounded-5">
+                <div className="card-body d-flex justify-content-between align-items-center">
+                  <StepPill n={1} label="Email" active={step === 1} done={step > 1} />
+                  <div className="text-muted">—</div>
+                  <StepPill n={2} label="OTP" active={step === 2} done={step > 2} />
+                  <div className="text-muted">—</div>
+                  <StepPill n={3} label="Password" active={step === 3} done={step > 3} />
+                </div>
+              </div>
+            </div>
           </div>
+          {/* end right */}
         </div>
       </div>
     </div>

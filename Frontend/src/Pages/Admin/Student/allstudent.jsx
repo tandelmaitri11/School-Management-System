@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import { Modal, Button } from "react-bootstrap";
 
 export default function AllStudents() {
@@ -30,9 +31,10 @@ export default function AllStudents() {
 
   const handleStudentClick = async (studentId) => {
     try {
+      setShowModal(true);
+      setStudentDetails(null); // Reset for loader
       const res = await api.get(`/api/students/details/${studentId}`);
       setStudentDetails(res.data);
-      setShowModal(true);
     } catch (error) {
       console.error("Error fetching student details:", error);
     }
@@ -40,211 +42,173 @@ export default function AllStudents() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center mt-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading students...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="text-center mt-5">
-        <h6>No students found!</h6>
+      <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "60vh" }}>
+        <div className="spinner-grow text-primary" role="status"></div>
+        <span className="mt-3 fw-bold text-muted">Loading Directory...</span>
       </div>
     );
   }
 
   return (
-    <div className="container mt-4">
-      <h4 className="text-center mb-4 text-primary fw-bold">
-        All Students by Class
-      </h4>
+    <div className="container-fluid py-4 px-lg-5" style={{ backgroundColor: "#f4f7fe", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Header */}
+      <div className="mb-5 text-center text-md-start">
+        <h3 className="fw-bold text-dark mb-1">Student Directory</h3>
+        <p className="text-muted">Manage and view detailed profiles by class enrollment.</p>
+      </div>
 
-      {data.map((cls, index) => (
-        <div
-          className="card mb-3 border-0 shadow-sm rounded-3"
-          key={index}
-          style={{ background: "#f8f9fa" }}
-        >
-          <div
-            className="card-header bg-white border-0 py-2 d-flex justify-content-between align-items-center"
-            style={{
-              cursor: "pointer",
-              borderBottom: "1px solid #dee2e6",
-            }}
-            onClick={() => toggleClass(cls.className)}
-          >
-            <div>
-              <strong className="text-primary">Class {cls.className}</strong>
-              <div className="small text-muted">Teacher: {cls.teacher}</div>
+      {data.length === 0 ? (
+        <div className="text-center py-5 shadow-sm bg-white rounded-4">
+          <i className="bi bi-people text-light display-1"></i>
+          <h5 className="mt-3 text-muted">No students registered yet.</h5>
+        </div>
+      ) : (
+        data.map((cls, index) => (
+          <div className="card border-0 shadow-sm mb-4" key={index} style={{ borderRadius: "20px", overflow: "hidden" }}>
+            {/* Class Header Section */}
+            <div
+              className="p-4 d-flex flex-wrap justify-content-between align-items-center"
+              style={{ 
+                cursor: "pointer", 
+                background: expandedClass === cls.className 
+                  ? "linear-gradient(90deg, #6366f1 0%, #4f46e5 100%)" 
+                  : "#ffffff",
+                transition: "all 0.3s ease"
+              }}
+              onClick={() => toggleClass(cls.className)}
+            >
+              <div className="d-flex align-items-center">
+                <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm ${expandedClass === cls.className ? 'bg-white text-primary' : 'bg-primary text-white'}`} style={{ width: "50px", height: "50px" }}>
+                  <span className="fw-bold fs-5">{cls.className}</span>
+                </div>
+                <div>
+                  <h5 className={`fw-bold mb-0 ${expandedClass === cls.className ? 'text-white' : 'text-dark'}`}>Class {cls.className}</h5>
+                  <span className={`small ${expandedClass === cls.className ? 'text-white opacity-75' : 'text-muted'}`}>
+                    <i className="bi bi-person-badge me-1"></i> {cls.teacher}
+                  </span>
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-3">
+                <span className={`badge rounded-pill px-3 py-2 ${expandedClass === cls.className ? 'bg-white text-primary' : 'bg-light text-primary border'}`}>
+                  {cls.totalStudents} Students
+                </span>
+                <i className={`bi bi-chevron-down fw-bold transition-all ${expandedClass === cls.className ? 'rotate-180 text-white' : ''}`}></i>
+              </div>
             </div>
-            <span className="badge bg-primary">
-              {cls.totalStudents} Students
-            </span>
-          </div>
 
-          {expandedClass === cls.className && (
-            <div className="card-body pt-2 pb-2">
-              <div className="row">
-                {cls.students.map((student, i) => (
-                  <div
-                    key={student.id}
-                    className="col-md-3 col-sm-6 mb-3"
-                    onClick={() => handleStudentClick(student.id)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div
-                      className="card border-0 shadow-sm h-100"
-                      style={{
-                        borderRadius: "10px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.boxShadow =
-                          "0 0 8px rgba(0,0,0,0.2)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.boxShadow =
-                          "0 2px 6px rgba(0,0,0,0.1)")
-                      }
-                    >
-                      <div className="card-body text-center p-2">
-                        <h6 className="text-dark mb-1">{student.name}</h6>
-                        <small className="text-muted d-block">
-                          {student.email}
-                        </small>
-                        <small className="text-primary fw-bold">
-                          ID: {student.studentId || "N/A"}
-                        </small>
+            {/* Students Grid */}
+            {expandedClass === cls.className && (
+              <div className="card-body bg-light bg-opacity-50 p-4 animate__animated animate__fadeIn">
+                <div className="row g-3">
+                  {cls.students.map((student) => (
+                    <div key={student.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
+                      <div
+                        className="student-card p-3 bg-white shadow-sm h-100 position-relative"
+                        onClick={() => handleStudentClick(student.id)}
+                        style={{ borderRadius: "16px", cursor: "pointer", transition: "transform 0.2s" }}
+                      >
+                        <div className="d-flex align-items-center">
+                          <div className="avatar me-3 bg-soft-primary text-primary fw-bold d-flex align-items-center justify-content-center rounded-circle" style={{ width: "45px", height: "45px", backgroundColor: "#eef2ff" }}>
+                            {student.name.charAt(0)}
+                          </div>
+                          <div className="overflow-hidden">
+                            <h6 className="mb-0 text-truncate fw-bold" style={{ fontSize: "0.9rem" }}>{student.name}</h6>
+                            <small className="text-muted text-truncate d-block" style={{ fontSize: "0.75rem" }}>{student.email}</small>
+                            <span className="text-primary fw-bold" style={{ fontSize: "0.7rem" }}>ID: {student.studentId || "---"}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        ))
+      )}
 
       {/* Student Details Modal */}
-      <Modal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        size="md"
-        centered
-      >
-        <Modal.Header closeButton className="py-2">
-          <Modal.Title className="fs-6 fw-bold">Student Details</Modal.Title>
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered className="student-detail-modal">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold">Student Profile</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-3">
+        <Modal.Body className="px-4 pb-4">
           {!studentDetails ? (
-            <div className="text-center p-3">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+            <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>
+          ) : (
+            <div className="row mt-2">
+              {/* Profile Sidebar */}
+              <div className="col-lg-4 text-center border-end-lg">
+                <div className="bg-primary text-white mx-auto rounded-circle d-flex align-items-center justify-content-center mb-3 shadow" style={{ width: "100px", height: "100px", fontSize: "2.5rem" }}>
+                  {studentDetails.student.name.charAt(0)}
+                </div>
+                <h5 className="fw-bold mb-1">{studentDetails.student.name}</h5>
+                <p className="text-muted small mb-3">Roll No: {studentDetails.student.studentId}</p>
+                <div className="d-grid gap-2">
+                   <div className="p-2 bg-light rounded-3 small">
+                      <div className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.65rem" }}>Class</div>
+                      <div className="text-dark fw-bold">Class {studentDetails.student.studentClass}</div>
+                   </div>
+                </div>
+              </div>
+
+              {/* Info Details */}
+              <div className="col-lg-8 ps-lg-4 mt-4 mt-lg-0">
+                <div className="mb-4">
+                  <h6 className="text-primary fw-bold border-bottom pb-2 mb-3">Personal Information</h6>
+                  <div className="row g-3">
+                    <div className="col-6 col-md-4">
+                      <small className="text-muted d-block">Gender</small>
+                      <span className="fw-semibold">{studentDetails.info?.gender || "N/A"}</span>
+                    </div>
+                    <div className="col-6 col-md-4">
+                      <small className="text-muted d-block">Blood Group</small>
+                      <span className="fw-semibold text-danger">{studentDetails.info?.bloodGroup || "N/A"}</span>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <small className="text-muted d-block">DOB</small>
+                      <span className="fw-semibold">{studentDetails.info?.dob ? new Date(studentDetails.info.dob).toLocaleDateString() : "N/A"}</span>
+                    </div>
+                    <div className="col-12">
+                      <small className="text-muted d-block">Address</small>
+                      <span className="fw-semibold small">{studentDetails.info?.address || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h6 className="text-primary fw-bold border-bottom pb-2 mb-3">Parent Details</h6>
+                  <div className="row g-3">
+                    <div className="col-md-6 bg-light p-3 rounded-3 border-start border-primary border-4">
+                      <small className="text-muted fw-bold d-block text-uppercase" style={{fontSize: '0.7rem'}}>Father</small>
+                      <div className="fw-bold">{studentDetails.info?.fatherName || "N/A"}</div>
+                      <div className="small text-muted">{studentDetails.info?.fatherMobile || "No Mobile"}</div>
+                    </div>
+                    <div className="col-md-6 bg-light p-3 rounded-3 border-start border-info border-4">
+                      <small className="text-muted fw-bold d-block text-uppercase" style={{fontSize: '0.7rem'}}>Mother</small>
+                      <div className="fw-bold">{studentDetails.info?.motherName || "N/A"}</div>
+                      <div className="small text-muted">{studentDetails.info?.motherMobile || "No Mobile"}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="text-center mb-3">
-                <h6 className="mb-0">{studentDetails.student.name}</h6>
-                <small className="text-muted">
-                  ({studentDetails.student.studentId || "N/A"})
-                </small>
-              </div>
-
-              {/* Student Info */}
-              <h6 className="text-primary mb-2">Basic Information</h6>
-              <table className="table table-sm table-bordered mb-3">
-                <tbody>
-                  <tr>
-                    <th>Email</th>
-                    <td>{studentDetails.student.email}</td>
-                  </tr>
-                  <tr>
-                    <th>Class</th>
-                    <td>{studentDetails.student.studentClass}</td>
-                  </tr>
-                  <tr>
-                    <th>Gender</th>
-                    <td>{studentDetails.info?.gender || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Date of Birth</th>
-                    <td>
-                      {studentDetails.info?.dob
-                        ? new Date(
-                            studentDetails.info.dob
-                          ).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>Blood Group</th>
-                    <td>{studentDetails.info?.bloodGroup || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Caste</th>
-                    <td>{studentDetails.info?.cast || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Address</th>
-                    <td>{studentDetails.info?.address || "N/A"}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Father Details */}
-              <h6 className="text-primary mt-3 mb-2">Father Details</h6>
-              <table className="table table-sm table-bordered">
-                <tbody>
-                  <tr>
-                    <th>Name</th>
-                    <td>{studentDetails.info?.fatherName || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Mobile</th>
-                    <td>{studentDetails.info?.fatherMobile || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Occupation</th>
-                    <td>{studentDetails.info?.fatherOccupation || "N/A"}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Mother Details */}
-              <h6 className="text-primary mt-3 mb-2">Mother Details</h6>
-              <table className="table table-sm table-bordered">
-                <tbody>
-                  <tr>
-                    <th>Name</th>
-                    <td>{studentDetails.info?.motherName || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Mobile</th>
-                    <td>{studentDetails.info?.motherMobile || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <th>Occupation</th>
-                    <td>{studentDetails.info?.motherOccupation || "N/A"}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </>
           )}
         </Modal.Body>
-        <Modal.Footer className="py-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowModal(false)}
-          >
-            Close
-          </Button>
-        </Modal.Footer>
       </Modal>
+
+      <style>{`
+        .rotate-180 { transform: rotate(180deg); }
+        .transition-all { transition: all 0.3s ease; }
+        .student-card:hover { 
+          transform: translateY(-5px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+          border-left: 4px solid #4f46e5;
+        }
+        .border-end-lg { border-right: 1px solid #eee; }
+        @media (max-width: 991px) { .border-end-lg { border-right: none; } }
+      `}</style>
     </div>
   );
 }
