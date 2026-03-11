@@ -4,7 +4,8 @@ const {
   getCounts, 
   getMonthlyData, 
   getAttendanceSummary, 
-  getFeesSummary 
+  getFeesSummary,
+  getDistributionStats,
 } = require("../controller/adminDashboardController");
 
 // Total counts for cards
@@ -18,5 +19,8 @@ router.get("/attendance", getAttendanceSummary);
 
 // Fee payment summary
 router.get("/fees-status", getFeesSummary);
+
+// Class/section/stream/fee distribution
+router.get("/distribution", getDistributionStats);
 
 module.exports = router;

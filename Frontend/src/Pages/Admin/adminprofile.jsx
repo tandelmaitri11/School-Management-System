@@ -13,7 +13,6 @@ export default function AdminProfile() {
   const [passwordData, setPasswordData] = useState({ oldPassword: "", newPassword: "" });
   const [updating, setUpdating] = useState(false);
 
-  // Fetch first admin (✅ same logic)
   useEffect(() => {
     const fetchAdmin = async () => {
       try {

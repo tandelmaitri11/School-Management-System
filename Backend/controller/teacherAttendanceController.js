@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const TeacherAttendance = require("../models/teacherAttendance");
 const Teachers = require("../models/techerregister");
+const {
+  validateTeacherAttendanceDate: validateTeacherAttendanceDatePolicy,
+  isYmd,
+} = require("../services/attendanceDatePolicyService");
 
 // Mark teacher attendance for a date
 exports.markTeacherAttendance = async (req, res) => {
@@ -18,6 +22,11 @@ exports.markTeacherAttendance = async (req, res) => {
       return res.status(400).json({ message: "Invalid date format" });
     }
     const normalizedDate = formatted.toISOString().split("T")[0];
+
+    const datePolicy = await validateTeacherAttendanceDatePolicy({ date: normalizedDate });
+    if (!datePolicy.allowed) {
+      return res.status(400).json({ message: datePolicy.reason, code: datePolicy.code });
+    }
 
     // Prevent duplicate per date
     const existing = await TeacherAttendance.findOne({ date: normalizedDate });
@@ -47,6 +56,20 @@ exports.markTeacherAttendance = async (req, res) => {
       return res.status(400).json({ message: "Attendance already marked for this date" });
     }
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.validateTeacherAttendanceDate = async (req, res) => {
+  try {
+    const date = String(req.query.date || "").trim();
+    if (!isYmd(date)) {
+      return res.status(400).json({ message: "date must be YYYY-MM-DD" });
+    }
+
+    const policy = await validateTeacherAttendanceDatePolicy({ date });
+    return res.status(200).json(policy);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to validate teacher attendance date" });
   }
 };
 

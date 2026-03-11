@@ -6,7 +6,7 @@ require("dotenv").config();
 // ➕ Create Admin (optional: initial admin)
 exports.createAdmin = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone, mobile, contactNumber } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: "All fields are required!" });
     }
@@ -14,7 +14,14 @@ exports.createAdmin = async (req, res) => {
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) return res.status(409).json({ error: "Email already exists!" });
 
-    const newAdmin = new Admin({ name, email, password });
+    const newAdmin = new Admin({
+      name,
+      email,
+      password,
+      phone: String(phone || "").trim(),
+      mobile: String(mobile || "").trim(),
+      contactNumber: String(contactNumber || "").trim(),
+    });
     await newAdmin.save();
 
     res.status(201).json({ message: "Admin created successfully!" });
@@ -39,13 +46,16 @@ exports.getAllAdmins = async (req, res) => {
 exports.updateAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password } = req.body;
+    const { name, email, password, phone, mobile, contactNumber } = req.body;
 
     const admin = await Admin.findById(id);
     if (!admin) return res.status(404).json({ error: "Admin not found!" });
 
     if (name) admin.name = name;
     if (email) admin.email = email;
+    if (phone !== undefined) admin.phone = String(phone || "").trim();
+    if (mobile !== undefined) admin.mobile = String(mobile || "").trim();
+    if (contactNumber !== undefined) admin.contactNumber = String(contactNumber || "").trim();
     if (password) admin.password = await bcrypt.hash(password, 10);
 
     await admin.save();

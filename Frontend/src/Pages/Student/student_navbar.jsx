@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Badge, Dropdown, Container, Navbar, Nav } from "react-bootstrap";
-import api from "../../api/api"; // Ensure this path is correct
+import { NavLink, useNavigate } from "react-router-dom";
+import { Badge, Dropdown, Navbar } from "react-bootstrap";
+import { useDashboardSettings } from "../../context/dashboardSettingsContext";
+import NotificationBell from "../../Components/NotificationBell";
+import useNotifications from "../../hooks/useNotifications";
 
 // --- INTERNAL STYLES (For animations & scrollbars) ---
 const globalStyles = `
+  .sidebar-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
   .sidebar-scroll::-webkit-scrollbar { width: 5px; }
   .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
   .sidebar-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -21,60 +24,24 @@ const globalStyles = `
 
 export default function StudentNavbar({ children }) {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { settings } = useDashboardSettings();
+  const isDark = settings.theme === "dark";
   const userName = localStorage.getItem("userName") || "Student";
   const studentClass = localStorage.getItem("studentClass") || "N/A";
   const studentSection = localStorage.getItem("studentSection") || "";
   const studentStream = localStorage.getItem("studentStream") || "";
+  const { notifications } = useNotifications(100);
+  const unreadAssignmentCount = (notifications || []).filter(
+    (n) => n?.type === "ASSIGNMENT" && !n?.isRead
+  ).length;
+  const unreadAnnouncementCount = (notifications || []).filter(
+    (n) => n?.type === "ANNOUNCEMENT" && !n?.isRead
+  ).length;
 
   // --- STATE ---
-  const [newAssignmentsCount, setNewAssignmentsCount] = useState(0);
   const [activeSubmenu, setActiveSubmenu] = useState(null); // Track which submenu is open
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 992);
-  const [assignmentError, setAssignmentError] = useState("");
-
-  // --- LOGIC: FETCH ASSIGNMENTS ---
-  const fetchNewAssignments = async () => {
-    try {
-      const storedClass = localStorage.getItem("studentClass");
-      if (!storedClass) return;
-
-      const res = await api.get(`/api/assignments/classes`, {
-        params: { classes: storedClass },
-      });
-
-      const assignments = res.data || [];
-      const lastSeen = localStorage.getItem("lastAssignmentViewTime");
-
-      const newCount = lastSeen
-        ? assignments.filter((a) => new Date(a.createdAt) > new Date(lastSeen)).length
-        : assignments.length;
-
-      setNewAssignmentsCount(newCount);
-      setAssignmentError("");
-    } catch (err) {
-      console.error("Error fetching assignments", err);
-      const msg = err?.response?.status
-        ? `Assignments could not load (HTTP ${err.response.status}).`
-        : "Assignments could not load. Please try again.";
-      setAssignmentError(msg);
-    }
-  };
-
-  useEffect(() => {
-    fetchNewAssignments();
-    const interval = setInterval(fetchNewAssignments, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Reset count when visiting assignments
-  useEffect(() => {
-    if (location.pathname.includes("/student/assignments")) {
-      localStorage.setItem("lastAssignmentViewTime", new Date().toISOString());
-      setNewAssignmentsCount(0);
-    }
-  }, [location.pathname]);
 
   // Handle Resize
   useEffect(() => {
@@ -121,10 +88,14 @@ export default function StudentNavbar({ children }) {
     { to: "/student/attendance/view", label: "Attendance", icon: "bi-check-circle-fill" },
     { to: "/student/report", label: "Progress Report", icon: "bi-bar-chart-line-fill" },
     { to: "/student/fees", label: "Fees", icon: "bi-wallet-fill" },
+    { to: "/student/announcements", label: "Announcements / Notifications", icon: "bi-megaphone-fill" },
   ];
 
   return (
-    <div className="d-flex" style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+    <div
+      className="d-flex dashboard-shell"
+      style={{ backgroundColor: "var(--dash-bg)", minHeight: "100vh", fontSize: "var(--dash-font-size)" }}
+    >
       <style>{globalStyles}</style>
 
       {/* --- OVERLAY (Mobile) --- */}
@@ -139,19 +110,20 @@ export default function StudentNavbar({ children }) {
       )}
 
       {/* --- SIDEBAR --- */}
-      <aside
-        className="d-flex flex-column bg-white shadow-sm"
-        style={{
-          width: "260px",
-          height: "100vh",
+        <aside
+          className="d-flex flex-column bg-white shadow-sm"
+          style={{
+            width: "260px",
+            height: "100vh",
           position: "fixed",
           top: 0, left: 0,
-          zIndex: 1050,
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-          borderRight: "1px solid #e2e8f0"
-        }}
-      >
+            zIndex: 1050,
+            transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+            borderRight: "1px solid var(--dash-border)",
+            background: "var(--dash-card-bg)",
+          }}
+        >
         {/* Logo Section */}
         <div className="d-flex align-items-center justify-content-center py-4 border-bottom" style={{ height: "70px" }}>
           <div className="fw-bold text-primary fs-4 d-flex align-items-center">
@@ -193,9 +165,14 @@ export default function StudentNavbar({ children }) {
                     <span className="flex-grow-1">{item.label}</span>
                     
                     {/* Badge */}
-                    {item.label === "Assignments" && newAssignmentsCount > 0 && (
+                    {item.label === "Assignments" && unreadAssignmentCount > 0 && (
                       <Badge bg="danger" pill className="ms-2 shadow-sm">
-                        {newAssignmentsCount}
+                        {unreadAssignmentCount}
+                      </Badge>
+                    )}
+                    {item.label === "Announcements / Notifications" && unreadAnnouncementCount > 0 && (
+                      <Badge bg="danger" pill className="ms-2 shadow-sm">
+                        {unreadAnnouncementCount}
                       </Badge>
                     )}
 
@@ -249,7 +226,16 @@ export default function StudentNavbar({ children }) {
       >
         
         {/* --- TOP HEADER --- */}
-        <Navbar bg="white" expand className="shadow-sm py-2 px-3 sticky-top" style={{ height: "70px", borderBottom: "1px solid #e2e8f0" }}>
+        <Navbar
+          expand
+          className="shadow-sm py-2 px-3 sticky-top"
+          style={{
+            height: "70px",
+            borderBottom: "1px solid var(--dash-border)",
+            background: isDark ? "#17181a" : "#fff",
+            color: "var(--dash-text)",
+          }}
+        >
           <div className="d-flex align-items-center w-100">
             {/* Toggle Button */}
             <button
@@ -263,11 +249,7 @@ export default function StudentNavbar({ children }) {
             <h5 className="m-0 d-none d-md-block text-secondary fw-normal">Student Portal</h5>
 
             <div className="ms-auto d-flex align-items-center gap-3">
-              {/* Notifications Icon (Visual Only) */}
-              <div className="position-relative cursor-pointer text-secondary">
-                 <i className="bi bi-bell fs-5"></i>
-                 <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
-              </div>
+              <NotificationBell buttonClassName="btn btn-light border-0 rounded-pill" />
 
               {/* User Dropdown */}
               <Dropdown align="end">
@@ -307,21 +289,7 @@ export default function StudentNavbar({ children }) {
         </Navbar>
 
         {/* --- DYNAMIC PAGE CONTENT --- */}
-        <main className="p-4" style={{ overflowX: 'hidden' }}>
-          {assignmentError && (
-            <div className="alert alert-warning rounded-4 d-flex align-items-center justify-content-between">
-              <div>
-                <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                {assignmentError}
-              </div>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Close"
-                onClick={() => setAssignmentError("")}
-              ></button>
-            </div>
-          )}
+        <main className="p-4" style={{ overflowX: "hidden", background: "var(--dash-bg)", color: "var(--dash-text)" }}>
           {children}
         </main>
       </div>

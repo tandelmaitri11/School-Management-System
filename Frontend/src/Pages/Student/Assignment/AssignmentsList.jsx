@@ -36,6 +36,7 @@ const styles = {
 };
 
 export default function StudentAssignments({ studentClasses }) {
+  const studentId = localStorage.getItem("studentId");
   const [assignments, setAssignments] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +63,7 @@ export default function StudentAssignments({ studentClasses }) {
 
       try {
         const res = await api.get(`/api/assignments/classes`, {
-          params: { classes: classes.join(",") },
+          params: { classes: classes.join(","), studentId },
         });
 
         const data = res.data || [];
@@ -79,7 +80,7 @@ export default function StudentAssignments({ studentClasses }) {
       }
     };
     fetchAssignments();
-  }, [studentClasses]);
+  }, [studentClasses, studentId]);
 
   // --- UPDATE VIEW TIME ---
   useEffect(() => {

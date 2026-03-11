@@ -2,9 +2,33 @@ import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { useDashboardSettings } from "../../context/dashboardSettingsContext";
+import NotificationBell from "../../Components/NotificationBell";
+
+const sidebarScrollStyles = `
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+`;
 
 function Navbar({ children }) {
   const navigate = useNavigate();
+  const { settings } = useDashboardSettings();
+  const isDark = settings.theme === "dark";
 
   const [openMenu, setOpenMenu] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -75,7 +99,6 @@ function Navbar({ children }) {
       icon: "bi-people",
       submenu: [
         { label: "All Students", path: "/Students/allstudents" },
-        { label: "Search Student", path: "/Students/search" },
       ],
     },
     {
@@ -84,6 +107,7 @@ function Navbar({ children }) {
       submenu: [
         { label: "All Teachers", path: "/teacher/allteacher" },
         { label: "Add New", path: "/teacher/addteacher" },
+        { label: "Class/Section List", path: "/teacher/assignments" },
         { label: "Attendance", path: "/teacher/attendance" },
       ],
     },
@@ -101,6 +125,7 @@ function Navbar({ children }) {
       submenu: [
         { label: "Fees Structure", path: "/admin/fees" },
         { label: "Student Fees", path: "/studentfees" },
+        { label: "Fees Reports", path: "/admin/fees-reports" },
       ],
     },
     {
@@ -118,15 +143,29 @@ function Navbar({ children }) {
       submenu: [{ label: "LMS Control", path: "/admin/lms" }],
     },
     {
+      label: "Contact",
+      icon: "bi-chat-dots",
+      submenu: [{ label: "Contact Messages", path: "/admin/contact/messages" }],
+    },
+    {
+      label: "Announcements",
+      icon: "bi-megaphone",
+      submenu: [{ label: "Announcements / Notifications", path: "/admin/announcements" }],
+    },
+    {
       label: "Settings",
       icon: "bi-gear",
-      submenu: [{ label: "Logout", action: handleLogout }],
+      submenu: [
+        { label: "Appearance", path: "/settings/preferences" },
+        { label: "Logout", action: handleLogout },
+      ],
     },
   ];
 
   const shellStyle = {
     minHeight: "100vh",
-    background: "#f6f7fb",
+    background: "var(--dash-bg)",
+    color: "var(--dash-text)",
   };
 
   const headerStyle = {
@@ -134,7 +173,9 @@ function Navbar({ children }) {
     position: "sticky",
     top: 0,
     zIndex: 1030,
-    background: "linear-gradient(90deg, #0d6efd 0%, #6f42c1 100%)",
+    background: isDark
+      ? "linear-gradient(90deg, #111 0%, #2a2a2a 100%)"
+      : "linear-gradient(90deg, #0d6efd 0%, #6f42c1 100%)",
     color: "white",
   };
 
@@ -143,8 +184,8 @@ function Navbar({ children }) {
   const sidebarStyle = {
     width: sidebarWidth,
     transition: "width .2s ease",
-    background: "#ffffff",
-    borderRight: "1px solid #e9ecef",
+    background: "var(--dash-card-bg)",
+    borderRight: "1px solid var(--dash-border)",
     position: isMobile ? "fixed" : "sticky",
     top: 70,
     left: 0,
@@ -164,9 +205,9 @@ function Navbar({ children }) {
 
   const footerStyle = {
     height: "44px",
-    background: "#ffffff",
-    borderTop: "1px solid #e9ecef",
-    color: "#6c757d",
+    background: "var(--dash-card-bg)",
+    borderTop: "1px solid var(--dash-border)",
+    color: "var(--dash-muted)",
   };
 
   const navItemBase = {
@@ -181,7 +222,7 @@ function Navbar({ children }) {
   };
 
   const navItemInactive = {
-    color: "#495057",
+    color: "var(--dash-text)",
   };
 
   const navItemActive = {
@@ -199,14 +240,14 @@ function Navbar({ children }) {
     alignItems: "center",
     justifyContent: "center",
     background: "#f1f3f5",
-    color: "#212529",
+    color: "var(--dash-text)",
     flex: "0 0 auto",
   };
 
   const sectionTitleStyle = {
     fontSize: 11,
     letterSpacing: ".08em",
-    color: "#adb5bd",
+    color: "var(--dash-muted)",
     fontWeight: 700,
     padding: sidebarCollapsed ? "10px 12px" : "12px 18px 6px",
     textTransform: "uppercase",
@@ -240,9 +281,9 @@ function Navbar({ children }) {
     display: sidebarCollapsed ? "none" : "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#f8f9fa",
-    border: "1px solid #e9ecef",
-    color: "#495057",
+    background: "var(--dash-soft-bg)",
+    border: "1px solid var(--dash-border)",
+    color: "var(--dash-text)",
   };
 
   const handleNavClick = () => {
@@ -250,7 +291,8 @@ function Navbar({ children }) {
   };
 
   return (
-    <div style={shellStyle}>
+    <div style={{ ...shellStyle, fontSize: "var(--dash-font-size)" }} className="dashboard-shell">
+      <style>{sidebarScrollStyles}</style>
       {/* HEADER */}
       <header style={headerStyle} className="d-flex align-items-center px-3 px-md-4 shadow-sm">
         <div className="d-flex align-items-center gap-2">
@@ -295,7 +337,7 @@ function Navbar({ children }) {
         </div>
 
         <div className="ms-auto d-flex align-items-center gap-2">
-         
+          <NotificationBell />
 
           <div className="dropdown">
             <button
@@ -314,7 +356,7 @@ function Navbar({ children }) {
                 </NavLink>
               </li>
               <li>
-                <NavLink className="dropdown-item py-2" to="/Settings/account">
+                <NavLink className="dropdown-item py-2" to="/settings/preferences">
                   <i className="bi bi-gear me-2" />
                   Settings
                 </NavLink>
@@ -352,7 +394,7 @@ function Navbar({ children }) {
       {/* BODY */}
       <div className="d-flex">
         {/* SIDEBAR */}
-        <aside style={sidebarStyle} className="shadow-sm">
+        <aside style={sidebarStyle} className="shadow-sm sidebar-scroll">
           <div className="p-3">
             <div
               className="d-flex align-items-center justify-content-between"

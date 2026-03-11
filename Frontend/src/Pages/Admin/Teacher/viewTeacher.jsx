@@ -38,6 +38,7 @@ function TeacherDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [teacher, setTeacher] = useState(null);
+  const [classMap, setClassMap] = useState({});
   const [attendanceStats, setAttendanceStats] = useState({
     presents: 0,
     absents: 0,
@@ -65,6 +66,23 @@ function TeacherDetails() {
     };
     fetchTeacher();
   }, [id]);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        const rows = res.data || [];
+        const map = {};
+        rows.forEach((c) => {
+          map[String(c._id)] = c;
+        });
+        setClassMap(map);
+      } catch {
+        setClassMap({});
+      }
+    };
+    fetchClasses();
+  }, []);
 
   useEffect(() => {
     if (!teacher) return;
@@ -147,6 +165,12 @@ function TeacherDetails() {
   if (error) return <div className="container mt-5"><div className="alert alert-danger rounded-4 shadow-sm">{error}</div></div>;
   if (!teacher) return <div className="container mt-5"><div className="alert alert-warning rounded-4 shadow-sm">No teacher data found.</div></div>;
 
+  const assignedClassIds = Array.isArray(teacher.classes) ? teacher.classes.map((c) => String(c)) : [];
+  const assignedClasses = assignedClassIds
+    .map((id) => classMap[id])
+    .filter(Boolean);
+  const assignedSections = Array.isArray(teacher.assignedSections) ? teacher.assignedSections : [];
+
   return (
     <div className="container py-5">
       {/* Top Action Bar */}
@@ -211,6 +235,48 @@ function TeacherDetails() {
                   <DetailItem icon="bi-droplet" title="Blood Group" value={teacher.bloodGroup} />
                   <DetailItem icon="bi-calendar-heart" title="Date of Birth" value={teacher.dob?.slice(0, 10)} />
                   <DetailItem icon="bi-gender-ambiguous" title="Gender" value={teacher.gender} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 mb-4">
+            <div className="card-body p-4">
+              <h5 className="fw-bold mb-4 border-bottom pb-2">
+                <i className="bi bi-diagram-3 me-2 text-primary"></i>Class & Section Assignment
+              </h5>
+
+              <div className="mb-3">
+                <div className="small text-muted fw-bold mb-2 text-uppercase">Assigned Classes</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {assignedClasses.length === 0 ? (
+                    <span className="text-muted">No classes assigned</span>
+                  ) : (
+                    assignedClasses.map((c) => (
+                      <span key={String(c._id)} className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                        Class {c.className}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="small text-muted fw-bold mb-2 text-uppercase">Assigned Sections</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {assignedSections.length === 0 ? (
+                    <span className="text-muted">No sections assigned</span>
+                  ) : (
+                    assignedSections.map((s, idx) => {
+                      const cls = classMap[String(s.classId)];
+                      return (
+                        <span key={`${String(s.classId)}-${String(s.section)}-${String(s.stream)}-${idx}`} className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                          Class {cls?.className || "?"} - {String(s.section || "").toUpperCase()}
+                          {s.stream ? ` (${s.stream})` : ""}
+                        </span>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>

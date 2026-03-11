@@ -28,9 +28,28 @@ const assignmentSchema = new mongoose.Schema(
       type: Number, // e.g. 10, 11, 12
       required: true,
     },
+    sectionAssigned: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    streamAssigned: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    subjectChoiceAssigned: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     file: {
       type: String,
       default: "",
+    },
+    notification: {
+      createdSentAt: { type: Date, default: null },
+      reminderSentAt: { type: Date, default: null },
     },
   },
   { timestamps: true }

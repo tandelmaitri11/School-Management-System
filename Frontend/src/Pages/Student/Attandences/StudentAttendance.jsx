@@ -25,16 +25,21 @@ export default function ViewAttendanceCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
 
+  const parseAttendanceDate = (ymd) => {
+    const [y, m, d] = String(ymd || "").split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return { year: y, monthIndex: m - 1, day: d };
+  };
+
   // --- FETCH DATA ---
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
-        const studentId = localStorage.getItem("studentId");
-        if (!studentId) return;
-        const res = await api.get(`/api/attendance/student/${studentId}`);
-        setAttendanceData(res.data);
+        const res = await api.get("/api/attendance/my");
+        setAttendanceData(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Failed to load attendance");
+        setAttendanceData([]);
       } finally {
         setLoading(false);
       }
@@ -56,14 +61,14 @@ export default function ViewAttendanceCalendar() {
     const month = currentDate.getMonth();
 
     const records = attendanceData.filter(a => {
-      const d = new Date(a.date);
-      return d.getFullYear() === year && d.getMonth() === month;
+      const d = parseAttendanceDate(a?.date);
+      return d && d.year === year && d.monthIndex === month;
     });
 
     const statusMap = {};
     records.forEach(r => {
-      const day = new Date(r.date).getDate();
-      statusMap[day] = r.status;
+      const d = parseAttendanceDate(r?.date);
+      if (d) statusMap[d.day] = r.status;
     });
 
     const present = records.filter(r => r.status === "Present").length;
@@ -72,7 +77,8 @@ export default function ViewAttendanceCalendar() {
     // Get list of specific absent dates for the "Attention" section
     const absentDates = records
       .filter(r => r.status === "Absent")
-      .map(r => new Date(r.date).getDate())
+      .map(r => parseAttendanceDate(r?.date)?.day)
+      .filter(Boolean)
       .sort((a,b) => a - b);
 
     return { statusMap, present, absent, total: records.length, absentDates };

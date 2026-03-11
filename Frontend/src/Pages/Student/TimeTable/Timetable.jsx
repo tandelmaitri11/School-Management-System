@@ -242,6 +242,11 @@ const TeacherTimeTable = () => {
                       {days.map((day) => {
                         const classInfo = gridData[period][day];
                         const isToday = day === currentDay;
+                        const entries = Array.isArray(classInfo)
+                          ? classInfo
+                          : classInfo
+                          ? [classInfo]
+                          : [];
 
                         return (
                           <td 
@@ -251,17 +256,21 @@ const TeacherTimeTable = () => {
                                 backgroundColor: isToday ? '#fafafa' : '#fff'
                             }}
                           >
-                            {classInfo ? (
-                              <div style={styles.classCard}>
-                                <div className="text-truncate" title={classInfo.subject}>
-                                  <i className="bi bi-book-fill me-2 opacity-50"></i>
-                                  {classInfo.subject}
-                                </div>
-                                <div className="d-flex justify-content-between align-items-center mt-1">
-                                   <Badge bg="white" text="primary" className="border border-primary-subtle text-dark fw-bold">
-                                     {classInfo.teacher || "N/A"}
-                                   </Badge>
-                                </div>
+                            {entries.length ? (
+                              <div className="d-flex flex-column gap-2">
+                                {entries.map((entry, idx) => (
+                                  <div key={`${day}-${period}-${idx}`} style={styles.classCard}>
+                                    <div className="text-truncate" title={entry.subject}>
+                                      <i className="bi bi-book-fill me-2 opacity-50"></i>
+                                      {entry.subject}
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center mt-1">
+                                       <Badge bg="white" text="primary" className="border border-primary-subtle text-dark fw-bold">
+                                         {entry.teacher || "N/A"}
+                                       </Badge>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ) : (
                               <div style={styles.emptyCell}>&middot;</div>

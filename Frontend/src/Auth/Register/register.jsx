@@ -10,6 +10,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    mobile: "",
     password: "",
     role: "",
     studentClass: "",
@@ -109,15 +110,16 @@ export default function Register() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const safeValue = name === "mobile" ? String(value || "").replace(/\D/g, "").slice(0, 10) : value;
 
     setFormData((prev) => {
       if (name === "studentClass") {
-        return { ...prev, studentClass: value, section: "", stream: "", subjectChoice: "" };
+        return { ...prev, studentClass: safeValue, section: "", stream: "", subjectChoice: "" };
       }
       if (name === "stream") {
-        return { ...prev, stream: value, subjectChoice: "" };
+        return { ...prev, stream: safeValue, subjectChoice: "" };
       }
-      return { ...prev, [name]: value };
+      return { ...prev, [name]: safeValue };
     });
 
     setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -169,6 +171,9 @@ export default function Register() {
       const payload = {
         name: formData.name,
         email: formData.email,
+        phone: formData.mobile || "",
+        mobile: formData.mobile || "",
+        contactNumber: formData.mobile || "",
         password: formData.password,
         role: formData.role,
       };
@@ -177,6 +182,7 @@ export default function Register() {
         payload.studentClass = Number(formData.studentClass);
         payload.stream = formData.stream || "";
         payload.subjectChoice = formData.subjectChoice || "";
+        payload.previewSection = previewSection || "";
       }
 
       const res = await api.post("/api/register", payload);
@@ -186,8 +192,20 @@ export default function Register() {
       setShowSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
     } catch (error) {
-      if (error.response?.status === 409) setErrors({ email: error.response.data.error });
-      else setErrors({ server: error.response?.data?.error || "Server error, try again later." });
+      if (error.response?.status === 409) {
+        const conflictMsg =
+          error.response?.data?.error ||
+          error.response?.data?.warning ||
+          error.response?.data?.message ||
+          "Conflict occurred.";
+        if (/email/i.test(conflictMsg)) {
+          setErrors({ email: conflictMsg, server: conflictMsg });
+        } else {
+          setErrors({ server: conflictMsg });
+        }
+      } else {
+        setErrors({ server: error.response?.data?.error || "Server error, try again later." });
+      }
     }
   };
 
@@ -330,6 +348,29 @@ export default function Register() {
                             placeholder="Enter email address"
                             className={`${inputBase} ${errors.email ? "is-invalid" : ""}`}
                             value={formData.email}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password */}
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between">
+                          <label style={labelStyle}>Mobile Number (Optional)</label>
+                          {errors.mobile && <small className="text-danger fw-semibold">{errors.mobile}</small>}
+                        </div>
+                        <div className="input-group input-group-lg mt-1">
+                          <span className="input-group-text border-0 bg-light rounded-start-4">
+                            <i className="bi bi-telephone" />
+                          </span>
+                          <input
+                            type="text"
+                            name="mobile"
+                            placeholder="e.g., 9876543210"
+                            className={`${inputBase} ${errors.mobile ? "is-invalid" : ""}`}
+                            value={formData.mobile}
+                            inputMode="numeric"
+                            maxLength={10}
                             onChange={handleChange}
                           />
                         </div>

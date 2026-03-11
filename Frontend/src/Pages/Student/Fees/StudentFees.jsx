@@ -3,6 +3,9 @@ import api from "../../../api/api";
 
 export default function StudentFees() {
   const [fees, setFees] = useState(null);
+  const [studentMeta, setStudentMeta] = useState(null);
+  const [feeConfig, setFeeConfig] = useState(null);
+  const [feeSummary, setFeeSummary] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -12,9 +15,26 @@ export default function StudentFees() {
   const [paying, setPaying] = useState(false);
 
   const studentMongoId = localStorage.getItem("studentId");
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(Number(amount || 0));
 
-  const isPaid = useMemo(() => Number(fees?.remainingAmount || 0) <= 0, [fees]);
-  const remaining = useMemo(() => Number(fees?.remainingAmount || 0), [fees]);
+  const baseRemaining = useMemo(
+    () => Number(feeSummary?.baseRemaining ?? fees?.remainingAmount ?? 0),
+    [feeSummary, fees]
+  );
+  const lateFee = useMemo(
+    () => Number(feeSummary?.lateFee ?? fees?.lateFeeAccrued ?? 0),
+    [feeSummary, fees]
+  );
+  const totalDue = useMemo(
+    () => Number(feeSummary?.totalDue ?? (baseRemaining + lateFee)),
+    [feeSummary, baseRemaining, lateFee]
+  );
+  const isPaid = useMemo(() => totalDue <= 0, [totalDue]);
   const total = useMemo(() => Number(fees?.totalFees || 0), [fees]);
   const paid = useMemo(() => Number(fees?.paidAmount || 0), [fees]);
 
@@ -25,6 +45,9 @@ export default function StudentFees() {
       // ✅ change endpoint if yours different
       const res = await api.get(`/api/fees/student/${studentMongoId}`);
       setFees(res.data.fees);
+      setStudentMeta(res.data.studentMeta || null);
+      setFeeConfig(res.data.feeConfig || null);
+      setFeeSummary(res.data.feeSummary || null);
     } catch (err) {
       setMessage(err?.response?.data?.message || "No fees found");
     } finally {
@@ -111,14 +134,14 @@ export default function StudentFees() {
   // ---------- Calculate pay amount ----------
   const calculatedPayAmount = useMemo(() => {
     if (!fees) return 0;
-    if (payMode === "full") return remaining;
+    if (payMode === "full") return totalDue;
     const num = Number(payAmount);
     return Number.isFinite(num) ? num : 0;
-  }, [fees, payMode, payAmount, remaining]);
+  }, [fees, payMode, payAmount, totalDue]);
 
   const setQuickPay = (ratio) => {
-    if (!fees || remaining <= 0) return;
-    const amt = Math.max(1, Math.round(remaining * ratio));
+    if (!fees || totalDue <= 0) return;
+    const amt = Math.max(1, Math.round(totalDue * ratio));
     setPayMode("custom");
     setPayAmount(String(amt));
   };
@@ -127,7 +150,7 @@ export default function StudentFees() {
   const payOnline = async () => {
     if (!fees) return;
 
-    if (remaining <= 0) {
+    if (totalDue <= 0) {
       setMessage("Fees already paid.");
       return;
     }
@@ -139,8 +162,8 @@ export default function StudentFees() {
       return;
     }
 
-    if (entered > remaining) {
-      setMessage(`Amount cannot be more than remaining (${remaining}).`);
+    if (entered > totalDue) {
+      setMessage(`Amount cannot be more than total due (${formatMoney(totalDue)}).`);
       return;
     }
 
@@ -195,16 +218,16 @@ export default function StudentFees() {
             const verifyRes = await api.post("/api/fees/razorpay/verify", verifyPayload);
 
             if (verifyRes.data?.success) {
-              setMessage("✅ Online payment successful!");
-              if (verifyRes.data?.fees) setFees(verifyRes.data.fees);
-              else await loadFees();
+              const emailInfo = verifyRes.data?.emailStatus?.sent
+                ? " Receipt email sent."
+                : verifyRes.data?.emailStatus?.reason
+                  ? ` Receipt email not sent: ${verifyRes.data.emailStatus.reason}.`
+                  : "";
+              setMessage(`Online payment successful!${emailInfo}`);
+              await loadFees();
 
               setPayAmount("");
               setPayMode("full");
-
-              // auto-download receipt (optional)
-              const lastPaymentId = verifyRes.data?.receipt?.paymentId;
-              if (lastPaymentId) setTimeout(() => downloadReceipt(lastPaymentId), 300);
             } else {
               setMessage(verifyRes.data?.message || "Payment verification failed");
             }
@@ -290,8 +313,12 @@ export default function StudentFees() {
               <div className="card border-0 shadow-sm rounded-4 h-100">
                 <div className="card-body">
                   <div className="text-muted small">Total Fees</div>
-                  <div className="fs-3 fw-bold">{total}</div>
-                  <div className="text-muted small">Class: {fees.studentClass}</div>
+                  <div className="fs-3 fw-bold">{formatMoney(total)}</div>
+                  <div className="text-muted small">
+                    Class: {studentMeta?.studentClass ?? fees.studentClass}
+                    {studentMeta?.section ? ` | Section: ${studentMeta.section}` : ""}
+                  </div>
+                  <div className="text-muted small">Stream: {studentMeta?.stream || "General"}</div>
                 </div>
               </div>
             </div>
@@ -299,7 +326,7 @@ export default function StudentFees() {
               <div className="card border-0 shadow-sm rounded-4 h-100">
                 <div className="card-body">
                   <div className="text-muted small">Paid</div>
-                  <div className="fs-3 fw-bold text-success">{paid}</div>
+                  <div className="fs-3 fw-bold text-success">{formatMoney(paid)}</div>
                   <div className="text-muted small">Updated from payment history</div>
                 </div>
               </div>
@@ -307,9 +334,9 @@ export default function StudentFees() {
             <div className="col-12 col-sm-6">
               <div className="card border-0 shadow-sm rounded-4 h-100">
                 <div className="card-body">
-                  <div className="text-muted small">Remaining</div>
+                  <div className="text-muted small">Base Pending</div>
                   <div className={`fs-3 fw-bold ${isPaid ? "text-success" : "text-danger"}`}>
-                    {remaining}
+                    {formatMoney(baseRemaining)}
                   </div>
                   <div className="text-muted small">{isPaid ? "Nothing due" : "Pay before due date"}</div>
                 </div>
@@ -318,15 +345,23 @@ export default function StudentFees() {
             <div className="col-12 col-sm-6">
               <div className="card border-0 shadow-sm rounded-4 h-100">
                 <div className="card-body">
-                  <div className="text-muted small">Latest Receipt</div>
-                  <div className="fw-semibold">{lastPayment?.receiptNo || "—"}</div>
-                  <div className="text-muted small">{lastPayment ? formatDateTime(lastPayment.date) : "No payment yet"}</div>
+                  <div className="text-muted small">Late Fee / Total Due</div>
+                  <div className="fw-semibold">
+                    {formatMoney(lateFee)} / <span className="text-danger">{formatMoney(totalDue)}</span>
+                  </div>
+                  <div className="text-muted small">
+                    Due Date:{" "}
+                    {feeSummary?.dueDate ? new Date(feeSummary.dueDate).toLocaleDateString("en-IN") : "N/A"}
+                  </div>
+                  <div className="text-muted small mt-1">
+                    Fee Plan: {feeConfig?.stream ? `${feeConfig.stream} stream` : "General class fee"}
+                  </div>
                   <button
                     className="btn btn-sm btn-outline-primary mt-2"
                     disabled={!lastPayment?._id}
                     onClick={() => downloadReceipt(lastPayment._id)}
                   >
-                    Download Latest
+                    Generate Full Receipt
                   </button>
                 </div>
               </div>
@@ -359,7 +394,7 @@ export default function StudentFees() {
                       fees.paymentHistory.map((p, idx) => (
                         <tr key={p._id || idx}>
                           <td>{idx + 1}</td>
-                          <td className="fw-semibold">{p.amount}</td>
+                          <td className="fw-semibold">{formatMoney(p.amount)}</td>
                           <td>
                             <span className={`badge ${String(p.mode).toLowerCase() === "online" ? "bg-primary" : "bg-secondary"}`}>
                               {p.mode}
@@ -410,8 +445,16 @@ export default function StudentFees() {
                 <>
                   <div className="p-3 rounded-4 bg-light border mb-3">
                     <div className="d-flex justify-content-between">
-                      <div className="text-muted small">Remaining</div>
-                      <div className="fw-bold text-danger">{remaining}</div>
+                      <div className="text-muted small">Total Due</div>
+                      <div className="fw-bold text-danger">{formatMoney(totalDue)}</div>
+                    </div>
+                    <div className="d-flex justify-content-between mt-1">
+                      <div className="text-muted small">Base Pending</div>
+                      <div className="fw-semibold">{formatMoney(baseRemaining)}</div>
+                    </div>
+                    <div className="d-flex justify-content-between mt-1">
+                      <div className="text-muted small">Late Fee</div>
+                      <div className="fw-semibold text-danger">{formatMoney(lateFee)}</div>
                     </div>
                     <div className="d-flex justify-content-between mt-1">
                       <div className="text-muted small">Student</div>
@@ -435,7 +478,7 @@ export default function StudentFees() {
                         disabled={paying}
                       />
                       <label className="form-check-label" htmlFor="payFull">
-                        Pay full remaining ({remaining})
+                        Pay full due ({formatMoney(totalDue)})
                       </label>
                     </div>
 
@@ -459,7 +502,7 @@ export default function StudentFees() {
                           type="number"
                           min="1"
                           className="form-control"
-                          placeholder={`Max ${remaining}`}
+                          placeholder={`Max ${formatMoney(totalDue)}`}
                           value={payAmount}
                           onChange={(e) => setPayAmount(e.target.value)}
                           disabled={paying}
@@ -488,7 +531,7 @@ export default function StudentFees() {
                   {/* Pay button */}
                   <div className="d-grid gap-2">
                     <button className="btn btn-success btn-lg" onClick={payOnline} disabled={paying}>
-                      {paying ? "Processing..." : `Pay Now (${calculatedPayAmount || 0})`}
+                      {paying ? "Processing..." : `Pay Now (${formatMoney(calculatedPayAmount || 0)})`}
                     </button>
 
                     <button
@@ -499,7 +542,7 @@ export default function StudentFees() {
                       }}
                       disabled={!lastPayment?._id || paying}
                     >
-                      Download Latest Receipt
+                      Generate Full Receipt
                     </button>
                   </div>
 
@@ -517,3 +560,4 @@ export default function StudentFees() {
     </div>
   );
 }
+

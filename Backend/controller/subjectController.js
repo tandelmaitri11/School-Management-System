@@ -1,14 +1,25 @@
 const Subject = require("../models/subject");
 const Class = require("../models/class");
 
+const normalizeList = (list) =>
+  (Array.isArray(list) ? list : [])
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object") {
+        if (item.subjectName) return String(item.subjectName).trim();
+        if (item.name) return String(item.name).trim();
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .map((subjectName) => ({ subjectName }));
+
 // Create or update subjects for a class
 exports.createSubject = async (req, res) => {
   try {
-    let { className, subjects } = req.body;
+    let { className, subjects, common, streams, streamName, streamSubjects } = req.body;
 
-    if (!className || !subjects || !subjects.length) {
-      return res.status(400).json({ error: "Class and subjects are required" });
-    }
+    if (!className) return res.status(400).json({ error: "Class is required" });
 
     className = Number(className);
 
@@ -16,25 +27,50 @@ exports.createSubject = async (req, res) => {
     const classDoc = await Class.findOne({ className });
     if (!classDoc) return res.status(404).json({ error: "Class not found" });
 
-    const normalizedSubjects = (subjects || [])
-      .map((s) => ({
-        subjectName: String(s.subjectName || "").trim(),
-      }))
-      .filter((s) => s.subjectName);
-
-    if (normalizedSubjects.length === 0) {
-      return res.status(400).json({ error: "At least one subject is required" });
-    }
+    const normalizedCommon = normalizeList(common || subjects);
+    const normalizedStreams = Array.isArray(streams)
+      ? streams
+          .map((st) => ({
+            name: String(st.name || "").trim(),
+            subjects: normalizeList(st.subjects || st.subjectOptions || []),
+          }))
+          .filter((st) => st.name)
+      : [];
+    const normalizedStreamName = String(streamName || "").trim();
+    const normalizedStreamSubjects = normalizeList(streamSubjects);
 
     // Check if Subject document already exists for this class
     let subjectDoc = await Subject.findOne({ className });
     if (subjectDoc) {
-      subjectDoc.subjects = normalizedSubjects;
+      if (normalizedCommon.length) {
+        subjectDoc.common = normalizedCommon;
+      }
+      if (normalizedStreams.length) {
+        subjectDoc.streams = normalizedStreams;
+      }
+      if (normalizedStreamName && normalizedStreamSubjects.length) {
+        const idx = (subjectDoc.streams || []).findIndex(
+          (s) => String(s.name).toLowerCase() === normalizedStreamName.toLowerCase()
+        );
+        if (idx >= 0) {
+          subjectDoc.streams[idx].subjects = normalizedStreamSubjects;
+        } else {
+          subjectDoc.streams.push({ name: normalizedStreamName, subjects: normalizedStreamSubjects });
+        }
+      }
       await subjectDoc.save();
       return res.status(200).json({ message: "Subjects updated successfully" });
     }
 
-    const newSubject = new Subject({ className, subjects: normalizedSubjects });
+    const newSubject = new Subject({
+      className,
+      common: normalizedCommon,
+      streams: normalizedStreams.length
+        ? normalizedStreams
+        : normalizedStreamName && normalizedStreamSubjects.length
+        ? [{ name: normalizedStreamName, subjects: normalizedStreamSubjects }]
+        : [],
+    });
     await newSubject.save();
     res.status(201).json({ message: "Subjects created successfully" });
   } catch (err) {
@@ -62,15 +98,36 @@ exports.getSubjectsByClass = async (req, res) => {
 
     // Convert to number if stored as number in DB
     if (!isNaN(className)) className = Number(className);
+    const stream = String(req.query.stream || "").trim();
+    const mode = String(req.query.mode || "").trim().toLowerCase();
 
     // Find the Subject document for this class
     const subjectDoc = await Subject.findOne({ className });
-    if (!subjectDoc || !subjectDoc.subjects || subjectDoc.subjects.length === 0) {
-      return res.status(404).json({ message: "No subjects found for this class" });
+    if (!subjectDoc) return res.status(200).json([]);
+
+    const common = normalizeList(
+      subjectDoc.common && subjectDoc.common.length ? subjectDoc.common : subjectDoc.subjects || []
+    );
+    if (!stream) {
+      return res.status(200).json(common);
     }
 
-    // Return the array of subjects
-    res.status(200).json(subjectDoc.subjects);
+    const streamDoc = (subjectDoc.streams || []).find(
+      (s) => String(s.name || "").toLowerCase() === stream.toLowerCase()
+    );
+    const streamSubjects = normalizeList(streamDoc?.subjects || []);
+    if (mode === "streamonly") {
+      return res.status(200).json(streamSubjects);
+    }
+    const merged = [...common, ...streamSubjects];
+    const seen = new Set();
+    const deduped = merged.filter((s) => {
+      const key = String(s.subjectName || "").toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return res.status(200).json(deduped);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -95,22 +152,37 @@ exports.deleteSubject = async (req, res) => {
 exports.updateSubject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { subjects } = req.body;
+    const { subjects, common, streams } = req.body;
 
     const subjectDoc = await Subject.findById(id);
     if (!subjectDoc) return res.status(404).json({ error: "Class subjects not found" });
 
-    const normalizedSubjects = (subjects || [])
-      .map((s) => ({
-        subjectName: String(s.subjectName || "").trim(),
-      }))
-      .filter((s) => s.subjectName);
+    const normalizedCommon = normalizeList(common || subjects);
+    const normalizedStreams = Array.isArray(streams)
+      ? streams
+        .map((st) => ({
+          name: String(st.name || "").trim(),
+          subjects: normalizeList(st.subjects || st.subjectOptions || []),
+        }))
+        .filter((st) => st.name)
+      : null;
 
-    if (normalizedSubjects.length === 0) {
+    if ((common || subjects) !== undefined) {
+      subjectDoc.common = normalizedCommon;
+    }
+
+    if (normalizedStreams !== null) {
+      subjectDoc.streams = normalizedStreams;
+    }
+
+    const hasCommon = Array.isArray(subjectDoc.common) && subjectDoc.common.length > 0;
+    const hasStreamSubjects = Array.isArray(subjectDoc.streams)
+      && subjectDoc.streams.some((st) => Array.isArray(st.subjects) && st.subjects.length > 0);
+
+    if (!hasCommon && !hasStreamSubjects) {
       return res.status(400).json({ error: "At least one subject is required" });
     }
 
-    subjectDoc.subjects = normalizedSubjects;
     await subjectDoc.save();
 
     res.status(200).json({ message: "Subjects updated successfully", updatedDoc: subjectDoc });

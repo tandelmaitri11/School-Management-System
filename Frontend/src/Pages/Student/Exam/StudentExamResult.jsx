@@ -31,7 +31,9 @@ export default function StudentExamResult() {
     const obtained = Number(data.result.obtainedMarks || 0);
     const percentage = Number(data.result.percentage || 0);
     const pass = percentage >= 40;
-    return { total, obtained, percentage, pass };
+    const resultStatus = String(data.result.resultStatus || (pass ? "PASS" : "FAIL")).toUpperCase();
+    const grade = String(data.result.grade || (pass ? "D" : "F")).toUpperCase();
+    return { total, obtained, percentage, pass, grade, resultStatus };
   }, [data]);
 
   if (loading) return <div className="vh-100 d-flex justify-content-center align-items-center"><div className="spinner-border text-primary"/></div>;
@@ -45,7 +47,7 @@ export default function StudentExamResult() {
           {/* Header Banner */}
           <div className={`p-5 text-center text-white ${computed.pass ? 'bg-success' : 'bg-danger'}`}>
              <div className="mb-2 opacity-75 text-uppercase fw-bold small tracking-wide">Result Statement</div>
-             <h1 className="display-4 fw-bold mb-0">{computed.pass ? "PASSED" : "FAILED"}</h1>
+             <h1 className="display-4 fw-bold mb-0">{computed.resultStatus}</h1>
              <p className="mb-0 opacity-75 mt-2">You have {computed.pass ? "successfully cleared" : "not cleared"} the exam.</p>
           </div>
 
@@ -73,7 +75,7 @@ export default function StudentExamResult() {
                    <div className="p-3 bg-light rounded-3">
                       <small className="text-muted d-block text-uppercase" style={{fontSize: '0.7rem', fontWeight: 'bold'}}>Grade</small>
                       <span className={`fs-3 fw-bold ${computed.pass ? 'text-success' : 'text-danger'}`}>
-                        {computed.pass ? 'P' : 'F'}
+                        {computed.grade}
                       </span>
                    </div>
                 </div>
@@ -87,7 +89,7 @@ export default function StudentExamResult() {
                 <div className="progress" style={{height: '10px'}}>
                    <div 
                       className={`progress-bar ${computed.pass ? 'bg-success' : 'bg-danger'}`} 
-                      style={{width: `${computed.percentage}%`}}
+                      style={{width: `${Math.max(0, Math.min(100, computed.percentage))}%`}}
                    ></div>
                 </div>
                 <div className="d-flex justify-content-between mt-2 small text-muted">

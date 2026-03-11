@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -10,60 +10,197 @@ function EditTeacher() {
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    regNumber: "", teacherName: "", mobile: "", role: "Teacher",
-    salary: "", fatherName: "", gender: "", experience: "",
-    email: "", education: "", address: "", bloodGroup: "",
-    dob: "", joiningDate: "", picture: null,
+    regNumber: "",
+    teacherName: "",
+    mobile: "",
+    role: "Teacher",
+    salary: "",
+    fatherName: "",
+    gender: "",
+    experience: "",
+    email: "",
+    education: "",
+    address: "",
+    bloodGroup: "",
+    dob: "",
+    joiningDate: "",
+    picture: null,
+    classes: [],
+    assignedSections: [],
   });
 
+  const [allClasses, setAllClasses] = useState([]);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // Logic remains the same as provided
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
         const res = await api.get(`/api/teachers/getTeacherById/${id}`);
-        const teacher = res.data;
+        const teacher = res.data || {};
         setFormData({
-          ...teacher,
-          dob: teacher.dob ? teacher.dob.slice(0, 10) : "",
-          joiningDate: teacher.joiningDate ? teacher.joiningDate.slice(0, 10) : "",
+          regNumber: teacher.regNumber || "",
+          teacherName: teacher.teacherName || "",
+          mobile: teacher.mobile || "",
+          role: teacher.role || "Teacher",
+          salary: teacher.salary || "",
+          fatherName: teacher.fatherName || "",
+          gender: teacher.gender || "",
+          experience: teacher.experience || "",
+          email: teacher.email || "",
+          education: teacher.education || "",
+          address: teacher.address || "",
+          bloodGroup: teacher.bloodGroup || "",
+          dob: teacher.dob ? String(teacher.dob).slice(0, 10) : "",
+          joiningDate: teacher.joiningDate ? String(teacher.joiningDate).slice(0, 10) : "",
           picture: null,
+          classes: Array.isArray(teacher.classes) ? teacher.classes.map((c) => String(c)) : [],
+          assignedSections: Array.isArray(teacher.assignedSections)
+            ? teacher.assignedSections.map((x) => ({
+                classId: String(x?.classId || ""),
+                section: String(x?.section || "").trim(),
+                stream: String(x?.stream || "").trim(),
+              }))
+            : [],
         });
+
         if (teacher.picture) {
-          setPreview(teacher.picture.startsWith("http") ? teacher.picture : `http://localhost:3000/${teacher.picture}`);
+          setPreview(
+            teacher.picture.startsWith("http")
+              ? teacher.picture
+              : `http://localhost:3000/${teacher.picture}`
+          );
         }
-      } catch (err) {
+      } catch {
         setMessage("Failed to fetch teacher details.");
       }
     };
+
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        setAllClasses(res.data || []);
+      } catch {
+        setAllClasses([]);
+      }
+    };
+
     fetchTeacher();
+    fetchClasses();
   }, [id]);
 
-  const capitalizeWords = (text) => text.split(" ").filter((word) => word.trim() !== "").map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
+  const capitalizeWords = (text) =>
+    String(text || "")
+      .split(" ")
+      .filter((word) => word.trim() !== "")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
 
   const validateField = (name, value) => {
     let error = "";
-    if (["email", "mobile", "teacherName", "salary", "gender", "joiningDate"].includes(name) && !value) error = "Field is required.";
-    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Invalid email.";
-    if (name === "mobile" && value && !/^\d{10}$/.test(value)) error = "Must be 10 digits.";
+    if (["email", "mobile", "teacherName", "salary", "gender", "joiningDate"].includes(name) && !value) {
+      error = "Field is required.";
+    }
+    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      error = "Invalid email.";
+    }
+    if (name === "mobile" && value && !/^\d{10}$/.test(value)) {
+      error = "Must be 10 digits.";
+    }
     return error;
   };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "picture") {
-      const file = files[0];
-      setFormData({ ...formData, picture: file });
-      setPreview(file ? URL.createObjectURL(file) : preview);
-    } else if (name === "teacherName") {
-      setFormData({ ...formData, teacherName: capitalizeWords(value) });
-    } else {
-      setFormData({ ...formData, [name]: value });
+      const file = files?.[0] || null;
+      setFormData((prev) => ({ ...prev, picture: file }));
+      if (file) setPreview(URL.createObjectURL(file));
+      return;
     }
-    setErrors({ ...errors, [name]: validateField(name, value) });
+
+    if (name === "teacherName") {
+      const next = capitalizeWords(value);
+      setFormData((prev) => ({ ...prev, teacherName: next }));
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, next) }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
+  const toggleClassAssignment = (classId) => {
+    setFormData((prev) => {
+      const key = String(classId);
+      const exists = prev.classes.includes(key);
+      return {
+        ...prev,
+        classes: exists ? prev.classes.filter((c) => c !== key) : [...prev.classes, key],
+        assignedSections: exists
+          ? (prev.assignedSections || []).filter((s) => String(s.classId) !== key)
+          : prev.assignedSections || [],
+      };
+    });
+  };
+
+  const assignedClassObjects = useMemo(
+    () => allClasses.filter((c) => formData.classes.includes(String(c._id))),
+    [allClasses, formData.classes]
+  );
+
+  const sectionOptions = useMemo(() => {
+    const out = [];
+    for (const cls of assignedClassObjects) {
+      const classId = String(cls._id);
+      for (const sec of cls.sections || []) {
+        if (sec?.isActive === false) continue;
+        out.push({
+          classId,
+          className: cls.className,
+          section: String(sec.name || "").trim().toUpperCase(),
+          stream: String(sec.stream || "").trim(),
+        });
+      }
+    }
+    return out;
+  }, [assignedClassObjects]);
+
+  const sectionKey = (item) =>
+    `${String(item.classId || "")}__${String(item.section || "").trim().toUpperCase()}__${String(item.stream || "").trim().toLowerCase()}`;
+
+  const assignedSectionKeySet = useMemo(() => {
+    const set = new Set();
+    for (const item of formData.assignedSections || []) {
+      set.add(sectionKey(item));
+    }
+    return set;
+  }, [formData.assignedSections]);
+
+  const toggleSectionAssignment = (item) => {
+    const key = sectionKey(item);
+    setFormData((prev) => {
+      const has = (prev.assignedSections || []).some((x) => sectionKey(x) === key);
+      if (has) {
+        return {
+          ...prev,
+          assignedSections: (prev.assignedSections || []).filter((x) => sectionKey(x) !== key),
+        };
+      }
+      return {
+        ...prev,
+        assignedSections: [
+          ...(prev.assignedSections || []),
+          {
+            classId: String(item.classId || ""),
+            section: String(item.section || "").trim().toUpperCase(),
+            stream: String(item.stream || "").trim(),
+          },
+        ],
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -73,20 +210,39 @@ function EditTeacher() {
       const error = validateField(field, formData[field]);
       if (error) newErrors[field] = error;
     });
+    if ((formData.classes || []).length > 0 && (formData.assignedSections || []).length === 0) {
+      newErrors.assignedSections = "Please assign at least one section for selected class.";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      if (newErrors.assignedSections) setMessage(newErrors.assignedSections);
       return;
     }
 
     try {
+      setSaving(true);
       const data = new FormData();
-      Object.keys(formData).forEach((key) => data.append(key, formData[key]));
+      Object.keys(formData).forEach((key) => {
+        if (key === "classes") {
+          data.append("classes", JSON.stringify(formData.classes || []));
+          return;
+        }
+        if (key === "assignedSections") {
+          data.append("assignedSections", JSON.stringify(formData.assignedSections || []));
+          return;
+        }
+        if (key === "picture" && !formData.picture) return;
+        data.append(key, formData[key] ?? "");
+      });
+
       await api.put(`/api/teachers/updateTeacherById/${id}`, data);
-      setMessage("✅ Success! Redirecting...");
-      setTimeout(() => navigate(`/teachers/viewteacher/${id}`), 1500);
+      setMessage("Success! Redirecting...");
+      setTimeout(() => navigate(`/teachers/viewteacher/${id}`), 1200);
     } catch (error) {
-      setMessage("❌ Update failed.");
+      setMessage(error?.response?.data?.message || "Update failed.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,11 +251,10 @@ function EditTeacher() {
       <div className="row justify-content-center">
         <div className="col-lg-10">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-            {/* Elegant Header */}
             <div className="bg-primary p-4 text-white d-flex justify-content-between align-items-center">
               <div>
                 <h3 className="mb-0 fw-bold">Edit Teacher Profile</h3>
-                <small className="opacity-75">Update information for {formData.teacherName}</small>
+                <small className="opacity-75">Update information for {formData.teacherName || "Teacher"}</small>
               </div>
               <button className="btn btn-sm btn-light rounded-pill px-3" onClick={() => navigate(-1)}>
                 <i className="bi bi-arrow-left me-1"></i> Back
@@ -108,7 +263,6 @@ function EditTeacher() {
 
             <div className="card-body p-4 p-md-5">
               <form onSubmit={handleSubmit}>
-                {/* Profile Photo Section */}
                 <div className="text-center mb-5">
                   <div className="position-relative d-inline-block">
                     <img
@@ -120,7 +274,7 @@ function EditTeacher() {
                     <button
                       type="button"
                       className="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle shadow"
-                      onClick={() => fileInputRef.current.click()}
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       <i className="bi bi-camera"></i>
                     </button>
@@ -128,31 +282,126 @@ function EditTeacher() {
                   <input type="file" ref={fileInputRef} hidden name="picture" onChange={handleChange} />
                 </div>
 
-                {/* Section: Professional Info */}
                 <div className="row g-4 mb-5">
                   <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold"><i className="bi bi-briefcase me-2"></i>Professional Details</h5>
+                    <h5 className="text-primary fw-bold">
+                      <i className="bi bi-briefcase me-2"></i>Professional Details
+                    </h5>
                   </div>
                   <FormInput label="Registration Number" value={formData.regNumber} readOnly icon="bi-hash" bg="bg-light" />
                   <FormInput label="Full Name *" name="teacherName" value={formData.teacherName} onChange={handleChange} error={errors.teacherName} icon="bi-person" />
                   <FormInput label="Email Address *" name="email" value={formData.email} onChange={handleChange} error={errors.email} icon="bi-envelope" />
                   <FormInput label="Phone Number *" name="mobile" value={formData.mobile} onChange={handleChange} error={errors.mobile} icon="bi-phone" />
                   <FormInput label="Role" value={formData.role} readOnly icon="bi-shield-check" bg="bg-light" />
-                  <FormInput label="Monthly Salary *" name="salary" type="number" value={formData.salary} onChange={handleChange} error={errors.salary} icon="bi-currency-rupee" />
+                  <FormInput label="Monthly Salary *" name="salary" type="number" value={formData.salary} onChange={handleChange} error={errors.salary} icon="bi-cash-stack" />
                   <FormInput label="Joining Date *" name="joiningDate" type="date" value={formData.joiningDate} onChange={handleChange} error={errors.joiningDate} icon="bi-calendar-check" />
                 </div>
 
-                {/* Section: Personal Info */}
+                <div className="row g-3 mb-5">
+                  <div className="col-12 border-bottom pb-2 mb-2">
+                    <h5 className="text-primary fw-bold">
+                      <i className="bi bi-diagram-3 me-2"></i>Assigned Classes
+                    </h5>
+                  </div>
+                  <div className="col-12">
+                    <div className="small text-muted mb-3">
+                      Click to assign/remove classes for this teacher. Total selected: {formData.classes.length}
+                    </div>
+                    <div className="row g-2">
+                      {allClasses.map((cls) => {
+                        const clsId = String(cls._id);
+                        const isAssigned = formData.classes.includes(clsId);
+                        return (
+                          <div className="col-md-3 col-sm-4 col-6" key={clsId}>
+                            <button
+                              type="button"
+                              className={`btn w-100 rounded-3 ${isAssigned ? "btn-primary" : "btn-outline-secondary"}`}
+                              onClick={() => toggleClassAssignment(clsId)}
+                            >
+                              Class {cls.className}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <div className="d-flex flex-wrap gap-2">
+                      {assignedClassObjects.length === 0 ? (
+                        <span className="text-muted small">No class assigned</span>
+                      ) : (
+                        assignedClassObjects.map((cls) => (
+                          <span key={String(cls._id)} className="badge bg-light text-dark border px-3 py-2">
+                            Class {cls.className}
+                            <button
+                              type="button"
+                              className="btn btn-sm p-0 ms-2 text-danger"
+                              style={{ lineHeight: 1 }}
+                              onClick={() => toggleClassAssignment(String(cls._id))}
+                            >
+                              <i className="bi bi-x-circle"></i>
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-3 mb-5">
+                  <div className="col-12 border-bottom pb-2 mb-2">
+                    <h5 className="text-primary fw-bold">
+                      <i className="bi bi-grid-3x3-gap me-2"></i>Assigned Sections
+                    </h5>
+                  </div>
+                  <div className="col-12">
+                    <div className="small text-muted mb-3">
+                      Manage section responsibility for this teacher (based on selected classes). Selected: {(formData.assignedSections || []).length}
+                    </div>
+                    {errors.assignedSections && (
+                      <div className="alert alert-warning py-2 px-3 mb-3 small">
+                        {errors.assignedSections}
+                      </div>
+                    )}
+                    {sectionOptions.length === 0 ? (
+                      <div className="text-muted small">Select class first to manage sections.</div>
+                    ) : (
+                      <div className="row g-2">
+                        {sectionOptions.map((item) => {
+                          const key = sectionKey(item);
+                          const selected = assignedSectionKeySet.has(key);
+                          return (
+                            <div className="col-md-4 col-sm-6" key={key}>
+                              <button
+                                type="button"
+                                className={`btn w-100 rounded-3 ${selected ? "btn-success" : "btn-outline-secondary"}`}
+                                onClick={() => toggleSectionAssignment(item)}
+                              >
+                                Class {item.className} - {item.section}
+                                {item.stream ? ` (${item.stream})` : ""}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="row g-4 mb-4">
                   <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold"><i className="bi bi-person-lines-fill me-2"></i>Personal Details</h5>
+                    <h5 className="text-primary fw-bold">
+                      <i className="bi bi-person-lines-fill me-2"></i>Personal Details
+                    </h5>
                   </div>
                   <FormInput label="Father/Husband Name" name="fatherName" value={formData.fatherName} onChange={handleChange} icon="bi-people" />
                   <div className="col-md-4">
                     <label className="form-label fw-bold small">Gender *</label>
                     <select name="gender" className={`form-select ${errors.gender ? "is-invalid" : ""}`} value={formData.gender} onChange={handleChange}>
                       <option value="">Select</option>
-                      <option>Male</option><option>Female</option><option>Other</option>
+                      <option>Male</option>
+                      <option>Female</option>
+                      <option>Other</option>
                     </select>
                   </div>
                   <FormInput label="Experience (Years)" name="experience" type="number" value={formData.experience} onChange={handleChange} icon="bi-star" />
@@ -161,25 +410,34 @@ function EditTeacher() {
                     <label className="form-label fw-bold small">Blood Group</label>
                     <select name="bloodGroup" className="form-select" value={formData.bloodGroup} onChange={handleChange}>
                       <option value="">Select</option>
-                      <option>A+</option><option>B+</option><option>O+</option><option>AB+</option>
-                      <option>A-</option><option>B-</option><option>O-</option><option>AB-</option>
+                      <option>A+</option>
+                      <option>B+</option>
+                      <option>O+</option>
+                      <option>AB+</option>
+                      <option>A-</option>
+                      <option>B-</option>
+                      <option>O-</option>
+                      <option>AB-</option>
                     </select>
                   </div>
                   <FormInput label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} icon="bi-calendar-heart" />
                   <div className="col-12">
                     <label className="form-label fw-bold small">Home Address</label>
-                    <textarea name="address" className="form-control" rows="2" value={formData.address} onChange={handleChange} placeholder="Enter full address..."></textarea>
+                    <textarea name="address" className="form-control" rows="2" value={formData.address} onChange={handleChange} placeholder="Enter full address..." />
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="d-flex justify-content-end gap-2 mt-5">
-                  <button type="button" className="btn btn-outline-secondary px-4 rounded-pill" onClick={() => navigate(-1)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary px-5 rounded-pill shadow-sm fw-bold">Update Profile</button>
+                  <button type="button" className="btn btn-outline-secondary px-4 rounded-pill" onClick={() => navigate(-1)} disabled={saving}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary px-5 rounded-pill shadow-sm fw-bold" disabled={saving}>
+                    {saving ? "Updating..." : "Update Profile"}
+                  </button>
                 </div>
 
                 {message && (
-                  <div className={`alert mt-4 text-center rounded-3 border-0 shadow-sm ${message.includes('✅') ? 'alert-success' : 'alert-danger'}`}>
+                  <div className={`alert mt-4 text-center rounded-3 border-0 shadow-sm ${message.toLowerCase().includes("success") ? "alert-success" : "alert-danger"}`}>
                     {message}
                   </div>
                 )}
@@ -192,14 +450,15 @@ function EditTeacher() {
   );
 }
 
-// Sub-component for clean code
 const FormInput = ({ label, icon, error, bg = "", ...props }) => (
   <div className="col-md-4">
     <label className="form-label fw-bold small">{label}</label>
     <div className="input-group">
-      <span className={`input-group-text bg-white border-end-0 ${error ? 'border-danger' : ''}`}><i className={`bi ${icon} text-muted`}></i></span>
-      <input {...props} className={`form-control border-start-0 ${bg} ${error ? 'is-invalid' : ''}`} />
-      {error && <div className="invalid-feedback">{error}</div>}
+      <span className={`input-group-text bg-white border-end-0 ${error ? "border-danger" : ""}`}>
+        <i className={`bi ${icon} text-muted`}></i>
+      </span>
+      <input {...props} className={`form-control border-start-0 ${bg} ${error ? "is-invalid" : ""}`} />
+      {error ? <div className="invalid-feedback">{error}</div> : null}
     </div>
   </div>
 );

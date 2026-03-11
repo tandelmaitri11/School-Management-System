@@ -21,7 +21,7 @@ const generateId = async (Model, prefix) => {
 
 // ------------------- REGISTER USER -------------------
 // ✅ helper: pick section with free seats
-const pickAvailableSection = async ({ cls, classNumber, streamName }) => {
+const pickAvailableSection = async ({ cls, classNumber, streamName, preferredSection }) => {
   const allSections = (cls.sections || [])
     .filter((s) => s?.isActive !== false && !s.isLocked)
     .map((s) => ({
@@ -30,41 +30,62 @@ const pickAvailableSection = async ({ cls, classNumber, streamName }) => {
       stream: String(s.stream || "").trim(),
     }));
 
-  if (!allSections.length) return null;
+  if (!allSections.length) return { section: null, reason: "NO_ACTIVE_SECTIONS" };
 
-  // ✅ for 11-12: match stream sections (Science → A,B)
-  // If section.stream is empty => treat as general pool
+  // For 11-12, prefer sections tied to selected stream.
+  // For classes 1-10, prefer general (non-stream) sections.
   let candidates = allSections;
-
   if (classNumber >= 11 && streamName) {
     const matched = allSections.filter(
       (s) => s.stream && s.stream.toLowerCase() === streamName.toLowerCase()
     );
-    // if admin didn’t assign stream on sections, fallback to general ones
     candidates = matched.length ? matched : allSections.filter((s) => !s.stream);
   } else {
-    // ✅ class 1-10: prefer general sections only
     const general = allSections.filter((s) => !s.stream);
     candidates = general.length ? general : allSections;
   }
 
-  // stable order: A, B, C...
-  candidates.sort((a, b) => a.name.localeCompare(b.name));
+  const withUsage = await Promise.all(
+    candidates.map(async (sec) => {
+      const used = await Student.countDocuments({ studentClass: classNumber, section: sec.name });
+      const remaining = sec.capacity - used;
+      return { ...sec, used, remaining, fillRatio: used / sec.capacity };
+    })
+  );
 
-  // pick first with seats
-  for (const sec of candidates) {
-    const used = await Student.countDocuments({ studentClass: classNumber, section: sec.name });
-    if (used < sec.capacity) {
-      return sec.name; // ✅ chosen section letter
-    }
+  const available = withUsage.filter((sec) => sec.remaining > 0);
+  if (!available.length) return { section: null, reason: "SECTIONS_FULL" };
+
+  const preferred = String(preferredSection || "").trim().toUpperCase();
+  if (preferred) {
+    const exact = available.find((sec) => sec.name === preferred);
+    if (exact) return { section: exact.name, reason: "PREFERRED_OK" };
+    return { section: null, reason: "PREFERRED_UNAVAILABLE" };
   }
 
-  return null; // all full
+  // Deterministic tie-break to keep preview and final assignment stable.
+  const minRatio = Math.min(...available.map((sec) => sec.fillRatio));
+  const best = available
+    .filter((sec) => sec.fillRatio === minRatio)
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  return { section: best[0]?.name || null, reason: "AUTO_OK" };
 };
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password, role, studentClass, stream, subjectChoice } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      studentClass,
+      stream,
+      subjectChoice,
+      previewSection,
+      phone,
+      mobile,
+      contactNumber,
+    } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: "All fields are required!" });
@@ -112,12 +133,20 @@ exports.registerUser = async (req, res) => {
       }
 
       // ✅ AUTO ASSIGN SECTION (based on stream + capacity)
-      const autoSection = await pickAvailableSection({
+      const picked = await pickAvailableSection({
         cls,
         classNumber,
         streamName: safeStream,
+        preferredSection: previewSection,
       });
 
+      if (picked.reason === "PREFERRED_UNAVAILABLE") {
+        return res
+          .status(409)
+          .json({ error: "Previewed section is no longer available. Please refresh and register again." });
+      }
+
+      const autoSection = picked.section;
       if (!autoSection) {
         return res.status(400).json({ error: "All sections are full. Registration closed." });
       }
@@ -127,6 +156,9 @@ exports.registerUser = async (req, res) => {
         email,
         password: hashedPassword,
         role: "Student",
+        phone: String(phone || "").trim(),
+        mobile: String(mobile || "").trim(),
+        contactNumber: String(contactNumber || "").trim(),
         studentClass: classNumber,
         section: autoSection,        // ✅ auto assigned here
         stream: safeStream,
@@ -142,10 +174,29 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    return res.status(400).json({ error: "Invalid role!" });
+    if (String(role).toLowerCase() === "teacher") {
+      const newTeacher = new Teacher({
+        name,
+        email,
+        password: hashedPassword,
+        role: "Teacher",
+        phone: String(phone || "").trim(),
+        mobile: String(mobile || "").trim(),
+        contactNumber: String(contactNumber || "").trim(),
+      });
+
+      await newTeacher.save();
+
+      return res.status(201).json({
+        message: "Teacher registered successfully!",
+        teacherId: newTeacher.teacherId,
+      });
+    }
+
+    return res.status(400).json({ error: "Invalid role! Use Student or Teacher." });
   } catch (err) {
     console.error("Registration error:", err.message);
-    if (err?.code === 11000) return res.status(409).json({ error: "Duplicate value (email/studentId)" });
+    if (err?.code === 11000) return res.status(409).json({ error: "Duplicate value (email/studentId/teacherId)" });
     res.status(500).json({ error: "Server error, please try again later." });
   }
 };

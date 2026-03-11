@@ -1,25 +1,76 @@
 const mongoose = require("mongoose");
 const Counter = require("./counter");
 
-const teacherSchema = new mongoose.Schema({
-  teacherId: { type: String, unique: true },
-  name: String,
-  email: { type: String, unique: true },
-  password: String,
-  role: { type: String, default: "Teacher" },
-}, { timestamps: true });
+const isValidPhoneOrEmpty = (v) => !String(v || "").trim() || /^\d{10}$/.test(String(v || "").trim());
 
-// Pre-save hook to generate unique teacherId
+const teacherSchema = new mongoose.Schema(
+  {
+    teacherId: { type: String, unique: true, index: true },
+    name: String,
+    email: { type: String, unique: true },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "phone must be exactly 10 digits",
+      },
+    },
+    mobile: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "mobile must be exactly 10 digits",
+      },
+    },
+    contactNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "contactNumber must be exactly 10 digits",
+      },
+    },
+    password: String,
+    role: { type: String, default: "Teacher" },
+  },
+  { timestamps: true }
+);
+
+// Pre-save hook to generate unique teacherId with counter sync.
 teacherSchema.pre("save", async function (next) {
-  if (!this.teacherId) {
-    const counter = await Counter.findOneAndUpdate(
-      { name: "teacher" },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
-    this.teacherId = "TEA" + counter.seq.toString().padStart(4, "0");
+  try {
+    if (!this.teacherId) {
+      const lastTeacher = await this.constructor
+        .findOne({ teacherId: /^TEA/ })
+        .sort({ teacherId: -1 })
+        .select("teacherId");
+
+      const maxSeq = lastTeacher ? parseInt(String(lastTeacher.teacherId).slice(3), 10) : 0;
+
+      await Counter.findOneAndUpdate(
+        { name: "teacher" },
+        { $max: { seq: maxSeq } },
+        { upsert: true }
+      );
+
+      const counter = await Counter.findOneAndUpdate(
+        { name: "teacher" },
+        { $inc: { seq: 1 } },
+        { new: true }
+      );
+
+      this.teacherId = "TEA" + String(counter.seq).padStart(4, "0");
+    }
+
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 });
 
 module.exports = mongoose.model("Teacher", teacherSchema);

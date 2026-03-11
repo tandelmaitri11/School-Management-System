@@ -273,6 +273,58 @@ const sendSalarySlipEmail = async (salary, teacherDoc) => {
   });
 };
 
+const resolveTeacherForEmail = async (salaryDoc) => {
+  const teacherObj = salaryDoc?.teacher || {};
+  const hasEmail = Boolean(teacherObj?.email);
+  if (hasEmail) return teacherObj;
+
+  const regNumber = String(teacherObj?.regNumber || "").trim();
+  if (!regNumber) return null;
+
+  const regTeacher = await TeacherRegister.findOne({ teacherId: regNumber })
+    .select("name email teacherId")
+    .lean();
+  if (!regTeacher?.email) return null;
+
+  return {
+    teacherName: teacherObj?.teacherName || regTeacher.name || "Teacher",
+    email: regTeacher.email,
+    regNumber: regNumber || regTeacher.teacherId || "",
+  };
+};
+
+const notifySalaryProcessedIfNeeded = async (salaryDoc) => {
+  if (!salaryDoc) return;
+  const isFullyProcessed =
+    String(salaryDoc.status || "") === "Paid" &&
+    String(salaryDoc.payoutStatus || "") === "Paid";
+
+  if (!isFullyProcessed || salaryDoc.salarySlipSentAt) return;
+
+  const populated =
+    salaryDoc.teacher && salaryDoc.teacher.email
+      ? salaryDoc
+      : await TeacherSalary.findById(salaryDoc._id).populate(
+          "teacher",
+          "teacherName email regNumber"
+        );
+
+  const recipientTeacher = await resolveTeacherForEmail(populated);
+  if (!recipientTeacher?.email) {
+    console.warn(
+      "Salary mail skipped: teacher email missing",
+      String(salaryDoc?._id || "")
+    );
+    return;
+  }
+
+  await sendSalarySlipEmail(populated, recipientTeacher);
+  await TeacherSalary.updateOne(
+    { _id: salaryDoc._id, salarySlipSentAt: null },
+    { $set: { salarySlipSentAt: new Date() } }
+  );
+};
+
 
 // Fetch all teachers (full details for frontend card)
 exports.getTeachers = async (req, res) => {
@@ -318,10 +370,7 @@ exports.paySalary = async (req, res) => {
         await salary.save();
 
         try {
-            if (payload.status === "Paid") {
-                const teacherDoc = await TeacherInfo.findById(teacher);
-                await sendSalarySlipEmail(salary, teacherDoc);
-            }
+            await notifySalaryProcessedIfNeeded(salary);
         } catch (mailErr) {
             console.error("Salary email failed:", mailErr);
         }
@@ -393,9 +442,7 @@ exports.createPayout = async (req, res) => {
         await salary.save();
 
         try {
-            if (salary.teacher?.email) {
-                await sendSalarySlipEmail(salary, salary.teacher);
-            }
+            await notifySalaryProcessedIfNeeded(salary);
         } catch (mailErr) {
             console.error("Salary email failed:", mailErr);
         }
@@ -493,7 +540,7 @@ exports.verifySalaryRazorpayPayment = async (req, res) => {
         await salary.save();
 
         try {
-            await sendSalarySlipEmail(salary, salary.teacher);
+            await notifySalaryProcessedIfNeeded(salary);
         } catch (mailErr) {
             console.error("Salary email failed:", mailErr);
         }
@@ -571,6 +618,12 @@ exports.updateStatus = async (req, res) => {
             { status },
             { new: true }
         ).populate("teacher", "teacherName email mobile salary");
+
+        try {
+            await notifySalaryProcessedIfNeeded(updated);
+        } catch (mailErr) {
+            console.error("Salary email failed:", mailErr);
+        }
 
         res.json(updated);
     } catch (err) {

@@ -41,10 +41,12 @@ const submissionSchema = new mongoose.Schema(
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
     startedAt: { type: Date, default: Date.now },
     submittedAt: { type: Date, default: null },
-    status: { type: String, enum: ["STARTED", "SUBMITTED"], default: "STARTED" },
+    status: { type: String, enum: ["STARTED", "SUBMITTED", "ABSENT"], default: "STARTED" },
     answers: [submissionAnswerSchema],
     obtainedMarks: { type: Number, default: 0 },
     percentage: { type: Number, default: 0 },
+    grade: { type: String, default: "" },
+    resultStatus: { type: String, enum: ["PASS", "FAIL"], default: "FAIL" },
   },
   { timestamps: true }
 );
@@ -54,6 +56,8 @@ const examSchema = new mongoose.Schema(
     title: { type: String, required: true },
     classId: { type: mongoose.Schema.Types.ObjectId, ref: "Class", required: true },
     className: { type: Number, required: true },
+    section: { type: String, default: "", trim: true, uppercase: true },
+    stream: { type: String, default: "", trim: true },
     subjectId: { type: mongoose.Schema.Types.ObjectId, ref: "Subject", required: true },
     subjectName: { type: String, required: true },
     teacherId: { type: mongoose.Schema.Types.ObjectId, ref: "Teacher", required: true },

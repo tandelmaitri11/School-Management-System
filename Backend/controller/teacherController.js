@@ -39,6 +39,8 @@ const addTeacher = async (req, res) => {
       bloodGroup,
       dob,
       joiningDate,
+      classes,
+      assignedSections,
     } = req.body;
 
     // 🧾 Validation
@@ -64,6 +66,55 @@ const addTeacher = async (req, res) => {
     if (exists)
       return res.status(400).json({ message: "Teacher info already exists." });
 
+    let parsedClasses = [];
+    if (classes !== undefined) {
+      try {
+        const rawClasses = typeof classes === "string" ? JSON.parse(classes) : classes;
+        parsedClasses = Array.isArray(rawClasses)
+          ? [...new Set(rawClasses.map((x) => String(x)).filter(Boolean))]
+          : [];
+      } catch {
+        return res.status(400).json({ message: "Invalid classes payload." });
+      }
+    }
+
+    let parsedAssignedSections = [];
+    if (assignedSections !== undefined) {
+      try {
+        const rawSections = typeof assignedSections === "string" ? JSON.parse(assignedSections) : assignedSections;
+        parsedAssignedSections = Array.isArray(rawSections)
+          ? rawSections.map((x) => ({
+              classId: String(x?.classId || ""),
+              section: String(x?.section || "").trim().toUpperCase(),
+              stream: String(x?.stream || "").trim(),
+            }))
+          : [];
+      } catch {
+        return res.status(400).json({ message: "Invalid assignedSections payload." });
+      }
+    }
+
+    if (parsedAssignedSections.length > 0) {
+      const classSet = new Set(parsedClasses.map((x) => String(x)));
+      const seen = new Set();
+      parsedAssignedSections = parsedAssignedSections.filter((s) => {
+        const classId = String(s?.classId || "");
+        if (!classSet.has(classId)) return false;
+        const key = `${classId}__${String(s?.section || "").trim().toUpperCase()}__${String(s?.stream || "")
+          .trim()
+          .toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    if (parsedClasses.length > 0 && parsedAssignedSections.length === 0) {
+      return res.status(400).json({
+        message: "Please assign at least one section for selected class.",
+      });
+    }
+
     // 🖼️ Handle uploaded picture
     const picture = req.file ? `uploads/teachers/${req.file.filename}` : "";
 
@@ -86,10 +137,22 @@ const addTeacher = async (req, res) => {
       dob,
       joiningDate,
       picture,
+      classes: parsedClasses,
+      assignedSections: parsedAssignedSections,
     });
 
     // 💾 Save to DB
     await teacherInfo.save();
+    await TeacherRegister.updateOne(
+      { _id: mainTeacher._id },
+      {
+        $set: {
+          phone: String(mobile || "").trim(),
+          mobile: String(mobile || "").trim(),
+          contactNumber: String(mobile || "").trim(),
+        },
+      }
+    );
 
     res.status(201).json({
       message: "Teacher info added successfully!",
@@ -155,11 +218,37 @@ const getTeacherProfile = async (req, res) => {
 
     // 2️⃣ Fetch TeacherInfo using regNumber
     const teacherInfo = await TeacherInfo.findOne({ regNumber: teacher.teacherId });
-    if (!teacherInfo)
-      return res.status(404).json({ message: "Teacher info not found" });
+    if (!teacherInfo) {
+      return res.status(200).json({
+        _id: teacher._id,
+        teacherInfoId: null,
+        teacherId: teacher.teacherId,
+        teacherName: teacher.name || "",
+        email: teacher.email || "",
+        role: teacher.role || "Teacher",
+        mobile: teacher.mobile || teacher.phone || teacher.contactNumber || "",
+        salary: null,
+        fatherName: "",
+        gender: "",
+        experience: "",
+        education: "",
+        address: "",
+        bloodGroup: "",
+        dob: null,
+        joiningDate: null,
+        picture: "",
+        subjects: [],
+        classes: [],
+        assignedSections: [],
+        classesFull: [],
+        teacherInfoMissing: true,
+        message: "Teacher info not found. Ask admin to complete teacher profile.",
+      });
+    }
 
-    // 3️⃣ Fetch classes assigned to this teacher
-    const classes = await Class.find({ classTeacher: teacher._id });
+    // 3️⃣ Fetch classes assigned in TeacherInfo (new assignment model)
+    const classIds = Array.isArray(teacherInfo.classes) ? teacherInfo.classes : [];
+    const classes = await Class.find({ _id: { $in: classIds } });
 
     // 4️⃣ Merge documents and add classes & subjects
     const mergedProfile = {
@@ -181,11 +270,21 @@ const getTeacherProfile = async (req, res) => {
       joiningDate: teacherInfo.joiningDate,
       picture: teacherInfo.picture,
       subjects: teacherInfo.subjects || [],
-      classes: classes.map((cls) => cls._id),
+      classes: classIds,
+      assignedSections: teacherInfo.assignedSections || [],
+      classesFull: classes.map((cls) => ({
+        _id: cls._id,
+        className: cls.className,
+        streams: cls.streams || [],
+        sections: cls.sections || [],
+      })),
     };
 
 
-    res.status(200).json(mergedProfile);
+    res.status(200).json({
+      ...mergedProfile,
+      teacherInfoMissing: false,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
@@ -205,8 +304,64 @@ const updateTeacher = async (req, res) => {
     delete updateData.regNumber;
     delete updateData.role;
 
+    if (updateData.classes && typeof updateData.classes === "string") {
+      updateData.classes = JSON.parse(updateData.classes);
+    }
+
+    if (Array.isArray(updateData.classes)) {
+      const classIds = [...new Set(updateData.classes.map((x) => String(x)).filter(Boolean))];
+      updateData.classes = classIds;
+    }
+
+    if (updateData.assignedSections && typeof updateData.assignedSections === "string") {
+      const parsed = JSON.parse(updateData.assignedSections);
+      updateData.assignedSections = Array.isArray(parsed)
+        ? parsed.map((x) => ({
+            classId: String(x?.classId || ""),
+            section: String(x?.section || "").trim().toUpperCase(),
+            stream: String(x?.stream || "").trim(),
+          }))
+        : [];
+    }
+
+    if (Array.isArray(updateData.assignedSections) && Array.isArray(updateData.classes)) {
+      const classSet = new Set(updateData.classes.map((x) => String(x)));
+      const seen = new Set();
+      updateData.assignedSections = updateData.assignedSections.filter((s) => {
+        const classId = String(s?.classId || "");
+        if (!classSet.has(classId)) return false;
+        const key = `${classId}__${String(s?.section || "").trim().toUpperCase()}__${String(s?.stream || "")
+          .trim()
+          .toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    if (Array.isArray(updateData.classes) && updateData.classes.length > 0) {
+      const sectionCount = Array.isArray(updateData.assignedSections) ? updateData.assignedSections.length : 0;
+      if (sectionCount === 0) {
+        return res.status(400).json({
+          message: "Please assign at least one section for selected class.",
+        });
+      }
+    }
+
     const updated = await TeacherInfo.findOneAndUpdate({ regNumber }, updateData, { new: true });
     if (!updated) return res.status(404).json({ message: "Teacher not found." });
+    if (updateData.mobile !== undefined) {
+      await TeacherRegister.updateOne(
+        { teacherId: regNumber },
+        {
+          $set: {
+            phone: String(updateData.mobile || "").trim(),
+            mobile: String(updateData.mobile || "").trim(),
+            contactNumber: String(updateData.mobile || "").trim(),
+          },
+        }
+      );
+    }
 
     res.status(200).json({ message: "Teacher info updated successfully!", teacher: updated });
   } catch (error) {
@@ -237,9 +392,60 @@ const updateTeacherByMongoId = async (req, res) => {
       updateData.classes = JSON.parse(updateData.classes);
     }
 
+    if (Array.isArray(updateData.classes)) {
+      const classIds = [...new Set(updateData.classes.map((x) => String(x)).filter(Boolean))];
+      updateData.classes = classIds;
+    }
+
+    // Convert assignedSections JSON string from FormData
+    if (updateData.assignedSections && typeof updateData.assignedSections === "string") {
+      const parsed = JSON.parse(updateData.assignedSections);
+      updateData.assignedSections = Array.isArray(parsed)
+        ? parsed.map((x) => ({
+            classId: x?.classId || null,
+            section: String(x?.section || "").trim(),
+            stream: String(x?.stream || "").trim(),
+          }))
+        : [];
+    }
+
+    if (Array.isArray(updateData.assignedSections) && Array.isArray(updateData.classes)) {
+      const classSet = new Set(updateData.classes.map((x) => String(x)));
+      const seen = new Set();
+      updateData.assignedSections = updateData.assignedSections.filter((s) => {
+        const classId = String(s?.classId || "");
+        if (!classSet.has(classId)) return false;
+        const key = `${classId}__${String(s?.section || "").trim().toUpperCase()}__${String(s?.stream || "").trim().toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    if (Array.isArray(updateData.classes) && updateData.classes.length > 0) {
+      const sectionCount = Array.isArray(updateData.assignedSections) ? updateData.assignedSections.length : 0;
+      if (sectionCount === 0) {
+        return res.status(400).json({
+          message: "Please assign at least one section for selected class.",
+        });
+      }
+    }
+
     const updated = await TeacherInfo.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updated) return res.status(404).json({ message: "Teacher not found." });
+    if (updateData.mobile !== undefined) {
+      await TeacherRegister.updateOne(
+        { teacherId: updated.regNumber },
+        {
+          $set: {
+            phone: String(updateData.mobile || "").trim(),
+            mobile: String(updateData.mobile || "").trim(),
+            contactNumber: String(updateData.mobile || "").trim(),
+          },
+        }
+      );
+    }
 
     // Fetch full class objects for the updated classes
     const Class = require("../models/class");
@@ -284,9 +490,39 @@ const getTeacherTimetable = async (req, res) => {
   try {
     const { teacherId } = req.params;
 
-    const entries = await Timetable.find({ teacherId })
+    const dayAlias = {
+      mon: "Monday",
+      monday: "Monday",
+      tue: "Tuesday",
+      tues: "Tuesday",
+      tuesday: "Tuesday",
+      wed: "Wednesday",
+      wednesday: "Wednesday",
+      thu: "Thursday",
+      thur: "Thursday",
+      thurs: "Thursday",
+      thursday: "Thursday",
+      fri: "Friday",
+      friday: "Friday",
+      sat: "Saturday",
+      saturday: "Saturday",
+    };
+    const normalizeDay = (d) => {
+      const key = String(d || "").trim().toLowerCase();
+      return dayAlias[key] || String(d || "").trim();
+    };
+    const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    const docs = await Timetable.find({
+      $or: [
+        { "days.slots.teacherId": teacherId },
+        { "days.slots.options.teacherId": teacherId },
+      ],
+    })
       .populate("classId", "className")
-      .sort({ day: 1, period: 1 });
+      .populate("days.slots.teacherId", "name")
+      .populate("days.slots.options.teacherId", "name")
+      .lean();
 
     const periodTimes = [
       { period: 1, start: "09:00", end: "10:00" },
@@ -297,16 +533,48 @@ const getTeacherTimetable = async (req, res) => {
       { period: 5, start: "15:00", end: "16:00" },
     ];
 
-    const result = entries.map((e) => {
-      const time = periodTimes.find((p) => p.period === e.period);
+    const result = [];
+    docs.forEach((doc) => {
+      (doc.days || []).forEach((d) => {
+        const day = normalizeDay(d.day);
+        (d.slots || []).forEach((s) => {
+          const period = Number(s.period);
+          const time = periodTimes.find((p) => p.period === period);
 
-      return {
-        day: e.day,
-        period: e.period,
-        time: time ? `${time.start} - ${time.end}` : "N/A",
-        className: e.classId.className,
-        subject: e.subject,
-      };
+          if (String(s.teacherId?._id || s.teacherId) === String(teacherId) && String(s.subject || "").trim()) {
+            result.push({
+              day,
+              period,
+              time: time ? `${time.start} - ${time.end}` : "N/A",
+              className: doc.classId?.className,
+              subject: s.subject,
+              section: doc.section || "",
+              stream: doc.stream || "",
+              subjectChoice: s.subjectChoice || "",
+            });
+          }
+
+          for (const opt of s.options || []) {
+            if (String(opt.teacherId?._id || opt.teacherId) !== String(teacherId)) continue;
+            result.push({
+              day,
+              period,
+              time: time ? `${time.start} - ${time.end}` : "N/A",
+              className: doc.classId?.className,
+              subject: opt.subject || opt.subjectChoice || s.subject || "Optional",
+              section: doc.section || "",
+              stream: doc.stream || "",
+              subjectChoice: opt.subjectChoice || "",
+            });
+          }
+        });
+      });
+    });
+
+    result.sort((a, b) => {
+      const di = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (di !== 0) return di;
+      return Number(a.period) - Number(b.period);
     });
 
     res.json(result);
@@ -369,3 +637,4 @@ module.exports = {
   getMyExams,
   deleteExam
 };
+

@@ -7,6 +7,17 @@ const attendanceSchema = new mongoose.Schema(
       ref: "Class",
       required: true,
     },
+    section: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+    },
+    stream: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     date: {
       type: String, // YYYY-MM-DD format
       required: true,
@@ -32,5 +43,7 @@ const attendanceSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+attendanceSchema.index({ classId: 1, date: 1, section: 1, stream: 1 }, { unique: true });
 
 module.exports = mongoose.model("Attendance", attendanceSchema);

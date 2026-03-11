@@ -3,6 +3,34 @@ const Class = require("../models/class");
 const StudentInfo = require("../models/studentinfo");
 const Counter = require("../models/counter");
 const Timetable = require("../models/timetable");
+const TeacherRegister = require("../models/techerregister");
+const TeacherInfo = require("../models/teacherinfo");
+
+const getTeacherAssignmentScope = async (teacherMongoId) => {
+  const teacher = await TeacherRegister.findById(teacherMongoId).lean();
+  if (!teacher) return { teacherName: "", classes: [], assignedSections: [] };
+
+  const info = await TeacherInfo.findOne({ regNumber: teacher.teacherId }).lean();
+  if (!info || !Array.isArray(info.classes) || info.classes.length === 0) {
+    return { teacherName: teacher.name || "", classes: [], assignedSections: [] };
+  }
+
+  const classes = await Class.find({ _id: { $in: info.classes } })
+    .sort({ className: 1 })
+    .lean();
+
+  const classSet = new Set(classes.map((c) => String(c._id)));
+  const assignedSections = (Array.isArray(info.assignedSections) ? info.assignedSections : [])
+    .filter((x) => classSet.has(String(x?.classId || "")))
+    .map((x) => ({
+      classId: String(x?.classId || ""),
+      section: String(x?.section || "").trim().toUpperCase(),
+      stream: String(x?.stream || "").trim(),
+    }))
+    .filter((x) => x.classId && x.section);
+
+  return { teacherName: teacher.name || "", classes, assignedSections };
+};
 // ✅ Add Student (by teacher)
 exports.addStudent = async (req, res) => {
   try {
@@ -49,29 +77,53 @@ exports.addStudent = async (req, res) => {
 exports.getStudentsByClass = async (req, res) => {
   try {
     const { teacherId } = req.params;
-
-    const classes = await Class.find({ classTeacher: teacherId })
-      .sort({ className: 1 })
-      .populate("classTeacher", "name email");
-
-    if (!classes.length) {
-      return res.status(404).json({ message: "No classes found for this teacher" });
-    }
+    const { teacherName, classes, assignedSections } = await getTeacherAssignmentScope(teacherId);
+    if (!classes.length) return res.status(200).json([]);
 
     const result = [];
 
     for (const cls of classes) {
-      const students = await Student.find({ studentClass: cls.className });
+      const allowedRows = assignedSections.filter((x) => String(x.classId) === String(cls._id));
+      if (!allowedRows.length) {
+        result.push({
+          className: cls.className,
+          teacher: teacherName || "N/A",
+          totalStudents: 0,
+          students: [],
+        });
+        continue;
+      }
+
+      const studentsRaw = await Student.find({
+        $or: [{ classId: cls._id }, { studentClass: cls.className }],
+      });
+
+      const students = studentsRaw.filter((s) => {
+        const sSection = String(s.section || "").trim().toUpperCase();
+        const sStream = String(s.stream || "").trim().toLowerCase();
+
+        return allowedRows.some((row) => {
+          const rowSection = String(row.section || "").trim().toUpperCase();
+          const rowStream = String(row.stream || "").trim().toLowerCase();
+          if (sSection !== rowSection) return false;
+          if (!rowStream) return true;
+          return sStream === rowStream;
+        });
+      });
 
       result.push({
         className: cls.className,
-        teacher: cls.classTeacher?.name || "N/A",
+        teacher: teacherName || "N/A",
         totalStudents: students.length,
         students: students.map((s) => ({
           id: s._id,
           studentId: s.studentId,
           name: s.name,
           email: s.email,
+          studentClass: s.studentClass || String(cls.className || ""),
+          stream: s.stream || "",
+          subjectChoice: s.subjectChoice || "",
+          section: s.section || "",
         })),
       });
     }
@@ -87,13 +139,32 @@ exports.getStudentsByClass = async (req, res) => {
 exports.getStudentsOfClass = async (req, res) => {
   try {
     const { teacherId, className } = req.params;
-
-    const cls = await Class.findOne({ className, classTeacher: teacherId });
+    const { classes, assignedSections } = await getTeacherAssignmentScope(teacherId);
+    const cls = classes.find((c) => String(c.className) === String(className));
     if (!cls) {
       return res.status(403).json({ message: "You are not authorized for this class!" });
     }
 
-    const students = await Student.find({ studentClass: className });
+    const allowedRows = assignedSections.filter((x) => String(x.classId) === String(cls._id));
+    if (!allowedRows.length) return res.status(200).json([]);
+
+    const studentsRaw = await Student.find({
+      $or: [{ classId: cls._id }, { studentClass: cls.className }],
+    });
+
+    const students = studentsRaw.filter((s) => {
+      const sSection = String(s.section || "").trim().toUpperCase();
+      const sStream = String(s.stream || "").trim().toLowerCase();
+
+      return allowedRows.some((row) => {
+        const rowSection = String(row.section || "").trim().toUpperCase();
+        const rowStream = String(row.stream || "").trim().toLowerCase();
+        if (sSection !== rowSection) return false;
+        if (!rowStream) return true;
+        return sStream === rowStream;
+      });
+    });
+
     res.status(200).json(students);
   } catch (error) {
     console.error("Error fetching class students:", error);
@@ -148,26 +219,82 @@ exports.updateStudentInfo = async (req, res) => {
     const student = await Student.findById(id);
     if (!student) return res.status(404).json({ message: "Student not found!" });
 
-    // ✅ Validate allowed gender & bloodGroup before saving
+    // Update Student (basic + academic) fields
+    const studentPayload = {};
+    const studentFields = ["name", "email", "studentClass", "section", "stream", "subjectChoice"];
+    studentFields.forEach((key) => {
+      if (data[key] !== undefined) studentPayload[key] = data[key];
+    });
+
+    if (studentPayload.studentClass !== undefined) {
+      const cls = Number(studentPayload.studentClass);
+      if (!Number.isInteger(cls) || cls < 1 || cls > 12) {
+        return res.status(400).json({ message: "Invalid class value!" });
+      }
+      studentPayload.studentClass = cls;
+    }
+    if (studentPayload.section !== undefined) {
+      studentPayload.section = String(studentPayload.section || "").trim().toUpperCase();
+    }
+    if (studentPayload.stream !== undefined) {
+      studentPayload.stream = String(studentPayload.stream || "").trim();
+    }
+    if (studentPayload.subjectChoice !== undefined) {
+      studentPayload.subjectChoice = String(studentPayload.subjectChoice || "").trim();
+    }
+    if (Object.keys(studentPayload).length) {
+      await Student.findByIdAndUpdate(id, { $set: studentPayload }, { new: true, runValidators: true });
+    }
+
+    // StudentInfo-only fields
+    const infoPayload = {};
+    const infoFields = [
+      "address",
+      "gender",
+      "dob",
+      "bloodGroup",
+      "cast",
+      "fatherName",
+      "fatherMobile",
+      "fatherOccupation",
+      "fatherIncome",
+      "motherName",
+      "motherMobile",
+      "motherOccupation",
+      "motherIncome",
+    ];
+    infoFields.forEach((key) => {
+      if (data[key] !== undefined) infoPayload[key] = data[key];
+    });
+
+    if (infoPayload.dob !== undefined && infoPayload.dob !== "") {
+      infoPayload.dob = new Date(infoPayload.dob);
+    }
+
+    // Validate allowed gender & bloodGroup before saving
     const validGenders = ["Girl", "Boy", "Other"];
     const validBloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-    if (data.gender && !validGenders.includes(data.gender)) {
+    if (infoPayload.gender && !validGenders.includes(infoPayload.gender)) {
       return res.status(400).json({ message: "Invalid gender value!" });
     }
 
-    if (data.bloodGroup && !validBloodGroups.includes(data.bloodGroup)) {
+    if (infoPayload.bloodGroup && !validBloodGroups.includes(infoPayload.bloodGroup)) {
       return res.status(400).json({ message: "Invalid blood group value!" });
     }
 
-    const updatedInfo = await StudentInfo.findOneAndUpdate(
-      { student: id },
-      { $set: data },
-      { new: true, upsert: true, runValidators: true }
-    );
+    let updatedInfo = null;
+    if (Object.keys(infoPayload).length) {
+      updatedInfo = await StudentInfo.findOneAndUpdate(
+        { student: id },
+        { $set: infoPayload },
+        { new: true, upsert: true, runValidators: true }
+      );
+    }
 
     res.status(200).json({
       message: "Student info saved successfully!",
+      student: await Student.findById(id),
       info: updatedInfo,
     });
   } catch (error) {
@@ -175,8 +302,6 @@ exports.updateStudentInfo = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-// ✅ Get students by ClassId (for attendance)
 exports.getStudentsByClassId = async (req, res) => {
   try {
     const { classId } = req.params;
@@ -498,8 +623,12 @@ exports.getAllStudentsForAdmin = async (req, res) => {
     const result = [];
 
     for (const cls of classes) {
-      // Find all students in that class
-      const students = await Student.find({ studentClass: cls.className });
+      // Keep legacy and current student records compatible:
+      // some records may have numeric studentClass, others string.
+      const classValue = String(cls.className);
+      const students = await Student.find({
+        $or: [{ studentClass: cls.className }, { studentClass: classValue }],
+      }).sort({ name: 1 });
 
       result.push({
         className: cls.className,
@@ -510,7 +639,10 @@ exports.getAllStudentsForAdmin = async (req, res) => {
           studentId: s.studentId,
           name: s.name,
           email: s.email,
-          class: s.studentClass,
+          studentClass: s.studentClass,
+          section: s.section || "",
+          stream: s.stream || "",
+          subjectChoice: s.subjectChoice || "",
         })),
       });
     }
@@ -540,28 +672,107 @@ exports.getTimetableForStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    // 1️⃣ Student
+    // 1?? Student
     const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // 2️⃣ Class
+    // 2?? Class
     const cls = await Class.findOne({ className: student.studentClass });
     if (!cls) {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    // 3️⃣ Timetable
-    const timetable = await Timetable.find({ classId: cls._id })
-      .populate("teacherId", "name")
-      .sort({ day: 1, period: 1 });
+    const dayAlias = {
+      mon: "Monday",
+      monday: "Monday",
+      tue: "Tuesday",
+      tues: "Tuesday",
+      tuesday: "Tuesday",
+      wed: "Wednesday",
+      wednesday: "Wednesday",
+      thu: "Thursday",
+      thur: "Thursday",
+      thurs: "Thursday",
+      thursday: "Thursday",
+      fri: "Friday",
+      friday: "Friday",
+      sat: "Saturday",
+      saturday: "Saturday",
+    };
+    const normalizeDay = (d) => {
+      const key = String(d || "").trim().toLowerCase();
+      return dayAlias[key] || String(d || "").trim();
+    };
 
-    if (!timetable.length) {
+    // 3?? Timetable docs (new model: one doc per class+section+stream, with days[].slots[])
+    const docs = await Timetable.find({ classId: cls._id })
+      .populate("days.slots.teacherId", "name")
+      .populate("days.slots.options.teacherId", "name")
+      .lean();
+
+    if (!docs.length) {
       return res.status(404).json({ message: "No timetable found" });
     }
 
-    // 4️⃣ Format
+    const studentSection = String(student.section || "").trim().toUpperCase();
+    const studentStream = String(student.stream || "").trim();
+    const studentChoice = String(student.subjectChoice || "").trim();
+
+    const flattened = [];
+    docs.forEach((doc) => {
+      const tSection = String(doc.section || "").trim().toUpperCase();
+      const tStream = String(doc.stream || "").trim();
+
+      const sectionOk = !tSection || tSection === studentSection;
+      const streamOk = !tStream || tStream === studentStream;
+      if (!(sectionOk && streamOk)) return;
+
+      (doc.days || []).forEach((dayRow) => {
+        const day = normalizeDay(dayRow.day);
+        (dayRow.slots || []).forEach((slot) => {
+          const options = Array.isArray(slot.options) ? slot.options : [];
+
+          if (options.length > 0) {
+            let chosen = null;
+            if (studentChoice) {
+              chosen = options.find((o) =>
+                String(o.subjectChoice || "")
+                  .toLowerCase()
+                  .split(",")
+                  .map((x) => x.trim())
+                  .includes(studentChoice.toLowerCase())
+              );
+            }
+            if (!chosen) chosen = options[0];
+            if (!chosen) return;
+
+            flattened.push({
+              day,
+              period: Number(slot.period),
+              subject: chosen.subject || chosen.subjectChoice || slot.subject || "Optional",
+              teacher: chosen.teacherId?.name || "N/A",
+            });
+            return;
+          }
+
+          const tChoice = String(slot.subjectChoice || "").trim();
+          const choiceOk = !tChoice || tChoice === studentChoice;
+          if (!choiceOk) return;
+          if (!String(slot.subject || "").trim()) return;
+
+          flattened.push({
+            day,
+            period: Number(slot.period),
+            subject: slot.subject,
+            teacher: slot.teacherId?.name || "N/A",
+          });
+        });
+      });
+    });
+
+    // 4?? Format
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const periods = [1, 2, 3, 4, 5];
 
@@ -569,20 +780,12 @@ exports.getTimetableForStudent = async (req, res) => {
     days.forEach((day) => {
       formatted[day] = [];
       periods.forEach((period) => {
-        const entry = timetable.find(
-          (t) => t.day === day && t.period === period
-        );
+        const entry = flattened.find((t) => t.day === day && t.period === period);
 
         formatted[day].push(
           entry
-            ? {
-                subject: entry.subject, // ✅ STRING
-                teacher: entry.teacherId?.name || "N/A",
-              }
-            : {
-                subject: "Free",
-                teacher: "-",
-              }
+            ? { subject: entry.subject, teacher: entry.teacher }
+            : { subject: "Free", teacher: "-" }
         );
       });
     });
@@ -593,3 +796,4 @@ exports.getTimetableForStudent = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+

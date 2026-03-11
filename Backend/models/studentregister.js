@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const Counter = require("./counter");
 
+const isValidPhoneOrEmpty = (v) => !String(v || "").trim() || /^\d{10}$/.test(String(v || "").trim());
+
 const studentSchema = new mongoose.Schema(
   {
     studentId: { type: String, unique: true, index: true },
@@ -8,6 +10,33 @@ const studentSchema = new mongoose.Schema(
 
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "phone must be exactly 10 digits",
+      },
+    },
+    mobile: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "mobile must be exactly 10 digits",
+      },
+    },
+    contactNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      validate: {
+        validator: isValidPhoneOrEmpty,
+        message: "contactNumber must be exactly 10 digits",
+      },
+    },
 
     role: { type: String, default: "Student" },
 

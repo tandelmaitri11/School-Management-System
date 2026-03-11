@@ -3,11 +3,15 @@ const LmsChapter = require("../models/lmsChapter");
 const LmsMaterial = require("../models/lmsMaterial");
 const LmsProgress = require("../models/lmsProgress");
 const Student = require("../models/studentregister");
+const Class = require("../models/class");
 
 const normalizeClass = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
+const normalize = (value) => String(value || "").trim();
+const normalizeUpper = (value) => normalize(value).toUpperCase();
+const normalizeLower = (value) => normalize(value).toLowerCase();
 
 const ensureTeacherOwnsCourse = async (courseId, teacherId) => {
   const course = await LmsCourse.findById(courseId);
@@ -18,10 +22,10 @@ const ensureTeacherOwnsCourse = async (courseId, teacherId) => {
 
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, subject, classAssigned } = req.body;
+    const { title, description, subject, classAssigned, section, stream = "" } = req.body;
     const teacherId = req.user?.teacherId || req.body.teacherId;
 
-    if (!title || !subject || !classAssigned || !teacherId) {
+    if (!title || !subject || !classAssigned || !section || !teacherId) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -29,12 +33,18 @@ exports.createCourse = async (req, res) => {
     if (classNum === null) {
       return res.status(400).json({ message: "Invalid class value" });
     }
+    const safeSection = normalizeUpper(section);
+    if (!safeSection) {
+      return res.status(400).json({ message: "Section is required" });
+    }
 
     const course = await LmsCourse.create({
       title,
       description,
       subject,
       classAssigned: classNum,
+      section: safeSection,
+      stream: normalize(stream),
       teacherId,
     });
 
@@ -72,6 +82,16 @@ exports.updateCourse = async (req, res) => {
         return res.status(400).json({ message: "Invalid class value" });
       }
       updates.classAssigned = classNum;
+    }
+    if (updates.section !== undefined) {
+      const safeSection = normalizeUpper(updates.section);
+      if (!safeSection) {
+        return res.status(400).json({ message: "Section is required" });
+      }
+      updates.section = safeSection;
+    }
+    if (updates.stream !== undefined) {
+      updates.stream = normalize(updates.stream);
     }
 
     Object.assign(course, updates);
@@ -287,12 +307,54 @@ exports.deleteMaterial = async (req, res) => {
 
 exports.getStudentCourses = async (req, res) => {
   try {
-    const classAssigned = normalizeClass(req.user?.className || req.query.classAssigned);
+    const student = await Student.findById(req.user?.id)
+      .select("studentClass section stream subjectChoice")
+      .lean();
+
+    const classAssigned = normalizeClass(
+      student?.studentClass || req.user?.className || req.query.classAssigned
+    );
     if (classAssigned === null) {
       return res.status(400).json({ message: "Class required" });
     }
 
-    const courses = await LmsCourse.find({ classAssigned }).sort({ createdAt: -1 });
+    const section = normalizeUpper(student?.section || req.query.section);
+    const stream = normalize(student?.stream || req.query.stream);
+    const subjectChoice = normalize(student?.subjectChoice || req.query.subjectChoice);
+
+    const query = { classAssigned };
+    if (section) {
+      query.$or = [{ section }, { section: "ALL" }, { section: { $in: ["", null] } }];
+    }
+    if (stream) {
+      query.$and = [{ $or: [{ stream }, { stream: { $in: ["", null] } }] }];
+    }
+
+    let courses = await LmsCourse.find(query).sort({ createdAt: -1 }).lean();
+
+    if (stream) {
+      const classDoc = await Class.findOne({ className: classAssigned }).select("streams").lean();
+      const streamDoc = (classDoc?.streams || []).find(
+        (s) => normalizeLower(s?.name) === normalizeLower(stream)
+      );
+
+      const optionalSubjects = (streamDoc?.subjectOptions || [])
+        .map((s) => normalizeLower(s))
+        .filter(Boolean);
+
+      if (optionalSubjects.length > 0) {
+        const optionalSet = new Set(optionalSubjects);
+        const chosen = normalizeLower(subjectChoice);
+
+        courses = courses.filter((course) => {
+          const courseSubject = normalizeLower(course?.subject);
+          if (!courseSubject || !optionalSet.has(courseSubject)) return true;
+          if (!chosen) return false;
+          return courseSubject === chosen;
+        });
+      }
+    }
+
     res.status(200).json(courses);
   } catch (error) {
     res.status(500).json({ message: "Error fetching courses", error });
@@ -607,3 +669,6 @@ exports.getAdminProgress = async (req, res) => {
     res.status(500).json({ message: "Error fetching progress", error });
   }
 };
+
+
+

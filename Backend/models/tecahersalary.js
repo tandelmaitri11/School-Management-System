@@ -44,6 +44,11 @@ const teacherSalarySchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    salarySlipSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true } // must be here
 );

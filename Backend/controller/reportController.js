@@ -1,40 +1,53 @@
+const mongoose = require("mongoose");
 const Attendance = require("../models/attendance");
 const Submission = require("../models/submission");
 const Student = require("../models/studentregister");
-const Assignment = require("../models/assignment");
 
 exports.getStudentReport = async (req, res) => {
   try {
     const { studentId } = req.params;
     const { month } = req.query;
 
-    const student = await Student.findById(studentId);
-    if (!student) return res.status(404).json({ message: "Student not found" });
+    const rawStudentId = String(studentId || "").trim();
+    if (!rawStudentId) {
+      return res.status(400).json({ message: "studentId is required" });
+    }
+
+    let student = null;
+    if (mongoose.Types.ObjectId.isValid(rawStudentId)) {
+      student = await Student.findById(rawStudentId);
+    }
+    if (!student) {
+      student = await Student.findOne({ studentId: rawStudentId });
+    }
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const studentMongoId = String(student._id);
 
     // Filter month if provided
-    const monthFilter = month
-      ? { date: { $regex: `^${month}` } } // e.g., "2025-11"
-      : {};
+    const monthFilter = month ? { date: { $regex: `^${month}` } } : {};
 
-    // 📘 Attendance Report
+    // Attendance report
     const attendanceRecords = await Attendance.find({
-      "attendance.studentId": studentId,
+      "attendance.studentId": student._id,
       ...monthFilter,
     });
 
-    let totalDays = 0,
-      presentDays = 0,
-      absentDays = 0;
+    let totalDays = 0;
+    let presentDays = 0;
+    let absentDays = 0;
 
     const attendanceChart = attendanceRecords.map((rec) => {
-      const record = rec.attendance.find(
-        (a) => a.studentId.toString() === studentId
-      );
+      const record = rec.attendance.find((a) => String(a.studentId) === studentMongoId);
       if (record) {
-        totalDays++;
-        if (record.status === "Present") presentDays++;
-        else absentDays++;
+        totalDays += 1;
+        if (record.status === "Present") presentDays += 1;
+        else absentDays += 1;
       }
+
       return {
         date: rec.date,
         Present: record?.status === "Present" ? 1 : 0,
@@ -46,14 +59,12 @@ exports.getStudentReport = async (req, res) => {
       totalDays,
       presentDays,
       absentDays,
-      percentage: totalDays
-        ? ((presentDays / totalDays) * 100).toFixed(2)
-        : 0,
+      percentage: totalDays ? ((presentDays / totalDays) * 100).toFixed(2) : 0,
       chart: attendanceChart,
     };
 
-    // 📗 Assignment Report
-    const submissions = await Submission.find({ studentId }).populate("assignmentId");
+    // Assignment report
+    const submissions = await Submission.find({ studentId: student._id }).populate("assignmentId");
 
     const totalAssignments = submissions.length;
     const graded = submissions.filter((s) => s.grade).length;
@@ -88,10 +99,11 @@ exports.getStudentReport = async (req, res) => {
       })),
     };
 
-    // ✅ Include class info in response
     res.json({
+      studentId: student.studentId,
+      studentMongoId,
       studentName: student.name,
-      className: student.studentClass, // <-- here
+      className: student.studentClass,
       attendance,
       assignments,
     });
@@ -100,4 +112,3 @@ exports.getStudentReport = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-

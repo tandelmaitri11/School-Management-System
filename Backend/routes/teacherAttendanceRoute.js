@@ -3,27 +3,18 @@ const router = express.Router();
 
 const {
   markTeacherAttendance,
+  validateTeacherAttendanceDate,
   getAttendanceByDate,
   getAttendanceByTeacher,
   getAllTeacherAttendance,
-  getalltecaher
+  getalltecaher,
 } = require("../controller/teacherAttendanceController");
 
-// ✅ Get all teachers (for attendance page)
 router.get("/teachers", getalltecaher);
-
-// ✅ Mark attendance
+router.get("/validate-date", validateTeacherAttendanceDate);
 router.post("/mark", markTeacherAttendance);
-
-// ✅ Get attendance by date
 router.get("/date/:date", getAttendanceByDate);
-
-// ✅ Get attendance by teacher
 router.get("/teacher/:teacherId", getAttendanceByTeacher);
-
-// ✅ Get all records
 router.get("/", getAllTeacherAttendance);
-
-
 
 module.exports = router;

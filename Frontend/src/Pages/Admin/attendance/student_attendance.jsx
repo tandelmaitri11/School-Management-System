@@ -42,6 +42,8 @@ const fmtDate = (value) => {
 export default function AdminClassAttendance() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedStream, setSelectedStream] = useState("");
 
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,50 @@ export default function AdminClassAttendance() {
     fetchClasses();
   }, []);
 
+  useEffect(() => {
+    setSelectedSection("");
+    setSelectedStream("");
+  }, [selectedClass]);
+
+  const selectedClassDoc = useMemo(
+    () => classes.find((cls) => String(cls._id) === String(selectedClass)) || null,
+    [classes, selectedClass]
+  );
+
+  const sectionOptions = useMemo(() => {
+    if (!selectedClassDoc?.sections?.length) return [];
+
+    const names = selectedClassDoc.sections
+      .filter((sec) => sec?.isActive !== false)
+      .map((sec) => String(sec?.name || "").trim().toUpperCase())
+      .filter(Boolean);
+
+    return [...new Set(names)].sort();
+  }, [selectedClassDoc]);
+
+  const streamOptions = useMemo(() => {
+    if (!selectedClassDoc) return [];
+
+    const classStreams = (selectedClassDoc.streams || [])
+      .filter((st) => st?.isActive !== false)
+      .map((st) => String(st?.name || "").trim())
+      .filter(Boolean);
+
+    const sectionStreams = (selectedClassDoc.sections || [])
+      .filter((sec) => sec?.isActive !== false)
+      .filter((sec) => !selectedSection || String(sec?.name || "").trim().toUpperCase() === selectedSection)
+      .map((sec) => String(sec?.stream || "").trim())
+      .filter(Boolean);
+
+    return [...new Set([...sectionStreams, ...classStreams])];
+  }, [selectedClassDoc, selectedSection]);
+
+  useEffect(() => {
+    if (selectedStream && !streamOptions.includes(selectedStream)) {
+      setSelectedStream("");
+    }
+  }, [selectedStream, streamOptions]);
+
   const fetchAttendance = async () => {
     if (!selectedClass) return;
     setLoading(true);
@@ -72,7 +118,11 @@ export default function AdminClassAttendance() {
     setQuery("");
 
     try {
-      const res = await api.get(`/api/attendance/class/${selectedClass}`);
+      const params = {};
+      if (selectedSection) params.section = selectedSection;
+      if (selectedStream) params.stream = selectedStream;
+
+      const res = await api.get(`/api/attendance/class/${selectedClass}`, { params });
       const data = Array.isArray(res.data) ? res.data : [];
       // sort newest first (optional)
       data.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -304,6 +354,36 @@ export default function AdminClassAttendance() {
                 ))}
               </select>
 
+              <select
+                className="form-select border-0 shadow-none"
+                style={{ width: 180, fontWeight: 700, cursor: "pointer" }}
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                disabled={!selectedClass}
+              >
+                <option value="">All Sections</option>
+                {sectionOptions.map((sec) => (
+                  <option key={sec} value={sec}>
+                    Section {sec}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="form-select border-0 shadow-none"
+                style={{ width: 180, fontWeight: 700, cursor: "pointer" }}
+                value={selectedStream}
+                onChange={(e) => setSelectedStream(e.target.value)}
+                disabled={!selectedClass || streamOptions.length === 0}
+              >
+                <option value="">All Streams</option>
+                {streamOptions.map((stream) => (
+                  <option key={stream} value={stream}>
+                    {stream}
+                  </option>
+                ))}
+              </select>
+
               <div className="d-flex gap-2 align-items-center">
                 <input
                   type="date"
@@ -366,7 +446,7 @@ export default function AdminClassAttendance() {
                 Select a class to view analytics
               </h5>
               <div className="text-muted" style={{ fontSize: 13 }}>
-                Choose a class and click <b>Analyze</b>. Optionally filter by date range.
+                Choose class/section/stream and click <b>Analyze</b>. Optionally filter by date range.
               </div>
             </div>
           </div>

@@ -51,12 +51,19 @@ export default function StudentDashboard() {
   const [attendance, setAttendance] = useState({ presentDays: 0, absentDays: 0 });
   const [submissions, setSubmissions] = useState([]);
   const [fees, setFees] = useState(null);
+  const [feeSummary, setFeeSummary] = useState(null);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   
   // Notification State
   const [showAssignmentAlert, setShowAssignmentAlert] = useState(true);
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(Number(amount || 0));
 
   // --- DATA LOADING ---
   useEffect(() => {
@@ -67,7 +74,7 @@ export default function StudentDashboard() {
         setStudent(profileRes.data);
 
         const [assignRes, attendRes, submitRes, feeRes, examsRes] = await Promise.all([
-          api.get(`/api/studentDashboard/assignments/${profileRes.data.studentClass}`),
+          api.get(`/api/studentDashboard/assignments/${profileRes.data.studentClass}?studentId=${studentId}`),
           api.get(`/api/studentDashboard/attendance/${studentId}`),
           api.get(`/api/studentDashboard/submissions/${studentId}`),
           api.get(`/api/fees/student/${studentId}`),
@@ -78,6 +85,7 @@ export default function StudentDashboard() {
         setAttendance(attendRes.data);
         setSubmissions(submitRes.data);
         setFees(feeRes.data.fees);
+        setFeeSummary(feeRes.data.feeSummary || null);
         setExams(examsRes.data.exams || []);
         setLoadError("");
       } catch (err) {
@@ -108,7 +116,8 @@ export default function StudentDashboard() {
 
   const gradedCount = submissions.filter((s) => s.grade).length;
   const pendingSubmission = assignments.length - submissions.length;
-  const isPaid = fees?.remainingAmount <= 0;
+  const totalDue = Number(feeSummary?.totalDue ?? ((fees?.remainingAmount || 0) + (fees?.lateFeeAccrued || 0)));
+  const isPaid = totalDue <= 0;
   const now = new Date();
   const upcomingExams = exams
     .filter((e) => new Date(e.startTime) > now)
@@ -125,8 +134,9 @@ export default function StudentDashboard() {
       type: 'danger',
       icon: 'bi-exclamation-triangle-fill',
       title: 'Fee Payment Pending',
-      message: `You have a remaining balance of ₹${fees.remainingAmount}. Please clear your dues.`,
-      action: 'Pay Now'
+      message: `You have a total due of ${formatMoney(totalDue)}. Please clear your dues.`,
+      action: 'Pay Now',
+      actionLink: '/student/fees'
     });
   }
 
@@ -183,13 +193,14 @@ export default function StudentDashboard() {
   };
 
   const feesData = {
-    labels: ["Paid", "Remaining"],
-    datasets: [{ data: fees ? [fees.paidAmount, fees.remainingAmount] : [0, 0], backgroundColor: [colors.primary, "#cbd5e1"], borderWidth: 0 }],
+    labels: ["Paid", "Total Due"],
+    datasets: [{ data: fees ? [fees.paidAmount, totalDue] : [0, 0], backgroundColor: [colors.primary, "#cbd5e1"], borderWidth: 0 }],
   };
 
   const classLabel = student.studentClass ? `Class ${student.studentClass}` : "Class N/A";
   const sectionLabel = student.section ? `-${student.section}` : "";
   const streamLabel = student.stream ? ` (${student.stream})` : "";
+  const subjectChoiceLabel = student.subjectChoice ? ` | Choice: ${student.subjectChoice}` : "";
 
   return (
     <div className="min-vh-100 pb-5 fade-in" style={{ backgroundColor: colors.bg }}>
@@ -207,6 +218,7 @@ export default function StudentDashboard() {
               {classLabel}
               {sectionLabel}
               {streamLabel}
+              {subjectChoiceLabel}
             </p>
           </div>
           
@@ -294,7 +306,13 @@ export default function StudentDashboard() {
           <StatCard title="Attendance" value={`${attendancePercent}%`} subtitle="Overall Presence" icon="bi-person-check" color="success" />
           <StatCard title="Assignments" value={pendingSubmission} subtitle="Pending Submission" icon="bi-journal-text" color="warning" />
           <StatCard title="Grades" value={gradedCount} subtitle="Assignments Graded" icon="bi-award" color="primary" />
-          <StatCard title="Fees Paid" value={fees ? `₹${fees.paidAmount}` : "0"} subtitle={isPaid ? "Fully Paid" : "Partial Payment"} icon="bi-wallet2" color={isPaid ? "success" : "danger"} />
+                    <StatCard
+            title="Fees Paid"
+            value={fees ? formatMoney(fees.paidAmount) : formatMoney(0)}
+            subtitle={isPaid ? "Fully Paid" : "Partial Payment"}
+            icon="bi-wallet2"
+            color={isPaid ? "success" : "danger"}
+          />
         </div>
 
         <div className="row g-4">
@@ -391,16 +409,16 @@ export default function StudentDashboard() {
                  </div>
                  <div className="d-flex justify-content-between border-bottom pb-2 mb-2 small">
                     <span className="text-muted">Total Fees</span>
-                    <span className="fw-bold">₹{fees ? fees.totalAmount : 0}</span>
+                    <span className="fw-bold">{fees ? formatMoney(fees.totalFees) : formatMoney(0)}</span>
                  </div>
                  <div className="d-flex justify-content-between border-bottom pb-2 mb-2 small">
                     <span className="text-muted">Paid</span>
-                    <span className="fw-bold text-success">₹{fees ? fees.paidAmount : 0}</span>
+                    <span className="fw-bold text-success">{fees ? formatMoney(fees.paidAmount) : formatMoney(0)}</span>
                  </div>
-                 <div className="d-flex justify-content-between pt-2 small">
-                    <span className="text-muted">Remaining</span>
-                    <span className="fw-bold text-danger">₹{fees ? fees.remainingAmount : 0}</span>
-                 </div>
+                  <div className="d-flex justify-content-between pt-2 small">
+                    <span className="text-muted">Total Due</span>
+                    <span className="fw-bold text-danger">{formatMoney(totalDue)}</span>
+                  </div>
               </div>
             </div>
           </div>
@@ -433,3 +451,6 @@ function StatCard({ title, value, subtitle, icon, color }) {
     </div>
   );
 }
+
+
+

@@ -1,0 +1,51 @@
+.dashboard-shell {
+  font-size: var(--dash-font-size, 16px);
+  background-color: var(--dash-bg, #f6f7fb);
+  color: var(--dash-text, #212529);
+}
+
+.dashboard-shell .card {
+  background-color: var(--dash-card-bg) !important;
+  color: var(--dash-text);
+  border-color: var(--dash-border) !important;
+}
+
+.dashboard-shell .table {
+  color: var(--dash-text);
+}
+
+.dashboard-shell .table-light {
+  --bs-table-bg: var(--dash-table-head);
+  --bs-table-color: var(--dash-text);
+}
+
+.dashboard-shell .bg-light {
+  background-color: var(--dash-soft-bg) !important;
+}
+
+.dashboard-shell .text-muted {
+  color: var(--dash-muted) !important;
+}
+
+.dashboard-shell .form-control,
+.dashboard-shell .form-select {
+  background-color: var(--dash-card-bg);
+  color: var(--dash-text);
+  border-color: var(--dash-border);
+}
+
+.dashboard-shell .form-control::placeholder {
+  color: var(--dash-muted);
+}
+
+.dashboard-shell .list-group-item {
+  background-color: var(--dash-card-bg);
+  color: var(--dash-text);
+  border-color: var(--dash-border);
+}
+
+.dashboard-shell .alert-info {
+  background-color: color-mix(in srgb, var(--dash-link) 14%, var(--dash-card-bg));
+  color: var(--dash-text);
+  border-color: color-mix(in srgb, var(--dash-link) 28%, var(--dash-border));
+}

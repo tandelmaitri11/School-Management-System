@@ -21,6 +21,11 @@ export function validateRegister(formData) {
     errors.password = "Password must be at least 6 characters!";
   }
 
+  // Mobile (optional, but if present must be 10 digits)
+  if (formData.mobile && !/^\d{10}$/.test(String(formData.mobile).trim())) {
+    errors.mobile = "Mobile number must be exactly 10 digits!";
+  }
+
   // Role
   if (!formData.role) {
     errors.role = "Role is required!";

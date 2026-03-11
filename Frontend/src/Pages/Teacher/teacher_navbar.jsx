@@ -2,24 +2,77 @@ import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { Modal, Button } from "react-bootstrap";
+import { useDashboardSettings } from "../../context/dashboardSettingsContext";
+import NotificationBell from "../../Components/NotificationBell";
+import useNotifications from "../../hooks/useNotifications";
+
+const customStyles = `
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  .sidebar-link {
+    transition: all 0.2s ease-in-out;
+    border-radius: 0 8px 8px 0;
+    margin-right: 8px;
+  }
+  .sidebar-link:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    color: #0d6efd !important;
+    transform: translateX(4px);
+  }
+  .sidebar-link:hover i {
+    color: #0d6efd !important;
+  }
+  .submenu-link {
+    transition: all 0.2s ease;
+    border-radius: 6px;
+  }
+  .submenu-link:hover {
+    background-color: rgba(13, 110, 253, 0.08);
+    color: #0d6efd !important;
+  }
+`;
 
 export default function TeacherNavbar({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { settings } = useDashboardSettings();
+  const isDark = settings.theme === "dark";
   const userName = localStorage.getItem("userName") || "Teacher";
   const userRole = localStorage.getItem("userRole") || "Teacher";
 
   const [openMenu, setOpenMenu] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Handle window resize to adjust sidebar visibility
+  const { notifications } = useNotifications(100);
+  const announcementCount = (notifications || []).filter(
+    (n) => n?.type === "ANNOUNCEMENT" && !n?.isRead
+  ).length;
+
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
       if (window.innerWidth < 768) setSidebarOpen(false);
       else setSidebarOpen(true);
     };
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -28,11 +81,19 @@ export default function TeacherNavbar({ children }) {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
     localStorage.clear();
+    setShowLogoutModal(false);
     navigate("/login");
   };
 
-  // Close sidebar after clicking a link on mobile
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
+  };
+
   const handleLinkClick = () => {
     if (windowWidth < 768) setSidebarOpen(false);
   };
@@ -44,9 +105,9 @@ export default function TeacherNavbar({ children }) {
       icon: "bi-easel2",
       submenu: [{ label: "All Classes", path: "/teacher/classes" }],
     },
-     {
+    {
       label: "Time Table",
-      icon: "bi-ease",
+      icon: "bi-calendar3",
       submenu: [{ label: "Time Table", path: "/teacher/timetable" }],
     },
     {
@@ -57,11 +118,13 @@ export default function TeacherNavbar({ children }) {
         { label: "View Assignment", path: "/teacher/viewassignment" },
       ],
     },
-     {
+    {
       label: "Exam",
-      icon: "bi-ease",
-      submenu: [{ label: "AddExam", path: "/teacher/addexam" },
-          { label: "MangeExam", path: "/teacher/mangeexam" },],
+      icon: "bi-file-earmark-text",
+      submenu: [
+        { label: "Add Exam", path: "/teacher/addexam" },
+        { label: "Manage Exam", path: "/teacher/mangeexam" },
+      ],
     },
     {
       label: "Students",
@@ -93,131 +156,233 @@ export default function TeacherNavbar({ children }) {
       icon: "bi-collection-play",
       submenu: [{ label: "LMS Content", path: "/teacher/lms" }],
     },
+    {
+      label: "Announcements",
+      icon: "bi-megaphone",
+      submenu: [
+        {
+          label: "Announcements / Notifications",
+          path: "/teacher/announcements",
+        },
+      ],
+    },
     { label: "Profile", icon: "bi-person-circle", path: "/teacher/profile" },
+    { label: "Settings", icon: "bi-gear", path: "/teacher/settings" },
   ];
 
   const sidebarStyle = {
-    width: "260px",
-    backgroundColor: "#ffffff",
-    borderRight: "1px solid #e0e0e0",
-    transition: "transform 0.3s ease-in-out",
+    width: "280px",
+    backgroundColor: "var(--dash-card-bg)",
+    borderRight: "1px solid rgba(0,0,0,0.05)",
+    transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     zIndex: 1055,
     position: "fixed",
-    top: "65px",
+    top: "70px",
     left: 0,
-    height: "calc(100% - 65px)",
+    height: "calc(100% - 70px)",
     transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+    overflow: "hidden",
+    boxShadow:
+      sidebarOpen && windowWidth < 768 ? "4px 0 15px rgba(0,0,0,0.1)" : "none",
   };
 
   const headerStyle = {
-    height: "65px",
-    backgroundColor: "#0d6efd",
+    height: "70px",
+    backgroundColor: isDark ? "#17181a" : "#0d6efd",
     color: "#fff",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    zIndex: 1060,
   };
 
   const activeLinkStyle =
-    "fw-semibold border-start border-3 border-primary ps-3 text-primary";
+    "fw-bold bg-primary bg-opacity-10 text-primary border-start border-4 border-primary";
 
   return (
-    <div className="d-flex flex-column vh-100">
+    <div
+      className="d-flex flex-column vh-100 dashboard-shell bg-light"
+      style={{ fontSize: "var(--dash-font-size)", paddingTop: "70px" }}
+    >
+      <style>{customStyles}</style>
+
       {/* HEADER */}
       <header
-        className="d-flex justify-content-between align-items-center px-4"
+        className="d-flex justify-content-between align-items-center px-3 px-md-4"
         style={headerStyle}
       >
         <div className="d-flex align-items-center">
           {windowWidth < 768 && (
-            <button className="btn btn-light me-3" onClick={toggleSidebar}>
-              <i className="bi bi-list"></i>
+            <button
+              className="btn btn-outline-light border-0 me-3 rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "40px", height: "40px" }}
+              onClick={toggleSidebar}
+            >
+              <i className="bi bi-list fs-4"></i>
             </button>
           )}
-          <h5 className="mb-0 fw-bold">
-            <i className="bi bi-mortarboard-fill me-2"></i>Teacher Dashboard
-          </h5>
+
+          <div className="d-flex align-items-center bg-white bg-opacity-10 px-3 py-2 rounded-pill">
+            <i className="bi bi-mortarboard-fill fs-5 me-2 text-white"></i>
+            <h5 className="mb-0 fw-bold tracking-wide">Teacher Portal</h5>
+          </div>
         </div>
 
-        <div className="text-white fw-semibold">Welcome, {userName}</div>
+        <div className="d-flex align-items-center gap-3 gap-md-4">
+          <NotificationBell />
+          <div className="d-none d-sm-flex align-items-center gap-2 bg-white bg-opacity-10 py-1 px-3 rounded-pill border border-light border-opacity-25">
+            <div className="text-white text-end">
+              <div className="fw-bold" style={{ fontSize: "0.9rem" }}>
+                {userName}
+              </div>
+            </div>
+            <i className="bi bi-person-circle fs-4 text-white"></i>
+          </div>
+        </div>
       </header>
 
       {/* BODY */}
       <div className="d-flex flex-grow-1 overflow-hidden">
         {/* SIDEBAR */}
-        <aside className="p-3 shadow-sm d-flex flex-column justify-content-between" style={sidebarStyle}>
-          <div>
-            <ul className="nav flex-column mt-2">
-              {menuItems.map((item, idx) => (
-                <li key={idx} className="nav-item mb-2">
-                  {item.submenu ? (
-                    <>
-                      <div
-                        className={`d-flex justify-content-between align-items-center px-3 py-2 rounded ${
-                          item.submenu.some(
-                            (sub) => sub.path === location.pathname
-                          )
-                            ? "bg-light fw-semibold"
-                            : ""
-                        }`}
-                        style={{ cursor: "pointer", color: "#444", transition: "all 0.3s" }}
-                        onClick={() => toggleMenu(item.label)}
-                      >
-                        <div className="d-flex align-items-center">
-                          <i className={`bi ${item.icon} me-2 text-secondary`}></i>
-                          <span>{item.label}</span>
-                        </div>
-                        <i
-                          className={`bi bi-chevron-${openMenu === item.label ? "up" : "down"} text-muted`}
-                          style={{ fontSize: "0.9rem", transition: "0.3s" }}
-                        ></i>
-                      </div>
+        <aside className="d-flex flex-column bg-white" style={sidebarStyle}>
+          <div
+            className="sidebar-scroll py-3"
+            style={{ overflowY: "auto", flex: 1 }}
+          >
+            <ul className="nav flex-column gap-1">
+              <li
+                className="nav-item px-3 mb-2 text-uppercase text-muted fw-bold"
+                style={{ fontSize: "0.75rem", letterSpacing: "1px" }}
+              >
+                Main Menu
+              </li>
 
-                      {openMenu === item.label && (
-                        <ul className="nav flex-column mt-1 ms-4 border-start ps-2">
-                          {item.submenu.map((sub, i) => (
-                            <li key={i} className="nav-item mb-1">
-                              <NavLink
-                                className={({ isActive }) =>
-                                  `nav-link py-1 px-2 ${isActive ? activeLinkStyle : "text-muted ps-2"}`
-                                }
-                                to={sub.path}
-                                onClick={handleLinkClick} // Close sidebar on mobile
-                              >
-                                <i className="bi bi-dot me-1"></i>
-                                {sub.label}
-                              </NavLink>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  ) : (
-                    <NavLink
-                      className={({ isActive }) =>
-                        `nav-link d-flex align-items-center px-3 py-2 ${
-                          isActive ? activeLinkStyle : "text-muted"
-                        }`
-                      }
-                      to={item.path}
-                      onClick={handleLinkClick} // Close sidebar on mobile
-                    >
-                      <i className={`bi ${item.icon} me-2 text-secondary`}></i>
-                      {item.label}
-                    </NavLink>
-                  )}
-                </li>
-              ))}
+              {menuItems.map((item, idx) => {
+                const isActiveGroup =
+                  item.submenu &&
+                  item.submenu.some((sub) => sub.path === location.pathname);
+
+                const isOpen = openMenu === item.label || isActiveGroup;
+
+                return (
+                  <li key={idx} className="nav-item w-100">
+                    {item.submenu ? (
+                      <>
+                        <div
+                          className={`sidebar-link d-flex justify-content-between align-items-center px-4 py-2 text-secondary ${
+                            isActiveGroup
+                              ? "bg-primary bg-opacity-10 text-primary fw-bold border-start border-4 border-primary"
+                              : ""
+                          }`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => toggleMenu(item.label)}
+                        >
+                          <div className="d-flex align-items-center">
+                            <i
+                              className={`bi ${item.icon} fs-5 me-3 ${
+                                isActiveGroup ? "text-primary" : "text-muted"
+                              }`}
+                            ></i>
+                            <span style={{ fontSize: "0.95rem" }}>
+                              {item.label}
+                            </span>
+
+                            {item.label === "Announcements" &&
+                              announcementCount > 0 && (
+                                <span className="badge bg-danger rounded-pill ms-2 shadow-sm">
+                                  {announcementCount}
+                                </span>
+                              )}
+                          </div>
+
+                          <i
+                            className={`bi bi-chevron-${
+                              isOpen ? "up" : "down"
+                            } ${isActiveGroup ? "text-primary" : "text-muted"}`}
+                            style={{
+                              fontSize: "0.8rem",
+                              transition: "transform 0.3s",
+                            }}
+                          ></i>
+                        </div>
+
+                        {isOpen && (
+                          <ul className="nav flex-column mt-1 mb-2 px-3">
+                            <div className="border-start border-2 border-secondary border-opacity-25 ms-3 ps-2">
+                              {item.submenu.map((sub, i) => (
+                                <li key={i} className="nav-item mb-1">
+                                  <NavLink
+                                    className={({ isActive }) =>
+                                      `nav-link submenu-link py-2 px-3 d-flex align-items-center ${
+                                        isActive
+                                          ? "fw-bold text-primary bg-primary bg-opacity-10"
+                                          : "text-secondary"
+                                      }`
+                                    }
+                                    style={{ fontSize: "0.9rem" }}
+                                    to={sub.path}
+                                    onClick={handleLinkClick}
+                                  >
+                                    <i className="bi bi-dash me-2 opacity-50"></i>
+                                    {sub.label}
+                                  </NavLink>
+                                </li>
+                              ))}
+                            </div>
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      <NavLink
+                        className={({ isActive }) =>
+                          `sidebar-link nav-link d-flex align-items-center px-4 py-2 ${
+                            isActive ? activeLinkStyle : "text-secondary"
+                          }`
+                        }
+                        to={item.path}
+                        onClick={handleLinkClick}
+                      >
+                        <i
+                          className={`bi ${item.icon} fs-5 me-3 ${
+                            location.pathname === item.path
+                              ? "text-primary"
+                              : "text-muted"
+                          }`}
+                        ></i>
+                        <span style={{ fontSize: "0.95rem" }}>
+                          {item.label}
+                        </span>
+                      </NavLink>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
           {/* BOTTOM SECTION */}
-          <div className="mt-auto pt-3 border-top text-center" style={{ fontSize: "0.9rem" }}>
-            <div className="d-flex justify-content-center align-items-center gap-2 mb-2" style={{ background: "#f8f9fa", borderRadius: "8px", padding: "8px" }}>
-              <i className="bi bi-person-circle text-primary" style={{ fontSize: "1.4rem" }}></i>
-              <span className="fw-semibold">{userName}</span>
+          <div className="p-3 border-top bg-white">
+            <div className="bg-light rounded-4 p-3 mb-3 border border-secondary border-opacity-10 d-flex align-items-center gap-3">
+              <div
+                className="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center text-primary"
+                style={{ width: "45px", height: "45px" }}
+              >
+                <i className="bi bi-person-fill fs-4"></i>
+              </div>
+              <div className="overflow-hidden">
+                <div className="fw-bold text-dark text-truncate">{userName}</div>
+                <div className="text-muted small text-truncate">{userRole}</div>
+              </div>
             </div>
-            <small className="text-muted d-block mb-2">{userRole}</small>
-            <button className="btn btn-outline-danger w-100" onClick={handleLogout}>
-              <i className="bi bi-box-arrow-right me-2"></i>Logout
+
+            <button
+              className="btn btn-outline-danger w-100 rounded-pill fw-semibold d-flex justify-content-center align-items-center transition"
+              onClick={handleLogout}
+            >
+              <i className="bi bi-box-arrow-right me-2 fs-5"></i>
+              Secure Logout
             </button>
           </div>
         </aside>
@@ -225,22 +390,66 @@ export default function TeacherNavbar({ children }) {
         {/* OVERLAY ON MOBILE */}
         {sidebarOpen && windowWidth < 768 && (
           <div
-            className="position-fixed top-0 start-0 w-100 h-100 bg-dark opacity-25"
-            style={{ zIndex: 1050 }}
+            className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"
+            style={{ zIndex: 1050, backdropFilter: "blur(2px)" }}
             onClick={toggleSidebar}
           ></div>
         )}
 
         {/* MAIN CONTENT */}
-        <main className="flex-grow-1 bg-white overflow-auto p-4" style={{ marginLeft: sidebarOpen && windowWidth >= 768 ? "260px" : "0", transition: "margin 0.3s ease" }}>
-          {children}
+        <main
+          className="flex-grow-1 overflow-auto p-3 p-md-4"
+          style={{
+            marginLeft: sidebarOpen && windowWidth >= 768 ? "280px" : "0",
+            transition: "margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            background: "var(--dash-bg, #f8f9fc)",
+            color: "var(--dash-text)",
+            minHeight: "calc(100vh - 70px)",
+          }}
+        >
+          <div className="container-fluid p-0 pb-4">{children}</div>
         </main>
       </div>
 
       {/* FOOTER */}
-      <footer className="text-center py-2 border-top bg-light small text-muted" style={{ fontSize: "0.9rem" }}>
-        © 2025 School Management System | Designed for Teachers
+      <footer
+        className="text-center py-3 border-top small position-relative"
+        style={{
+          fontSize: "0.85rem",
+          background: "var(--dash-card-bg, #fff)",
+          color: "var(--dash-muted)",
+          marginLeft: sidebarOpen && windowWidth >= 768 ? "280px" : "0",
+          transition: "margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          zIndex: 1040,
+        }}
+      >
+        <span className="fw-medium">
+          © {new Date().getFullYear()} School Management System
+        </span>
+        <span className="mx-2 text-muted opacity-50">|</span>
+        <span>Designed for Teachers</span>
       </footer>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      <Modal show={showLogoutModal} onHide={cancelLogout} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+            Confirm Logout
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to logout from your account?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={cancelLogout}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmLogout}>
+            Yes, Logout
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

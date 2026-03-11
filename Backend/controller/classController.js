@@ -43,6 +43,7 @@ const normalizeSections = (sections) => {
     safe.push({
       name,
       capacity: cap,
+      stream: String(s.stream || "").trim(),
       isActive: typeof s.isActive === "boolean" ? s.isActive : true,
       isLocked: typeof s.isLocked === "boolean" ? s.isLocked : false,
       createdAt: new Date(),
@@ -183,15 +184,22 @@ const getRegistrationPreviewByClass = async (req, res) => {
       candidates = general.length ? general : allSections;
     }
 
-    candidates.sort((a, b) => a.name.localeCompare(b.name));
+    const withUsage = await Promise.all(
+      candidates.map(async (sec) => {
+        const used = await Student.countDocuments({ studentClass: classNum, section: sec.name });
+        const remaining = sec.capacity - used;
+        return { ...sec, used, remaining, fillRatio: used / sec.capacity };
+      })
+    );
 
+    const available = withUsage.filter((sec) => sec.remaining > 0);
     let chosen = "";
-    for (const sec of candidates) {
-      const used = await Student.countDocuments({ studentClass: classNum, section: sec.name });
-      if (used < sec.capacity) {
-        chosen = sec.name;
-        break;
-      }
+    if (available.length) {
+      const minRatio = Math.min(...available.map((sec) => sec.fillRatio));
+      const best = available
+        .filter((sec) => sec.fillRatio === minRatio)
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      chosen = best[0]?.name || "";
     }
 
     if (!chosen) {
@@ -402,7 +410,7 @@ const updateClass = async (req, res) => {
 const addSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, capacity = 40, isActive = true, isLocked = false } = req.body;
+    const { name, capacity = 40, stream = "", isActive = true, isLocked = false } = req.body;
 
     const cls = await Class.findById(id);
     if (!cls) return res.status(404).json({ message: "Class not found" });
@@ -419,6 +427,7 @@ const addSection = async (req, res) => {
     cls.sections.push({
       name: secName,
       capacity: cap,
+      stream: String(stream || "").trim(),
       isActive: !!isActive,
       isLocked: !!isLocked,
       createdAt: new Date(),
@@ -463,6 +472,7 @@ const updateSection = async (req, res) => {
 
     if (req.body.isActive !== undefined) section.isActive = !!req.body.isActive;
     if (req.body.isLocked !== undefined) section.isLocked = !!req.body.isLocked;
+    if (req.body.stream !== undefined) section.stream = String(req.body.stream || "").trim();
 
     section.updatedAt = new Date();
     await cls.save();

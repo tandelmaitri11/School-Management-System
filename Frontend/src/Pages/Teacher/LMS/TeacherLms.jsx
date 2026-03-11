@@ -1,23 +1,66 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
-import { Alert, Button, Card, Form, Spinner, Table, Toast, ToastContainer } from "react-bootstrap";
+import { Alert, Button, Col, Row, Spinner, Toast, ToastContainer } from "react-bootstrap";
+import TeacherLmsLeftPanel from "./components/TeacherLmsLeftPanel";
+import TeacherLmsRightPanel from "./components/TeacherLmsRightPanel";
+
+const normalize = (v) => String(v || "").trim();
+const normalizeUpper = (v) => normalize(v).toUpperCase();
+
+// ---------- Validation helpers (UI only; does not change API/data model) ----------
+const isHttpUrl = (url) => {
+  const u = normalize(url);
+  if (!u) return true; // optional field
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const toPositiveIntOrEmpty = (val) => {
+  const s = normalize(val);
+  if (!s) return "";
+  const n = Number(s);
+  if (!Number.isFinite(n)) return "";
+  const i = Math.floor(n);
+  return i > 0 ? String(i) : "";
+};
+
+const MAX_TITLE = 120;
+const MAX_DESC = 500;
 
 export default function TeacherLms() {
   const teacherId = localStorage.getItem("teacherId");
+
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+
   const [classes, setClasses] = useState([]);
+  const [assignedSections, setAssignedSections] = useState([]);
+
   const [subjects, setSubjects] = useState([]);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [subjectsError, setSubjectsError] = useState("");
 
+  const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
+
+  // UI-only search
+  const [courseQuery, setCourseQuery] = useState("");
+  const [contentQuery, setContentQuery] = useState("");
+
+  // ---------- Forms ----------
   const [courseForm, setCourseForm] = useState({
     title: "",
     subject: "",
+    classId: "",
     classAssigned: "",
+    section: "",
+    stream: "",
     description: "",
   });
 
@@ -39,24 +82,95 @@ export default function TeacherLms() {
   });
 
   const [file, setFile] = useState(null);
+
+  // per-chapter topic input
   const [chapterTopicInputs, setChapterTopicInputs] = useState({});
+
+  // drag state
   const [dragChapterId, setDragChapterId] = useState(null);
   const [dragMaterial, setDragMaterial] = useState(null);
+
+  // editing
   const [editingChapterId, setEditingChapterId] = useState(null);
   const [chapterEdits, setChapterEdits] = useState({});
   const [editingMaterialId, setEditingMaterialId] = useState(null);
   const [materialEdits, setMaterialEdits] = useState({});
-  const [toast, setToast] = useState({ show: false, message: "", variant: "success" });
+
+  // validation state (UI only)
+  const [errors, setErrors] = useState({
+    course: {},
+    chapter: {},
+    material: {},
+    chapterEdit: {},
+    materialEdit: {},
+  });
 
   const showMessage = (type, text) => setMessage({ type, text });
   const showToast = (message, variant = "success") => setToast({ show: true, message, variant });
 
+  // ---------- Derived: class / stream / section ----------
+  const selectedClassDoc = useMemo(
+    () => classes.find((c) => String(c._id) === String(courseForm.classId)) || null,
+    [classes, courseForm.classId]
+  );
+
+  const assignedForClass = useMemo(
+    () => assignedSections.filter((s) => String(s?.classId) === String(selectedClassDoc?._id || "")),
+    [assignedSections, selectedClassDoc]
+  );
+
+  const classStreams = useMemo(
+    () =>
+      (selectedClassDoc?.streams || [])
+        .filter((s) => s?.isActive !== false)
+        .map((s) => normalize(s.name))
+        .filter(Boolean),
+    [selectedClassDoc]
+  );
+
+  const classHasStreams = classStreams.length > 0;
+
+  const streamOptions = useMemo(() => {
+    if (!classHasStreams) return [];
+    const assignedStreamSet = new Set(
+      assignedForClass.map((s) => normalize(s.stream).toLowerCase()).filter(Boolean)
+    );
+    return classStreams.filter((st) => assignedStreamSet.has(st.toLowerCase()));
+  }, [classHasStreams, assignedForClass, classStreams]);
+
+  const sectionOptions = useMemo(() => {
+    const assignedRows = assignedForClass
+      .map((s) => ({ section: normalizeUpper(s.section), stream: normalize(s.stream) }))
+      .filter((s) => s.section);
+
+    const classRows = (selectedClassDoc?.sections || [])
+      .filter((s) => s?.isActive !== false)
+      .map((s) => ({ section: normalizeUpper(s.name), stream: normalize(s.stream) }))
+      .filter((s) => s.section);
+
+    const rows = assignedRows.length ? assignedRows : classRows;
+    if (!rows.length) return ["ALL"];
+
+    const streamKey = normalize(courseForm.stream).toLowerCase();
+    const streamAwareRows =
+      classHasStreams && streamKey
+        ? rows.filter((r) => {
+            const rowStream = normalize(r.stream).toLowerCase();
+            return !rowStream || rowStream === streamKey;
+          })
+        : rows;
+
+    const uniqueSections = [...new Set(streamAwareRows.map((r) => r.section))].filter((sec) => sec !== "ALL");
+    return ["ALL", ...uniqueSections];
+  }, [assignedForClass, selectedClassDoc, classHasStreams, courseForm.stream]);
+
+  // ---------- Fetch ----------
   const fetchCourses = async () => {
     setLoading(true);
     try {
       const res = await api.get("/api/lms/teacher/courses");
       setCourses(res.data || []);
-    } catch (err) {
+    } catch {
       showMessage("danger", "Failed to load courses");
     } finally {
       setLoading(false);
@@ -69,7 +183,7 @@ export default function TeacherLms() {
     try {
       const res = await api.get(`/api/lms/courses/${courseId}/content`);
       setContent(res.data?.chapters || []);
-    } catch (err) {
+    } catch {
       showMessage("danger", "Failed to load course content");
     } finally {
       setLoading(false);
@@ -84,9 +198,10 @@ export default function TeacherLms() {
     const fetchClasses = async () => {
       if (!teacherId) return;
       try {
-        const res = await api.get(`/api/classes/by-teacher/${teacherId}`);
-        setClasses(res.data || []);
-      } catch (err) {
+        const res = await api.get(`/api/teachers/teacher/profile/${teacherId}`);
+        setClasses(res.data?.classesFull || []);
+        setAssignedSections(res.data?.assignedSections || []);
+      } catch {
         showMessage("danger", "Failed to load classes");
       }
     };
@@ -96,13 +211,19 @@ export default function TeacherLms() {
   useEffect(() => {
     const fetchSubjects = async () => {
       if (!courseForm.classAssigned) return;
+      if (classHasStreams && !courseForm.stream) {
+        setSubjects([]);
+        setCourseForm((prev) => ({ ...prev, subject: "" }));
+        setSubjectsError("Select stream to load subjects");
+        return;
+      }
+
       setSubjects([]);
       setSubjectsError("");
       setSubjectsLoading(true);
       try {
-        const res = await api.get(
-          `/api/subjects/getSubjects/${courseForm.classAssigned}`
-        );
+        const query = courseForm.stream ? `?stream=${encodeURIComponent(courseForm.stream)}` : "";
+        const res = await api.get(`/api/subjects/getSubjects/${courseForm.classAssigned}${query}`);
         setSubjects(res.data || []);
         if (res.data?.length) {
           setCourseForm((prev) => ({
@@ -113,18 +234,66 @@ export default function TeacherLms() {
           setCourseForm((prev) => ({ ...prev, subject: "" }));
           setSubjectsError("No subjects available for this class");
         }
-      } catch (err) {
+      } catch {
         setSubjectsError("Failed to load subjects");
       } finally {
         setSubjectsLoading(false);
       }
     };
     fetchSubjects();
-  }, [courseForm.classAssigned]);
+  }, [courseForm.classAssigned, courseForm.stream, classHasStreams]);
+
+  useEffect(() => {
+    if (courseForm.stream && !streamOptions.includes(courseForm.stream)) {
+      setCourseForm((prev) => ({ ...prev, stream: "", section: "ALL", subject: "" }));
+    }
+  }, [courseForm.stream, streamOptions]);
+
+  useEffect(() => {
+    if (courseForm.section && !sectionOptions.includes(courseForm.section)) {
+      setCourseForm((prev) => ({ ...prev, section: "ALL", subject: "" }));
+    }
+  }, [courseForm.section, sectionOptions]);
 
   useEffect(() => {
     if (selectedCourseId) fetchContent(selectedCourseId);
   }, [selectedCourseId]);
+
+  // ---------- UI-only computed ----------
+  const selectedCourse = useMemo(
+    () => courses.find((c) => String(c._id) === String(selectedCourseId)) || null,
+    [courses, selectedCourseId]
+  );
+
+  const filteredCourses = useMemo(() => {
+    const q = normalize(courseQuery).toLowerCase();
+    if (!q) return courses;
+    return courses.filter((c) => {
+      const hay = `${c.title || ""} ${c.subject || ""} ${c.classAssigned || ""} ${c.section || ""} ${c.stream || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [courses, courseQuery]);
+
+  const filteredContent = useMemo(() => {
+    const q = normalize(contentQuery).toLowerCase();
+    if (!q) return content;
+    return content
+      .map((ch) => {
+        const mats = (ch.materials || []).filter((m) => {
+          const hay = `${m.title || ""} ${m.type || ""} ${m.topic || ""} ${m.externalUrl || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+        const chapterHay = `${ch.title || ""} ${ch.description || ""}`.toLowerCase();
+        const chapterMatch = chapterHay.includes(q);
+        return chapterMatch ? ch : { ...ch, materials: mats };
+      })
+      .filter((ch) => {
+        const chapterHay = `${ch.title || ""} ${ch.description || ""}`.toLowerCase();
+        const chapterMatch = chapterHay.includes(q);
+        const matsCount = (ch.materials || []).length;
+        return chapterMatch || matsCount > 0;
+      });
+  }, [content, contentQuery]);
 
   const chapterOptions = useMemo(() => {
     return content.map((chapter) => ({
@@ -133,12 +302,157 @@ export default function TeacherLms() {
     }));
   }, [content]);
 
+  // ---------- Validation: build errors ----------
+  const validateCourse = (draft) => {
+    const e = {};
+    const title = normalize(draft.title);
+
+    if (!title) e.title = "Title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (!draft.classId) e.classId = "Class is required";
+
+    if (!draft.classAssigned) e.classAssigned = "Class is required";
+    if (!draft.section) e.section = "Section is required";
+
+    if (classHasStreams && !draft.stream) e.stream = "Stream is required";
+    if (classHasStreams && draft.stream && !streamOptions.includes(draft.stream))
+      e.stream = "Invalid stream selection";
+
+    if (draft.section && !sectionOptions.includes(draft.section)) e.section = "Invalid section selection";
+
+    if (!normalize(draft.subject)) e.subject = subjectsError || "Subject is required";
+
+    const desc = normalize(draft.description);
+    if (desc.length > MAX_DESC) e.description = `Max ${MAX_DESC} characters`;
+
+    return e;
+  };
+
+  const validateChapter = (draft) => {
+    const e = {};
+    if (!selectedCourseId) e.courseId = "Select a course first";
+
+    const title = normalize(draft.title);
+    if (!title) e.title = "Chapter title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (draft.order) {
+      const ord = Number(draft.order);
+      if (!Number.isFinite(ord) || ord < 1) e.order = "Order must be a positive number";
+    }
+
+    const desc = normalize(draft.description);
+    if (desc.length > MAX_DESC) e.description = `Max ${MAX_DESC} characters`;
+
+    // topics: no empty, no duplicates (case-insensitive)
+    const topics = (draft.topics || []).map((t) => normalize(t)).filter(Boolean);
+    const lower = topics.map((t) => t.toLowerCase());
+    const uniqueLower = new Set(lower);
+    if (topics.length !== uniqueLower.size) e.topics = "Duplicate topics found";
+
+    return e;
+  };
+
+  const validateMaterial = (draft) => {
+    const e = {};
+    if (!selectedCourseId) e.courseId = "Select a course first";
+    if (!draft.chapterId) e.chapterId = "Chapter is required";
+
+    const title = normalize(draft.title);
+    if (!title) e.title = "Material title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (!draft.type) e.type = "Type is required";
+
+    if (draft.duration) {
+      const d = Number(draft.duration);
+      if (!Number.isFinite(d) || d < 0) e.duration = "Duration must be 0 or more";
+    }
+
+    // URL optional but if present must be valid
+    if (!isHttpUrl(draft.externalUrl)) e.externalUrl = "Enter a valid http/https URL";
+
+    // at least one resource: file OR url
+    const hasFile = !!file;
+    const hasUrl = !!normalize(draft.externalUrl);
+    if (!hasFile && !hasUrl) e.resource = "Upload a file or provide an external URL";
+
+    return e;
+  };
+
+  const validateChapterEdit = (chapterId, payload) => {
+    const e = {};
+    const title = normalize(payload?.title);
+    if (!title) e.title = "Title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (payload?.order !== "" && payload?.order != null) {
+      const ord = Number(payload.order);
+      if (!Number.isFinite(ord) || ord < 1) e.order = "Order must be a positive number";
+    }
+
+    const desc = normalize(payload?.description);
+    if (desc.length > MAX_DESC) e.description = `Max ${MAX_DESC} characters`;
+
+    return { [chapterId]: e };
+  };
+
+  const validateMaterialEdit = (materialId, payload, chapter) => {
+    const e = {};
+    const title = normalize(payload?.title);
+    if (!title) e.title = "Title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (!payload?.type) e.type = "Type is required";
+
+    if (payload?.duration !== "" && payload?.duration != null) {
+      const d = Number(payload.duration);
+      if (!Number.isFinite(d) || d < 0) e.duration = "Duration must be 0 or more";
+    }
+
+    if (!isHttpUrl(payload?.externalUrl)) e.externalUrl = "Enter a valid http/https URL";
+
+    // topic must be from chapter topics if provided
+    const t = normalize(payload?.topic);
+    if (t) {
+      const topics = (chapter?.topics || []).map((x) => normalize(x));
+      if (!topics.includes(t)) e.topic = "Invalid topic";
+    }
+
+    return { [materialId]: e };
+  };
+
+  // ---------- Actions ----------
   const handleCreateCourse = async (e) => {
     e.preventDefault();
+    setMessage({ type: "", text: "" });
+
+    const nextErrors = validateCourse(courseForm);
+    setErrors((prev) => ({ ...prev, course: nextErrors }));
+    if (Object.keys(nextErrors).length) {
+      showMessage("warning", "Fix validation errors and try again");
+      return;
+    }
+
     try {
-      await api.post("/api/lms/courses", courseForm);
+      await api.post("/api/lms/courses", {
+        ...courseForm,
+        title: normalize(courseForm.title),
+        description: normalize(courseForm.description),
+      });
       showMessage("success", "Course created successfully");
-      setCourseForm({ title: "", subject: "", classAssigned: "", description: "" });
+
+      setCourseForm({
+        title: "",
+        subject: "",
+        classId: "",
+        classAssigned: "",
+        section: "",
+        stream: "",
+        description: "",
+      });
+      setErrors((prev) => ({ ...prev, course: {} }));
       fetchCourses();
     } catch (err) {
       showMessage("danger", err.response?.data?.message || "Failed to create course");
@@ -147,20 +461,34 @@ export default function TeacherLms() {
 
   const handleCreateChapter = async (e) => {
     e.preventDefault();
-    if (!selectedCourseId) {
-      showMessage("warning", "Select a course first");
+    setMessage({ type: "", text: "" });
+
+    const cleaned = {
+      ...chapterForm,
+      title: normalize(chapterForm.title),
+      description: normalize(chapterForm.description),
+      order: toPositiveIntOrEmpty(chapterForm.order),
+      topics: (chapterForm.topics || []).map((t) => normalize(t)).filter(Boolean),
+    };
+
+    const nextErrors = validateChapter(cleaned);
+    setErrors((prev) => ({ ...prev, chapter: nextErrors }));
+    if (Object.keys(nextErrors).length) {
+      showMessage("warning", "Fix validation errors and try again");
       return;
     }
+
     try {
       await api.post("/api/lms/chapters", {
         courseId: selectedCourseId,
-        title: chapterForm.title,
-        order: chapterForm.order,
-        description: chapterForm.description,
-        topics: chapterForm.topics,
+        title: cleaned.title,
+        order: cleaned.order,
+        description: cleaned.description,
+        topics: cleaned.topics,
       });
       showMessage("success", "Chapter created successfully");
       setChapterForm({ title: "", order: "", description: "", topicInput: "", topics: [] });
+      setErrors((prev) => ({ ...prev, chapter: {} }));
       fetchContent(selectedCourseId);
     } catch (err) {
       showMessage("danger", err.response?.data?.message || "Failed to create chapter");
@@ -169,15 +497,28 @@ export default function TeacherLms() {
 
   const handleCreateMaterial = async (e) => {
     e.preventDefault();
-    if (!selectedCourseId || !materialForm.chapterId) {
-      showMessage("warning", "Select a course and chapter");
+    setMessage({ type: "", text: "" });
+
+    const cleaned = {
+      ...materialForm,
+      title: normalize(materialForm.title),
+      externalUrl: normalize(materialForm.externalUrl),
+      duration: materialForm.duration === "" ? "" : String(materialForm.duration),
+      topic: normalize(materialForm.topic),
+    };
+
+    const nextErrors = validateMaterial(cleaned);
+    setErrors((prev) => ({ ...prev, material: nextErrors }));
+    if (Object.keys(nextErrors).length) {
+      showMessage("warning", "Fix validation errors and try again");
       return;
     }
+
     try {
       const data = new FormData();
       data.append("courseId", selectedCourseId);
 
-      Object.entries(materialForm).forEach(([key, value]) => {
+      Object.entries(cleaned).forEach(([key, value]) => {
         if (value) data.append(key, value);
       });
 
@@ -188,6 +529,7 @@ export default function TeacherLms() {
       });
 
       showMessage("success", "Material uploaded");
+
       setMaterialForm({
         chapterId: "",
         title: "",
@@ -197,6 +539,7 @@ export default function TeacherLms() {
         topic: "",
       });
       setFile(null);
+      setErrors((prev) => ({ ...prev, material: {} }));
       fetchContent(selectedCourseId);
     } catch (err) {
       showMessage("danger", err.response?.data?.message || "Failed to upload material");
@@ -210,17 +553,24 @@ export default function TeacherLms() {
       setSelectedCourseId("");
       setContent([]);
       fetchCourses();
-    } catch (err) {
+    } catch {
       showMessage("danger", "Failed to delete course");
     }
   };
 
   const handleSaveTopics = async (chapterId, topics) => {
     try {
-      await api.put(`/api/lms/chapters/${chapterId}`, { topics });
+      const cleaned = (topics || []).map((t) => normalize(t)).filter(Boolean);
+      // validation: duplicates
+      const lower = cleaned.map((t) => t.toLowerCase());
+      if (new Set(lower).size !== cleaned.length) {
+        showMessage("warning", "Duplicate topics are not allowed");
+        return;
+      }
+      await api.put(`/api/lms/chapters/${chapterId}`, { topics: cleaned });
       fetchContent(selectedCourseId);
       showToast("Topics updated");
-    } catch (err) {
+    } catch {
       showMessage("danger", "Failed to update topics");
     }
   };
@@ -230,7 +580,7 @@ export default function TeacherLms() {
       await api.delete(`/api/lms/materials/${materialId}`);
       showMessage("success", "Material deleted");
       fetchContent(selectedCourseId);
-    } catch (err) {
+    } catch {
       showMessage("danger", "Failed to delete material");
     }
   };
@@ -243,19 +593,11 @@ export default function TeacherLms() {
   };
 
   const persistChapterOrder = async (chapters) => {
-    await Promise.all(
-      chapters.map((chapter, idx) =>
-        api.put(`/api/lms/chapters/${chapter._id}`, { order: idx + 1 })
-      )
-    );
+    await Promise.all(chapters.map((chapter, idx) => api.put(`/api/lms/chapters/${chapter._id}`, { order: idx + 1 })));
   };
 
   const persistMaterialOrder = async (chapterId, materials) => {
-    await Promise.all(
-      materials.map((material, idx) =>
-        api.put(`/api/lms/materials/${material._id}`, { order: idx + 1 })
-      )
-    );
+    await Promise.all(materials.map((material, idx) => api.put(`/api/lms/materials/${material._id}`, { order: idx + 1 })));
   };
 
   const handleChapterDrop = async (targetId) => {
@@ -311,12 +653,28 @@ export default function TeacherLms() {
         order: chapter.order || 0,
       },
     });
+    setErrors((prev) => ({ ...prev, chapterEdit: { ...prev.chapterEdit, [chapter._id]: {} } }));
   };
 
   const saveEditChapter = async (chapterId) => {
+    const payload = chapterEdits[chapterId] || {};
+    const cleaned = {
+      title: normalize(payload.title),
+      description: normalize(payload.description),
+      order: payload.order === "" ? "" : Number(payload.order),
+    };
+
+    const perIdErr = validateChapterEdit(chapterId, cleaned);
+    setErrors((prev) => ({ ...prev, chapterEdit: { ...prev.chapterEdit, ...perIdErr } }));
+
+    const e = perIdErr[chapterId] || {};
+    if (Object.keys(e).length) {
+      showMessage("warning", "Fix chapter validation errors");
+      return;
+    }
+
     try {
-      const payload = chapterEdits[chapterId];
-      await api.put(`/api/lms/chapters/${chapterId}`, payload);
+      await api.put(`/api/lms/chapters/${chapterId}`, cleaned);
       setEditingChapterId(null);
       fetchContent(selectedCourseId);
       showToast("Chapter updated");
@@ -337,11 +695,30 @@ export default function TeacherLms() {
         topic: material.topic || "",
       },
     });
+    setErrors((prev) => ({ ...prev, materialEdit: { ...prev.materialEdit, [material._id]: {} } }));
   };
-  const saveEditMaterial = async (materialId) => {
+
+  const saveEditMaterial = async (materialId, chapter) => {
+    const payload = materialEdits[materialId] || {};
+    const cleaned = {
+      title: normalize(payload.title),
+      type: normalize(payload.type),
+      duration: payload.duration === "" ? "" : Number(payload.duration),
+      externalUrl: normalize(payload.externalUrl),
+      topic: normalize(payload.topic),
+    };
+
+    const perIdErr = validateMaterialEdit(materialId, cleaned, chapter);
+    setErrors((prev) => ({ ...prev, materialEdit: { ...prev.materialEdit, ...perIdErr } }));
+
+    const e = perIdErr[materialId] || {};
+    if (Object.keys(e).length) {
+      showMessage("warning", "Fix material validation errors");
+      return;
+    }
+
     try {
-      const payload = materialEdits[materialId];
-      await api.put(`/api/lms/materials/${materialId}`, payload);
+      await api.put(`/api/lms/materials/${materialId}`, cleaned);
       setEditingMaterialId(null);
       fetchContent(selectedCourseId);
       showToast("Material updated");
@@ -350,674 +727,147 @@ export default function TeacherLms() {
     }
   };
 
+  // ---------- Render ----------
+  const courseErr = errors.course || {};
+  const chapterErr = errors.chapter || {};
+  const materialErr = errors.material || {};
 
   return (
-    <div className="container py-3">
-      <h3 className="fw-semibold mb-3">LMS - Manage Learning Content</h3>
-
-      {message.text && <Alert variant={message.type}>{message.text}</Alert>}
-
-      {loading && (
-        <div className="text-center my-3">
-          <Spinner animation="border" />
-        </div>
-      )}
-
-      <div className="row g-3">
-        <div className="col-12 col-lg-5">
-          <Card className="p-3 shadow-sm border-0">
-            <h5 className="mb-3">Create Course</h5>
-            <Form onSubmit={handleCreateCourse}>
-              <Form.Group className="mb-2">
-                <Form.Label>Title</Form.Label>
-                <Form.Control
-                  value={courseForm.title}
-                  onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
-                  required
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-2">
-                <Form.Label>Class</Form.Label>
-                <Form.Select
-                  value={courseForm.classAssigned}
-                  onChange={(e) =>
-                    setCourseForm({ ...courseForm, classAssigned: e.target.value, subject: "" })
-                  }
-                  required
-                >
-                  <option value="">Select class</option>
-                  {classes.map((cls) => (
-                    <option key={cls._id} value={cls.className}>
-                      Class {cls.className}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="mb-2">
-                <Form.Label>Subject</Form.Label>
-                {subjectsLoading ? (
-                  <div className="small text-muted">Loading subjects...</div>
-                ) : (
-                  <Form.Select
-                    value={courseForm.subject}
-                    onChange={(e) => setCourseForm({ ...courseForm, subject: e.target.value })}
-                    required
-                  >
-                    <option value="">{subjectsError || "Select subject"}</option>
-                    {subjects.map((sub, idx) => (
-                      <option key={idx} value={sub.subjectName}>
-                        {sub.subjectName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                )}
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Description</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  value={courseForm.description}
-                  onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-                />
-              </Form.Group>
-
-              <Button type="submit" variant="primary" className="w-100">
-                Create Course
-              </Button>
-            </Form>
-          </Card>
+    <div className="container-fluid py-4 bg-light min-vh-100">
+      {/* Top header */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+          <div className="d-flex align-items-center gap-3">
+            <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fw-medium shadow-sm">
+              <i className="bi bi-mortarboard-fill me-2" />
+              Learning Management
+            </span>
+            <h3 className="mb-0 fw-bold text-dark">Teacher Content Manager</h3>
+          </div>
+          <div className="text-secondary small mt-2 d-flex align-items-center">
+            <i className="bi bi-info-circle me-2 opacity-75"></i>
+            Create courses, chapters, topics and upload learning materials (drag & drop to reorder).
+          </div>
         </div>
 
-        <div className="col-12 col-lg-7">
-          <Card className="p-3 shadow-sm border-0 mb-3">
-            <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-3">
-              <h5 className="mb-0">Your Courses</h5>
-              <Form.Select
-                value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
-                style={{ maxWidth: 260 }}
-              >
-                <option value="">Select course</option>
-                {courses.map((course) => (
-                  <option key={course._id} value={course._id}>
-                    {course.title} (Class {course.classAssigned})
-                  </option>
-                ))}
-              </Form.Select>
-            </div>
-
-            {selectedCourseId && (
-              <div className="d-flex justify-content-end mb-2">
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => handleDeleteCourse(selectedCourseId)}
-                >
-                  Delete Course
-                </Button>
-              </div>
-            )}
-
-            <Table responsive bordered size="sm" className="align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>Course</th>
-                  <th>Subject</th>
-                  <th>Class</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="text-center text-muted">
-                      No courses yet
-                    </td>
-                  </tr>
-                ) : (
-                  courses.map((course) => (
-                    <tr key={course._id}>
-                      <td>{course.title}</td>
-                      <td>{course.subject}</td>
-                      <td>{course.classAssigned}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Card>
-
-          <Card className="p-3 shadow-sm border-0 mb-3">
-            <h5 className="mb-3">Create Chapter</h5>
-            <Form onSubmit={handleCreateChapter}>
-              <div className="row g-2">
-                <div className="col-12 col-md-6">
-                  <Form.Label>Chapter Title</Form.Label>
-                  <Form.Control
-                    value={chapterForm.title}
-                    onChange={(e) => setChapterForm({ ...chapterForm, title: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="col-12 col-md-3">
-                  <Form.Label>Order</Form.Label>
-                  <Form.Control
-                    type="number"
-                    value={chapterForm.order}
-                    onChange={(e) => setChapterForm({ ...chapterForm, order: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-12 col-md-3">
-                  <Form.Label>Course</Form.Label>
-                  <Form.Select
-                    value={selectedCourseId}
-                    onChange={(e) => setSelectedCourseId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select</option>
-                    {courses.map((course) => (
-                      <option key={course._id} value={course._id}>
-                        {course.title}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </div>
-              </div>
-
-              <Form.Group className="mt-2">
-                <Form.Label>Topics</Form.Label>
-                <div className="d-flex gap-2">
-                  <Form.Control
-                    placeholder="Add topic and press Add"
-                    value={chapterForm.topicInput}
-                    onChange={(e) => setChapterForm({ ...chapterForm, topicInput: e.target.value })}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline-primary"
-                    onClick={() => {
-                      const next = chapterForm.topicInput.trim();
-                      if (!next) return;
-                      if (chapterForm.topics.includes(next)) return;
-                      setChapterForm({
-                        ...chapterForm,
-                        topics: [...chapterForm.topics, next],
-                        topicInput: "",
-                      });
-                    }}
-                  >
-                    Add
-                  </Button>
-                </div>
-
-                {chapterForm.topics.length > 0 && (
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {chapterForm.topics.map((topic, idx) => (
-                      <span key={idx} className="badge bg-light text-dark border">
-                        {topic}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-link text-danger ms-1 p-0"
-                          onClick={() =>
-                            setChapterForm({
-                              ...chapterForm,
-                              topics: chapterForm.topics.filter((t) => t !== topic),
-                            })
-                          }
-                        >
-                          <i className="bi bi-x-circle" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </Form.Group>
-
-              <Form.Group className="mt-2 mb-3">
-                <Form.Label>Description</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={chapterForm.description}
-                  onChange={(e) => setChapterForm({ ...chapterForm, description: e.target.value })}
-                />
-              </Form.Group>
-
-              <Button type="submit" variant="secondary">
-                Add Chapter
-              </Button>
-            </Form>
-          </Card>
-
-          <Card className="p-3 shadow-sm border-0">
-            <h5 className="mb-3">Upload Material</h5>
-            <Form onSubmit={handleCreateMaterial}>
-              <div className="row g-2">
-                <div className="col-12 col-md-6">
-                  <Form.Label>Chapter</Form.Label>
-                  <Form.Select
-                    value={materialForm.chapterId}
-                    onChange={(e) =>
-                      setMaterialForm({ ...materialForm, chapterId: e.target.value, topic: "" })
-                    }
-                    required
-                  >
-                    <option value="">Select chapter</option>
-                    {chapterOptions.map((chapter) => (
-                      <option key={chapter.id} value={chapter.id}>
-                        {chapter.title}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <Form.Label>Title</Form.Label>
-                  <Form.Control
-                    value={materialForm.title}
-                    onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="row g-2 mt-1">
-                <div className="col-12 col-md-6">
-                  <Form.Label>Topic</Form.Label>
-                  <Form.Select
-                    value={materialForm.topic}
-                    onChange={(e) => setMaterialForm({ ...materialForm, topic: e.target.value })}
-                    disabled={!materialForm.chapterId}
-                  >
-                    <option value="">
-                      {materialForm.chapterId ? "Select topic (optional)" : "Select chapter first"}
-                    </option>
-                    {(content.find((c) => c._id === materialForm.chapterId)?.topics || []).map(
-                      (topic, idx) => (
-                        <option key={idx} value={topic}>
-                          {topic}
-                        </option>
-                      )
-                    )}
-                  </Form.Select>
-                </div>
-              </div>
-
-              <div className="row g-2 mt-1">
-                <div className="col-12 col-md-4">
-                  <Form.Label>Type</Form.Label>
-                  <Form.Select
-                    value={materialForm.type}
-                    onChange={(e) => setMaterialForm({ ...materialForm, type: e.target.value })}
-                  >
-                    <option value="video">Video</option>
-                    <option value="note">Notes</option>
-                  </Form.Select>
-                </div>
-
-                <div className="col-12 col-md-4">
-                  <Form.Label>Duration (mins)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    value={materialForm.duration}
-                    onChange={(e) => setMaterialForm({ ...materialForm, duration: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <Form.Group className="mt-2">
-                <Form.Label>External URL (optional)</Form.Label>
-                <Form.Control
-                  value={materialForm.externalUrl}
-                  onChange={(e) => setMaterialForm({ ...materialForm, externalUrl: e.target.value })}
-                  placeholder="https://"
-                />
-              </Form.Group>
-
-              <Form.Group className="mt-2">
-                <Form.Label>Upload File</Form.Label>
-                <Form.Control type="file" onChange={(e) => setFile(e.target.files[0])} />
-              </Form.Group>
-
-              <Button type="submit" variant="dark" className="mt-3">
-                Upload Material
-              </Button>
-            </Form>
-          </Card>
+        <div className="d-flex gap-2">
+          <Button
+            variant="white"
+            className="d-flex align-items-center gap-2 border shadow-sm rounded-pill px-4 fw-medium text-secondary transition hover-bg-light"
+            onClick={() => {
+              setMessage({ type: "", text: "" });
+              showToast("Refreshing content...");
+              fetchCourses();
+              if (selectedCourseId) fetchContent(selectedCourseId);
+            }}
+          >
+            <i className="bi bi-arrow-clockwise" />
+            Refresh Data
+          </Button>
         </div>
       </div>
 
-      <Card className="mt-4 p-3 shadow-sm border-0">
-        <h5 className="mb-3">Course Content</h5>
-        {selectedCourseId && content.length === 0 && (
-          <p className="text-muted">No chapters added yet.</p>
-        )}
-
-        {content.map((chapter) => (
-          <div
-            key={chapter._id}
-            className="mb-3"
-            draggable
-            onDragStart={() => setDragChapterId(chapter._id)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleChapterDrop(chapter._id)}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <div className="fw-semibold">
-                <i className="bi bi-grip-vertical me-2 text-muted" />
-                {chapter.title} (Order {chapter.order || 0})
-              </div>
-              <div className="d-flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  onClick={() => startEditChapter(chapter)}
-                >
-                  Edit
-                </Button>
-              </div>
+      {/* Messages */}
+      {message.text && (
+        <Alert variant={message.type || "info"} className="shadow-sm border-0 rounded-4 mb-4">
+          <div className="d-flex align-items-start justify-content-between gap-3">
+            <div className="d-flex align-items-center gap-2">
+              <i className={`bi fs-5 ${message.type === "danger" ? "bi-exclamation-triangle-fill text-danger" : "bi-check-circle-fill text-success"}`} />
+              <div className="fw-medium">{message.text}</div>
             </div>
-            {editingChapterId === chapter._id && (
-              <div className="border rounded p-2 mb-2 bg-light">
-                <div className="row g-2">
-                  <div className="col-12 col-md-5">
-                    <Form.Control
-                      value={chapterEdits[chapter._id]?.title || ""}
-                      onChange={(e) =>
-                        setChapterEdits({
-                          ...chapterEdits,
-                          [chapter._id]: {
-                            ...chapterEdits[chapter._id],
-                            title: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="Chapter title"
-                    />
-                  </div>
-                  <div className="col-12 col-md-2">
-                    <Form.Control
-                      type="number"
-                      value={chapterEdits[chapter._id]?.order || 0}
-                      onChange={(e) =>
-                        setChapterEdits({
-                          ...chapterEdits,
-                          [chapter._id]: {
-                            ...chapterEdits[chapter._id],
-                            order: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="Order"
-                    />
-                  </div>
-                  <div className="col-12 col-md-5">
-                    <Form.Control
-                      value={chapterEdits[chapter._id]?.description || ""}
-                      onChange={(e) =>
-                        setChapterEdits({
-                          ...chapterEdits,
-                          [chapter._id]: {
-                            ...chapterEdits[chapter._id],
-                            description: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="Description"
-                    />
-                  </div>
-                </div>
-                <div className="d-flex gap-2 mt-2">
-                  <Button size="sm" onClick={() => saveEditChapter(chapter._id)}>
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={() => setEditingChapterId(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="mb-2">
-              <div className="small text-muted mb-1">Topics</div>
-              <div className="d-flex flex-wrap gap-2">
-                {(chapter.topics || []).length === 0 && (
-                  <span className="text-muted small">No topics yet.</span>
-                )}
-                {(chapter.topics || []).map((topic, idx) => (
-                  <span key={idx} className="badge bg-light text-dark border">
-                    {topic}
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-link text-danger ms-1 p-0"
-                      onClick={() => {
-                        const nextTopics = (chapter.topics || []).filter((t) => t !== topic);
-                        handleSaveTopics(chapter._id, nextTopics);
-                      }}
-                    >
-                      <i className="bi bi-x-circle" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-
-              <div className="d-flex gap-2 mt-2">
-                <Form.Control
-                  placeholder="Add topic and click Add"
-                  value={chapterTopicInputs[chapter._id] || ""}
-                  onChange={(e) =>
-                    setChapterTopicInputs({
-                      ...chapterTopicInputs,
-                      [chapter._id]: e.target.value,
-                    })
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="outline-primary"
-                  onClick={() => {
-                    const value = (chapterTopicInputs[chapter._id] || "").trim();
-                    if (!value) return;
-                    const currentTopics = chapter.topics || [];
-                    if (currentTopics.includes(value)) return;
-                    handleSaveTopics(chapter._id, [...currentTopics, value]);
-                    setChapterTopicInputs({ ...chapterTopicInputs, [chapter._id]: "" });
-                  }}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            <Table size="sm" bordered responsive>
-              <thead className="table-light">
-                <tr>
-                  <th>Material</th>
-                  <th>Type</th>
-                  <th>Duration</th>
-                  <th>Topic</th>
-                  <th>Resource</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chapter.materials.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="text-center text-muted">
-                      No materials
-                    </td>
-                  </tr>
-                ) : (
-                  chapter.materials.map((mat) => (
-                    editingMaterialId === mat._id ? (
-                      <tr key={mat._id}>
-                        <td>
-                          <Form.Control
-                            value={materialEdits[mat._id]?.title || ""}
-                            onChange={(e) =>
-                              setMaterialEdits({
-                                ...materialEdits,
-                                [mat._id]: {
-                                  ...materialEdits[mat._id],
-                                  title: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </td>
-                        <td>
-                          <Form.Select
-                            value={materialEdits[mat._id]?.type || "video"}
-                            onChange={(e) =>
-                              setMaterialEdits({
-                                ...materialEdits,
-                                [mat._id]: {
-                                  ...materialEdits[mat._id],
-                                  type: e.target.value,
-                                },
-                              })
-                            }
-                          >
-                            <option value="video">Video</option>
-                            <option value="note">Notes</option>
-                          </Form.Select>
-                        </td>
-                        <td>
-                          <Form.Control
-                            type="number"
-                            value={materialEdits[mat._id]?.duration || 0}
-                            onChange={(e) =>
-                              setMaterialEdits({
-                                ...materialEdits,
-                                [mat._id]: {
-                                  ...materialEdits[mat._id],
-                                  duration: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </td>
-                        <td>
-                          <Form.Select
-                            value={materialEdits[mat._id]?.topic || ""}
-                            onChange={(e) =>
-                              setMaterialEdits({
-                                ...materialEdits,
-                                [mat._id]: {
-                                  ...materialEdits[mat._id],
-                                  topic: e.target.value,
-                                },
-                              })
-                            }
-                          >
-                            <option value="">No topic</option>
-                            {(chapter.topics || []).map((topic, idx) => (
-                              <option key={idx} value={topic}>
-                                {topic}
-                              </option>
-                            ))}
-                          </Form.Select>
-                        </td>
-                        <td>
-                          <Form.Control
-                            value={materialEdits[mat._id]?.externalUrl || ""}
-                            onChange={(e) =>
-                              setMaterialEdits({
-                                ...materialEdits,
-                                [mat._id]: {
-                                  ...materialEdits[mat._id],
-                                  externalUrl: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </td>
-                        <td>
-                          <div className="d-flex gap-2">
-                            <Button size="sm" onClick={() => saveEditMaterial(mat._id)}>
-                              Save
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              onClick={() => setEditingMaterialId(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr
-                        key={mat._id}
-                        draggable
-                        onDragStart={() => setDragMaterial({ chapterId: chapter._id, materialId: mat._id })}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleMaterialDrop(chapter._id, mat._id)}
-                      >
-                        <td>{mat.title}</td>
-                        <td>{mat.type}</td>
-                        <td>{mat.duration ? `${mat.duration} min` : "-"}</td>
-                        <td>{mat.topic || "-"}</td>
-                        <td>
-                          {mat.file ? (
-                            <a
-                              href={`http://localhost:3000/${mat.file}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              View file
-                            </a>
-                          ) : mat.externalUrl ? (
-                            <a href={mat.externalUrl} target="_blank" rel="noreferrer">
-                              Open link
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td>
-                          <div className="d-flex gap-2">
-                            <Button size="sm" variant="outline-secondary" onClick={() => startEditMaterial(mat)}>
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => handleDeleteMaterial(mat._id)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  ))
-                )}
-              </tbody>
-            </Table>
+            <Button size="sm" variant="link" className="text-secondary p-0 text-decoration-none" onClick={() => setMessage({ type: "", text: "" })}>
+              <i className="bi bi-x-lg"></i>
+            </Button>
           </div>
-        ))}
-      </Card>
+        </Alert>
+      )}
 
-      <ToastContainer position="bottom-end" className="p-3">
-        <Toast
-          show={toast.show}
-          bg={toast.variant}
-          delay={2500}
-          autohide
-          onClose={() => setToast({ ...toast, show: false })}
-        >
-          <Toast.Body className="text-white fw-semibold">{toast.message}</Toast.Body>
+      {loading && (
+        <div className="text-center my-4">
+          <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+          <div className="text-muted mt-2 fw-medium small">Loading content...</div>
+        </div>
+      )}
+
+      <Row className="g-4">
+        <Col xs={12} lg={5} xxl={4}>
+          <TeacherLmsLeftPanel
+            courseErr={courseErr}
+            chapterErr={chapterErr}
+            materialErr={materialErr}
+            courseForm={courseForm}
+            setCourseForm={setCourseForm}
+            chapterForm={chapterForm}
+            setChapterForm={setChapterForm}
+            materialForm={materialForm}
+            setMaterialForm={setMaterialForm}
+            setFile={setFile}
+            classes={classes}
+            classHasStreams={classHasStreams}
+            streamOptions={streamOptions}
+            sectionOptions={sectionOptions}
+            subjectsLoading={subjectsLoading}
+            subjectsError={subjectsError}
+            subjects={subjects}
+            selectedCourseId={selectedCourseId}
+            setSelectedCourseId={setSelectedCourseId}
+            courses={courses}
+            chapterOptions={chapterOptions}
+            content={content}
+            setErrors={setErrors}
+            handleCreateCourse={handleCreateCourse}
+            handleCreateChapter={handleCreateChapter}
+            handleCreateMaterial={handleCreateMaterial}
+            MAX_TITLE={MAX_TITLE}
+            MAX_DESC={MAX_DESC}
+          />
+        </Col>
+
+        <Col xs={12} lg={7} xxl={8}>
+          <TeacherLmsRightPanel
+            courseQuery={courseQuery}
+            setCourseQuery={setCourseQuery}
+            selectedCourseId={selectedCourseId}
+            setSelectedCourseId={setSelectedCourseId}
+            filteredCourses={filteredCourses}
+            selectedCourse={selectedCourse}
+            handleDeleteCourse={handleDeleteCourse}
+            contentQuery={contentQuery}
+            setContentQuery={setContentQuery}
+            content={content}
+            filteredContent={filteredContent}
+            errors={errors}
+            setDragChapterId={setDragChapterId}
+            handleChapterDrop={handleChapterDrop}
+            editingChapterId={editingChapterId}
+            setEditingChapterId={setEditingChapterId}
+            chapterEdits={chapterEdits}
+            setChapterEdits={setChapterEdits}
+            startEditChapter={startEditChapter}
+            saveEditChapter={saveEditChapter}
+            chapterTopicInputs={chapterTopicInputs}
+            setChapterTopicInputs={setChapterTopicInputs}
+            handleSaveTopics={handleSaveTopics}
+            showMessage={showMessage}
+            setDragMaterial={setDragMaterial}
+            handleMaterialDrop={handleMaterialDrop}
+            editingMaterialId={editingMaterialId}
+            setEditingMaterialId={setEditingMaterialId}
+            materialEdits={materialEdits}
+            setMaterialEdits={setMaterialEdits}
+            startEditMaterial={startEditMaterial}
+            saveEditMaterial={saveEditMaterial}
+            handleDeleteMaterial={handleDeleteMaterial}
+          />
+        </Col>
+      </Row>
+
+      <ToastContainer position="bottom-end" className="p-4" style={{ zIndex: 1060 }}>
+        <Toast show={toast.show} bg={toast.variant} delay={3000} autohide onClose={() => setToast({ ...toast, show: false })} className="shadow border-0">
+          <Toast.Body className="text-white fw-medium d-flex align-items-center gap-2">
+            <i className={`bi ${toast.variant === 'danger' ? 'bi-exclamation-octagon' : 'bi-check-circle'} fs-5`}></i>
+            {toast.message}
+          </Toast.Body>
         </Toast>
       </ToastContainer>
     </div>

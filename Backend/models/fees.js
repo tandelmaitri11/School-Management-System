@@ -24,7 +24,17 @@ const feesSchema = new mongoose.Schema(
     totalFees: { type: Number, required: true },
     paidAmount: { type: Number, default: 0 },
     remainingAmount: { type: Number, default: 0 },
+    dueDate: { type: Date, default: null },
+    lateFeeAccrued: { type: Number, default: 0 },
+    lastLateFeeCalcAt: { type: Date, default: null },
     feeStatus: { type: String, enum: ["Paid", "Pending"], default: "Pending" },
+
+    reminderStatus: {
+      lastAutoReminderAt: { type: Date, default: null },
+      lastManualReminderAt: { type: Date, default: null },
+      autoReminderCount: { type: Number, default: 0 },
+      manualReminderCount: { type: Number, default: 0 },
+    },
 
     paymentHistory: [paymentSchema],
   },

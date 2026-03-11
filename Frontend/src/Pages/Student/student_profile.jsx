@@ -111,7 +111,11 @@ export default function StudentProfile() {
 
               {/* Name & ID */}
               <h4 className="fw-bold mt-3 mb-0 text-dark">{student.name}</h4>
-              <p className="text-primary fw-medium mb-1">Class {student.studentClass || "N/A"}</p>
+              <p className="text-primary fw-medium mb-1">
+                Class {student.studentClass || "N/A"}
+                {student.section ? ` | Section ${student.section}` : ""}
+                {student.stream ? ` | ${student.stream}` : ""}
+              </p>
               <span className="badge bg-light text-secondary border px-3 py-2 rounded-pill">
                 ID: {student.studentId || "N/A"}
               </span>
@@ -155,6 +159,10 @@ export default function StudentProfile() {
               </div>
               
               <div className="row g-4">
+                <InfoItem label="Class" value={student?.studentClass ? `Class ${student.studentClass}` : null} icon="bi-book" />
+                <InfoItem label="Section" value={student?.section} icon="bi-diagram-2" />
+                <InfoItem label="Stream" value={student?.stream} icon="bi-diagram-3" />
+                <InfoItem label="Subject Choice" value={student?.subjectChoice} icon="bi-journal-check" />
                 <InfoItem label="Date of Birth" value={info?.dob ? new Date(info.dob).toLocaleDateString() : null} icon="bi-calendar-event" />
                 <InfoItem label="Gender" value={info?.gender} icon="bi-gender-ambiguous" />
                 <InfoItem label="Blood Group" value={info?.bloodGroup} icon="bi-droplet-half" />

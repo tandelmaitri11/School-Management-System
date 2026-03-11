@@ -85,10 +85,18 @@ export default function SubmitAssignmentPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [assignRes, subRes] = await Promise.all([
-          api.get(`/api/assignments/class/${studentClass}`),
+        const [profileRes, subRes] = await Promise.all([
+          api.get(`/api/studentDashboard/profile/${studentId}`),
           api.get(`/api/assignments/student/${studentId}`)
         ]);
+        const profile = profileRes.data || {};
+        const params = new URLSearchParams();
+        if (profile.section) params.append("section", String(profile.section).toUpperCase());
+        if (profile.stream) params.append("stream", profile.stream);
+        if (profile.subjectChoice) params.append("subjectChoice", profile.subjectChoice);
+        const qs = params.toString();
+        const assignRes = await api.get(`/api/assignments/class/${studentClass}${qs ? `?${qs}` : ""}`);
+
         setAssignments(assignRes.data);
         setSubmissions(subRes.data);
       } catch (error) {

@@ -4,7 +4,10 @@ const feesController = require("../controller/feesController");
 // class fee
 router.post("/class-fee", feesController.addOrUpdateClassFee);
 router.get("/class-fee", feesController.getAllClassFees);
+router.patch("/class-fee/auto-reminder", feesController.setClassAutoReminderToggle);
 router.get("/students/:className", feesController.getStudentsByClass);
+router.get("/reports/class-wise", feesController.getClassWiseFeeReport);
+router.get("/reports/month-wise", feesController.getMonthWiseFeeReport);
 
 // student fees
 router.get("/student/:studentId", feesController.getStudentFees);
@@ -20,5 +23,6 @@ router.post("/receipt-email/:feesId/:paymentId", feesController.emailReceiptToSt
 
 // reminder
 router.post("/reminder/:studentId", feesController.sendFeesReminder);
+router.post("/reminder/queue-all", feesController.queueAllFeeReminders);
 
 module.exports = router;

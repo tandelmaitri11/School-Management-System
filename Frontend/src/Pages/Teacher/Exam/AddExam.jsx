@@ -7,24 +7,32 @@ import {
   FaPlus,
   FaCalendarAlt,
   FaLayerGroup,
+  FaArrowRight,
+  FaSave,
 } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
+const normalize = (v) => String(v || "").trim();
+const normalizeUpper = (v) => normalize(v).toUpperCase();
+
 const AddExam = () => {
-  // --- States ---
   const [examId, setExamId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [assignedSections, setAssignedSections] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
 
   const [examData, setExamData] = useState({
     title: "",
     classId: "",
     className: "",
+    section: "",
+    stream: "",
     subjectId: "",
     subjectName: "",
     duration: "",
@@ -33,7 +41,6 @@ const AddExam = () => {
   });
 
   const [questions, setQuestions] = useState([]);
-
   const [currentQuestion, setCurrentQuestion] = useState({
     questionText: "",
     type: "MCQ",
@@ -44,15 +51,10 @@ const AddExam = () => {
 
   const token = localStorage.getItem("token");
   const teacherId = localStorage.getItem("teacherId");
-
-  // ---------------- TOAST HELPERS ----------------
   const toastIds = useRef({});
 
   const getErrMsg = (err, fallback = "Something went wrong") =>
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    fallback;
+    err?.response?.data?.message || err?.response?.data?.error || err?.message || fallback;
 
   const showToast = (type, message, key) => {
     const idKey = key || message;
@@ -73,15 +75,116 @@ const AddExam = () => {
   useEffect(() => {
     if (!teacherId || !token) return;
 
-    api
-      .get(`/api/classes/by-teacher/${teacherId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setClasses(res.data))
-      .catch((err) =>
-        showToast("error", getErrMsg(err, "Failed to load classes"), "classes")
-      );
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get(`/api/teachers/teacher/profile/${teacherId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setClasses(res.data?.classesFull || []);
+        setAssignedSections(res.data?.assignedSections || []);
+      } catch (err) {
+        showToast("error", getErrMsg(err, "Failed to load teacher classes"), "classes");
+      }
+    };
+
+    fetchProfile();
   }, [teacherId, token]);
+
+  const selectedClass = useMemo(
+    () => classes.find((c) => String(c._id) === String(examData.classId)) || null,
+    [classes, examData.classId]
+  );
+
+  const assignedForClass = useMemo(
+    () => assignedSections.filter((s) => String(s?.classId) === String(selectedClass?._id || "")),
+    [assignedSections, selectedClass]
+  );
+
+  const classStreams = useMemo(
+    () =>
+      (selectedClass?.streams || [])
+        .filter((s) => s?.isActive !== false)
+        .map((s) => normalize(s.name))
+        .filter(Boolean),
+    [selectedClass]
+  );
+
+  const streamOptions = useMemo(
+    () => {
+      if (classStreams.length === 0) return [];
+      const assignedStreamSet = new Set(
+        assignedForClass
+          .map((s) => normalize(s?.stream))
+          .filter(Boolean)
+          .map((s) => s.toLowerCase())
+      );
+      return classStreams.filter((st) => assignedStreamSet.has(st.toLowerCase()));
+    },
+    [classStreams, assignedForClass]
+  );
+
+  const classHasStreams = classStreams.length > 0;
+  const hasStreams = streamOptions.length > 0;
+
+  const sectionOptions = useMemo(() => {
+    if (!selectedClass?._id) return [];
+
+    const fromTeacher = assignedForClass
+      .map((s) => ({ name: normalizeUpper(s.section), stream: normalize(s.stream), fromClass: false }))
+      .filter((s) => s.name);
+
+    const byName = new Map();
+    fromTeacher.forEach((s) => {
+      const key = `${s.name}__${normalize(s.stream).toLowerCase()}`;
+      if (!byName.has(key)) {
+        byName.set(key, s);
+        return;
+      }
+      const prev = byName.get(key);
+      if (!normalize(prev.stream) && normalize(s.stream)) byName.set(key, s);
+    });
+    const base = Array.from(byName.values());
+
+    if (classHasStreams) {
+      if (!examData.stream) return [];
+      const exact = base.filter(
+        (s) => normalize(s.stream).toLowerCase() === normalize(examData.stream).toLowerCase()
+      );
+      return Array.from(new Map(exact.map((s) => [s.name, s])).values());
+    }
+
+    return Array.from(new Map(base.map((s) => [s.name, s])).values());
+  }, [selectedClass, assignedForClass, classHasStreams, examData.stream]);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (!examData.className) return;
+      if (classHasStreams && !examData.stream) {
+        setSubjects([]);
+        return;
+      }
+
+      setSubjects([]);
+      setSubjectsLoading(true);
+      try {
+        const query = examData.stream ? `?stream=${encodeURIComponent(examData.stream)}` : "";
+        const res = await api.get(`/api/subjects/getSubjects/${examData.className}${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const rows = res.data || [];
+        setSubjects(rows);
+        if (rows.length === 0) {
+          showToast("warning", "No subjects available for selected class/stream", "no-subjects-scope");
+        }
+      } catch (err) {
+        showToast("error", getErrMsg(err, "Could not load subjects"), "subjects");
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, [examData.className, examData.stream, classHasStreams, token]);
 
   const reorder = (list, startIndex, endIndex) => {
     const result = Array.from(list);
@@ -93,44 +196,37 @@ const AddExam = () => {
   const handleDragEnd = (result) => {
     if (!result.destination) return;
     if (result.destination.index === result.source.index) return;
-
     setQuestions((prev) => reorder(prev, result.source.index, result.destination.index));
   };
 
-  const handleClassChange = async (cId, cName) => {
+  const handleClassChange = (classDoc) => {
     setExamData((prev) => ({
       ...prev,
-      classId: cId,
-      className: cName,
+      classId: classDoc?._id || "",
+      className: classDoc?.className || "",
+      stream: "",
+      section: "",
       subjectId: "",
       subjectName: "",
     }));
     setSubjects([]);
-
-    try {
-      const res = await api.get(`/api/subjects/getSubjects/${cName}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const subs = res.data || [];
-      setSubjects(subs);
-
-      if (subs.length === 0) {
-        showToast("info", "No subjects available for this class", "no-subjects");
-      }
-    } catch (err) {
-      showToast("error", getErrMsg(err, "Could not load subjects"), "subjects");
-    }
   };
 
   const handleSaveExamHeader = async (e) => {
     e.preventDefault();
 
-    if (!examData.title || !examData.classId || !examData.subjectId) {
-      return showToast("info", "Please fill all exam info fields", "header-required");
+    if (
+      !examData.title ||
+      !examData.classId ||
+      !examData.section ||
+      (classHasStreams && !examData.stream) ||
+      !examData.subjectId
+    ) {
+      return showToast("info", "Please fill all required exam fields", "header-required");
     }
+
     if (subjects.length === 0) {
-      return showToast("info", "No subjects available for this class", "no-subjects");
+      return showToast("info", "No subjects available for selected scope", "no-subjects");
     }
 
     setLoading(true);
@@ -140,11 +236,7 @@ const AddExam = () => {
       });
 
       setExamId(res.data.exam._id);
-      showToast(
-        "success",
-        "Exam header saved! Students will get details .",
-        "header-saved"
-      );
+      showToast("success", "Exam header saved. Add questions now.", "header-saved");
     } catch (err) {
       showToast("error", getErrMsg(err, "Error creating exam"), "create-exam");
     } finally {
@@ -183,7 +275,6 @@ const AddExam = () => {
     };
 
     setQuestions((prev) => [...prev, newQ]);
-
     setCurrentQuestion({
       questionText: "",
       type: "MCQ",
@@ -197,7 +288,6 @@ const AddExam = () => {
 
   const handleEditQuestion = (idx) => {
     const q = questions[idx];
-
     const indexFromString =
       typeof q.correctAnswerIndex === "number"
         ? q.correctAnswerIndex
@@ -210,13 +300,11 @@ const AddExam = () => {
       correctAnswerIndex: indexFromString >= 0 ? indexFromString : -1,
       marks: q.marks,
     });
-
     setEditIndex(idx);
   };
 
   const handleUpdateQuestion = () => {
     if (editIndex === null) return;
-
     if (!currentQuestion.questionText || currentQuestion.correctAnswerIndex === -1) {
       return showToast("info", "Fill question and select correct answer", "q-required");
     }
@@ -225,12 +313,7 @@ const AddExam = () => {
     }
 
     const totalMarks = Number(examData.totalMarks || 0);
-
-    const totalWithoutThis = questions.reduce((sum, q, i) => {
-      if (i === editIndex) return sum;
-      return sum + Number(q.marks);
-    }, 0);
-
+    const totalWithoutThis = questions.reduce((sum, q, i) => (i === editIndex ? sum : sum + Number(q.marks)), 0);
     const newTotal = totalWithoutThis + Number(currentQuestion.marks);
 
     if (newTotal > totalMarks) {
@@ -244,7 +327,6 @@ const AddExam = () => {
     setQuestions((prev) => {
       const updated = [...prev];
       const old = updated[editIndex];
-
       updated[editIndex] = {
         questionText: currentQuestion.questionText,
         type: "MCQ",
@@ -254,7 +336,6 @@ const AddExam = () => {
         marks: Number(currentQuestion.marks),
         _tempId: old._tempId,
       };
-
       return updated;
     });
 
@@ -278,7 +359,6 @@ const AddExam = () => {
     const totalAddedMarks = questions.reduce((sum, q) => sum + Number(q.marks), 0);
 
     if (questions.length === 0) return showToast("info", "Add at least 1 question", "no-q");
-
     if (totalAddedMarks !== totalMarks) {
       return showToast(
         "error",
@@ -304,7 +384,6 @@ const AddExam = () => {
       );
 
       showToast("success", "Exam Published Successfully!", "published");
-
       setExamId(null);
       setQuestions([]);
       setSubjects([]);
@@ -312,6 +391,8 @@ const AddExam = () => {
         title: "",
         classId: "",
         className: "",
+        section: "",
+        stream: "",
         subjectId: "",
         subjectName: "",
         duration: "",
@@ -326,61 +407,54 @@ const AddExam = () => {
     }
   };
 
-  const usedMarks = useMemo(
-    () => questions.reduce((s, q) => s + Number(q.marks), 0),
-    [questions]
-  );
-
+  const usedMarks = useMemo(() => questions.reduce((s, q) => s + Number(q.marks), 0), [questions]);
   const totalMarks = Number(examData.totalMarks || 0);
 
   return (
-    <div className="container py-4">
+    <div className="container-fluid bg-light min-vh-100 py-4">
       <ToastContainer position="top-right" autoClose={2500} />
 
-      {/* Header */}
-      <div className="d-flex align-items-center justify-content-between mb-4">
-        <div>
-          <h4 className="fw-bold mb-1">Add Exam</h4>
-          <p className="text-muted mb-0 small">Create exam header then add MCQ questions</p>
+      <div className="container">
+        {/* Header Section */}
+        <div className="mb-4">
+          <h3 className="fw-bold text-dark">Add New Exam</h3>
+          <p className="text-muted small">Configure your exam settings, then build your question bank.</p>
         </div>
 
-        {examId && <span className="badge bg-success">Step 1 Locked</span>}
-      </div>
+        <div className="row g-4">
+          {/* CONFIGURATION AREA */}
+          <div className={examId ? "col-lg-4" : "col-lg-6 mx-auto"}>
+            <div className="bg-white p-4 shadow-sm rounded-3 border-0">
+              <div className="d-flex align-items-center mb-3">
+                <FaCalendarAlt className="me-2 text-primary" />
+                <h5 className="mb-0 fw-bold">{examId ? "Exam Header (Locked)" : "1. Exam Header"}</h5>
+              </div>
 
-      <div className="row g-4">
-        {/* Left */}
-        <div className={examId ? "col-lg-4" : "col-lg-6 mx-auto"}>
-          <div className="card border shadow-sm">
-            <div className={`card-header fw-bold text-white ${examId ? "bg-dark" : "bg-primary"}`}>
-              <FaCalendarAlt className="me-2" />
-              {examId ? "Exam Info (Locked)" : "Exam Info"}
-            </div>
-
-            <div className="card-body">
               <form onSubmit={handleSaveExamHeader}>
                 <div className="mb-3">
-                  <label className="form-label">Exam Title</label>
+                  <label className="form-label small fw-bold">Exam Title</label>
                   <input
                     type="text"
                     className="form-control"
                     disabled={examId}
                     required
                     value={examData.title}
-                    onChange={(e) => setExamData({ ...examData, title: e.target.value })}
+                    onChange={(e) => setExamData((prev) => ({ ...prev, title: e.target.value }))}
                   />
                 </div>
 
-                <div className="row g-3 mb-3">
+                <div className="row g-2 mb-3">
                   <div className="col-6">
-                    <label className="form-label">Class</label>
+                    <label className="form-label small fw-bold">Class</label>
                     <select
                       className="form-select"
                       disabled={examId}
                       required
                       value={examData.classId}
-                      onChange={(e) =>
-                        handleClassChange(e.target.value, e.target.selectedOptions[0].text)
-                      }
+                      onChange={(e) => {
+                        const cls = classes.find((c) => String(c._id) === String(e.target.value));
+                        handleClassChange(cls);
+                      }}
                     >
                       <option value="">Select</option>
                       {classes.map((c) => (
@@ -390,27 +464,72 @@ const AddExam = () => {
                       ))}
                     </select>
                   </div>
-
                   <div className="col-6">
-                    <label className="form-label">Subject</label>
+                    <label className="form-label small fw-bold">Stream</label>
                     <select
                       className="form-select"
-                      disabled={examId || subjects.length === 0}
-                      required
-                      value={examData.subjectId}
+                      disabled={examId || !examData.classId || !classHasStreams}
+                      value={examData.stream}
                       onChange={(e) =>
-                        setExamData({
-                          ...examData,
-                          subjectId: e.target.value,
-                          subjectName: e.target.selectedOptions[0].text,
-                        })
+                        setExamData((prev) => ({
+                          ...prev,
+                          stream: e.target.value,
+                          section: "",
+                          subjectId: "",
+                          subjectName: "",
+                        }))
                       }
                     >
                       <option value="">
-                        {subjects.length === 0 ? "No subjects" : "Select"}
+                        {classHasStreams ? "Select" : "N/A"}
+                      </option>
+                      {streamOptions.map((stream) => (
+                        <option key={stream} value={stream}>
+                          {stream}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <label className="form-label small fw-bold">Section</label>
+                    <select
+                      className="form-select"
+                      disabled={examId || !examData.classId}
+                      required
+                      value={examData.section}
+                      onChange={(e) => setExamData((prev) => ({ ...prev, section: e.target.value }))}
+                    >
+                      <option value="">Select</option>
+                      {sectionOptions.map((s) => (
+                        <option key={s.name} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label small fw-bold">Subject</label>
+                    <select
+                      className="form-select"
+                      disabled={examId || subjectsLoading || subjects.length === 0}
+                      required
+                      value={examData.subjectId}
+                      onChange={(e) =>
+                        setExamData((prev) => ({
+                          ...prev,
+                          subjectId: e.target.value,
+                          subjectName: e.target.selectedOptions[0]?.text || "",
+                        }))
+                      }
+                    >
+                      <option value="">
+                        {subjectsLoading ? "Loading..." : subjects.length === 0 ? "No subjects" : "Select"}
                       </option>
                       {subjects.map((s) => (
-                        <option key={s._id} value={s._id}>
+                        <option key={s._id || s.subjectName} value={s._id || s.subjectName}>
                           {s.subjectName}
                         </option>
                       ))}
@@ -418,79 +537,74 @@ const AddExam = () => {
                   </div>
                 </div>
 
-                <div className="row g-3 mb-3">
+                <div className="row g-2 mb-3">
                   <div className="col-6">
-                    <label className="form-label">Duration (Min)</label>
+                    <label className="form-label small fw-bold">Duration (Min)</label>
                     <input
                       type="number"
                       className="form-control"
                       disabled={examId}
                       required
                       value={examData.duration}
-                      onChange={(e) => setExamData({ ...examData, duration: e.target.value })}
+                      onChange={(e) => setExamData((prev) => ({ ...prev, duration: e.target.value }))}
                     />
                   </div>
                   <div className="col-6">
-                    <label className="form-label">Total Marks</label>
+                    <label className="form-label small fw-bold">Total Marks</label>
                     <input
                       type="number"
                       className="form-control"
                       disabled={examId}
                       required
                       value={examData.totalMarks}
-                      onChange={(e) => setExamData({ ...examData, totalMarks: e.target.value })}
+                      onChange={(e) => setExamData((prev) => ({ ...prev, totalMarks: e.target.value }))}
                     />
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Start Date & Time</label>
+                <div className="mb-4">
+                  <label className="form-label small fw-bold">Start Time</label>
                   <input
                     type="datetime-local"
                     className="form-control"
                     disabled={examId}
                     required
                     value={examData.startTime}
-                    onChange={(e) => setExamData({ ...examData, startTime: e.target.value })}
+                    onChange={(e) => setExamData((prev) => ({ ...prev, startTime: e.target.value }))}
                   />
                 </div>
 
                 {!examId && (
-                  <button className="btn btn-primary w-100 fw-bold" disabled={loading}>
-                    {loading ? "Saving..." : "Proceed"}
+                  <button
+                    className="btn btn-primary w-100 fw-bold py-2"
+                    type="submit"
+                    disabled={loading || subjectsLoading || (classHasStreams && !examData.stream)}
+                  >
+                    {loading ? "Saving..." : "Next: Add Questions"}
                   </button>
                 )}
               </form>
             </div>
           </div>
-        </div>
 
-        {/* Right */}
-        {examId && (
-          <div className="col-lg-8">
-            <div className="card border shadow-sm">
-              <div className="card-header d-flex justify-content-between align-items-center">
-                <div className="fw-bold">
-                  <FaLayerGroup className="me-2 text-primary" />
-                  Question Bank
+          {/* QUESTION BUILDER AREA */}
+          {examId && (
+            <div className="col-lg-8">
+              <div className="bg-white p-4 shadow-sm rounded-3 border-0">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="text-primary fw-bold m-0"><FaLayerGroup className="me-2"/> 2. Question Bank</h5>
+                  <span className="badge bg-dark px-3 py-2">Marks: {usedMarks} / {totalMarks}</span>
                 </div>
-                <span className="badge bg-secondary">
-                  Marks: {usedMarks} / {totalMarks}
-                </span>
-              </div>
 
-              <div className="card-body">
-                {/* Editor */}
-                <div className="border rounded p-3 mb-3 bg-light">
+                {/* Question Input Container */}
+                <div className="p-3 bg-light rounded-3 mb-4 border">
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Question</label>
+                    <label className="form-label small fw-bold">Question Text</label>
                     <textarea
                       className="form-control"
                       rows="2"
                       value={currentQuestion.questionText}
-                      onChange={(e) =>
-                        setCurrentQuestion({ ...currentQuestion, questionText: e.target.value })
-                      }
+                      onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, questionText: e.target.value }))}
                     />
                   </div>
 
@@ -505,35 +619,22 @@ const AddExam = () => {
                           onChange={(e) => {
                             const newOpts = [...currentQuestion.options];
                             newOpts[i] = e.target.value;
-
-                            let newCorrect = currentQuestion.correctAnswerIndex;
-                            if (newCorrect === i && e.target.value.trim() === "") newCorrect = -1;
-
-                            setCurrentQuestion({
-                              ...currentQuestion,
-                              options: newOpts,
-                              correctAnswerIndex: newCorrect,
-                            });
+                            setCurrentQuestion((prev) => ({ ...prev, options: newOpts }));
                           }}
                         />
                       </div>
                     ))}
                   </div>
 
-                  <div className="row g-2 align-items-end">
+                  <div className="row g-2">
                     <div className="col-md-5">
-                      <label className="form-label fw-semibold">Correct Answer</label>
+                      <label className="form-label small fw-bold">Correct Choice</label>
                       <select
                         className="form-select"
                         value={currentQuestion.correctAnswerIndex}
-                        onChange={(e) =>
-                          setCurrentQuestion({
-                            ...currentQuestion,
-                            correctAnswerIndex: Number(e.target.value),
-                          })
-                        }
+                        onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, correctAnswerIndex: Number(e.target.value) }))}
                       >
-                        <option value={-1}>Select</option>
+                        <option value={-1}>Select Correct</option>
                         {currentQuestion.options.map((opt, i) =>
                           opt.trim() ? (
                             <option key={i} value={i}>
@@ -543,43 +644,27 @@ const AddExam = () => {
                         )}
                       </select>
                     </div>
-
                     <div className="col-md-3">
-                      <label className="form-label fw-semibold">Marks</label>
+                      <label className="form-label small fw-bold">Points</label>
                       <input
                         type="number"
                         className="form-control"
                         value={currentQuestion.marks}
-                        onChange={(e) =>
-                          setCurrentQuestion({ ...currentQuestion, marks: e.target.value })
-                        }
+                        onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, marks: e.target.value }))}
                       />
                     </div>
-
-                    <div className="col-md-4">
+                    <div className="col-md-4 align-self-end">
                       {editIndex === null ? (
-                        <button
-                          type="button"
-                          className="btn btn-primary w-100"
-                          onClick={handleAddQuestion}
-                        >
+                        <button className="btn btn-primary w-100" onClick={handleAddQuestion}>
                           <FaPlus className="me-2" /> Add
                         </button>
                       ) : (
                         <div className="d-flex gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-success w-100"
-                            onClick={handleUpdateQuestion}
-                          >
-                            <FaCheckCircle className="me-2" /> Update
+                          <button className="btn btn-success w-100" onClick={handleUpdateQuestion}>
+                            <FaSave /> Update
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary w-100"
-                            onClick={handleCancelEdit}
-                          >
-                            Cancel
+                          <button className="btn btn-outline-secondary w-100" onClick={handleCancelEdit}>
+                            X
                           </button>
                         </div>
                       )}
@@ -587,48 +672,37 @@ const AddExam = () => {
                   </div>
                 </div>
 
-                {/* Questions List */}
+                {/* List of Questions */}
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable droppableId="questionsList">
                     {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="mb-3">
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="mb-4">
                         {questions.length === 0 && (
-                          <div className="text-center text-muted small py-3">
-                            No questions added yet.
-                          </div>
+                          <div className="text-center text-muted p-4 border border-dashed rounded-3">No questions added yet. Add one above!</div>
                         )}
-
                         {questions.map((q, idx) => (
                           <Draggable key={q._tempId} draggableId={q._tempId} index={idx}>
-                            {(provided) => (
+                            {(drag) => (
                               <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="border rounded p-3 mb-2 d-flex justify-content-between align-items-center"
+                                ref={drag.innerRef}
+                                {...drag.draggableProps}
+                                {...drag.dragHandleProps}
+                                className="bg-white border p-3 mb-2 rounded-2 d-flex justify-content-between align-items-center shadow-sm"
                               >
-                                <div className="small">
-                                  <span className="fw-bold me-2">Q{idx + 1}</span>
-                                  {q.questionText.substring(0, 70)}
-                                  {q.questionText.length > 70 ? "..." : ""}
-                                  <span className="ms-2 badge bg-light text-dark border">
-                                    {q.marks} marks
-                                  </span>
+                                <div className="d-flex align-items-center gap-3">
+                                  <span className="badge bg-primary text-white">Q{idx + 1}</span>
+                                  <span className="small text-truncate">{q.questionText}</span>
+                                  <span className="badge bg-light text-dark border">{q.marks} mks</span>
                                 </div>
-
-                                <div className="d-flex gap-2">
-                                  <button
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={() => handleEditQuestion(idx)}
-                                  >
+                                <div className="btn-group">
+                                  <button className="btn btn-sm btn-outline-primary" onClick={() => handleEditQuestion(idx)}>
                                     <FaEdit />
                                   </button>
                                   <button
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={() => {
                                       if (editIndex === idx) handleCancelEdit();
-                                      setQuestions(questions.filter((_, i) => i !== idx));
-                                      showToast("info", "Question removed", "q-removed");
+                                      setQuestions((prev) => prev.filter((_, i) => i !== idx));
                                     }}
                                   >
                                     <FaTrashAlt />
@@ -638,7 +712,6 @@ const AddExam = () => {
                             )}
                           </Draggable>
                         ))}
-
                         {provided.placeholder}
                       </div>
                     )}
@@ -646,7 +719,7 @@ const AddExam = () => {
                 </DragDropContext>
 
                 <button
-                  className="btn btn-success w-100 fw-bold"
+                  className="btn btn-success w-100 fw-bold py-2"
                   onClick={handleFinalPublish}
                   disabled={questions.length === 0 || loading}
                 >
@@ -654,8 +727,8 @@ const AddExam = () => {
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

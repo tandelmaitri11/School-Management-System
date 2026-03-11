@@ -7,6 +7,9 @@ function NewSubject() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [subjects, setSubjects] = useState([{ subjectName: "" }]);
+  const [streamOptions, setStreamOptions] = useState([]);
+  const [selectedStream, setSelectedStream] = useState("");
+  const [streamSubjects, setStreamSubjects] = useState([{ subjectName: "" }]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "success", message: "" });
 
@@ -27,19 +30,42 @@ function NewSubject() {
     }
   }, [toast.show]);
 
-  const addSubject = () => setSubjects([...subjects, { subjectName: "" }]);
+  const selectedClassObj = classes.find((c) => String(c.className) === String(selectedClass));
+
+  useEffect(() => {
+    if (!selectedStream || !selectedClass) return;
+    api
+      .get(`/api/subjects/getSubjects/${selectedClass}?stream=${encodeURIComponent(selectedStream)}&mode=streamOnly`)
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setStreamSubjects(list.length ? list : [{ subjectName: "" }]);
+      })
+      .catch(() => setStreamSubjects([{ subjectName: "" }]));
+  }, [selectedStream, selectedClass]);
+
+  const isStreamMode = !!selectedStream;
+  const activeSubjects = isStreamMode ? streamSubjects : subjects;
+  const setActiveSubjects = isStreamMode ? setStreamSubjects : setSubjects;
+
+  const addSubject = () => setActiveSubjects([...activeSubjects, { subjectName: "" }]);
   
   const removeSpecificSubject = (index) => {
-    if (subjects.length > 1) {
-      setSubjects(subjects.filter((_, i) => i !== index));
+    if (activeSubjects.length > 1) {
+      setActiveSubjects(activeSubjects.filter((_, i) => i !== index));
     }
   };
 
   const handleChange = (index, field, value) => {
-    const newSubjects = [...subjects];
+    const newSubjects = [...activeSubjects];
     newSubjects[index][field] = value;
-    setSubjects(newSubjects);
+    setActiveSubjects(newSubjects);
   };
+
+  const normalizeList = (list) =>
+    (list || [])
+      .map((s) => String(s.subjectName || "").trim())
+      .filter((s) => s)
+      .map((s) => ({ subjectName: s }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,22 +73,32 @@ function NewSubject() {
       setToast({ show: true, type: "warning", message: "Please select a target class." });
       return;
     }
-
-    const validSubjects = subjects.filter((s) => s.subjectName.trim());
+    const list = normalizeList(activeSubjects);
+    const validSubjects = list.filter((s) => s.subjectName.trim());
     if (validSubjects.length === 0) {
       setToast({ show: true, type: "warning", message: "Enter at least one subject name." });
       return;
     }
-
     try {
       setLoading(true);
-      await api.post("/api/subjects/createSubject", {
-        className: Number(selectedClass),
-        subjects: validSubjects,
-      });
+      if (isStreamMode && selectedStream) {
+        await api.post("/api/subjects/createSubject", {
+          className: Number(selectedClass),
+          streamName: selectedStream,
+          streamSubjects: validSubjects,
+        });
+      } else {
+        await api.post("/api/subjects/createSubject", {
+          className: Number(selectedClass),
+          common: validSubjects,
+        });
+      }
       setToast({ show: true, type: "success", message: "Curriculum updated successfully!" });
       setSelectedClass("");
       setSubjects([{ subjectName: "" }]);
+      setSelectedStream("");
+      setStreamOptions([]);
+      setStreamSubjects([{ subjectName: "" }]);
     } catch (err) {
       setToast({ show: true, type: "danger", message: "Technical error. Please try again." });
     } finally {
@@ -70,15 +106,28 @@ function NewSubject() {
     }
   };
 
+  // Logic for dynamic toast coloring
+  const getToastBg = () => {
+    if (toast.type === 'danger') return '#ef4444';   // Crimson
+    if (toast.type === 'warning') return '#f59e0b';  // Amber
+    return '#10b981';                                // Emerald Green
+  };
+
   return (
-    <div className="container-fluid py-5" style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="container-fluid min-vh-100 bg-light-subtle py-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       
-      {/* Refined Toast Notification */}
-      <div className={`toast-container position-fixed top-0 end-0 p-4`} style={{ zIndex: 1100 }}>
-        <div className={`toast align-items-center text-white bg-${toast.type === 'danger' ? 'danger' : toast.type === 'warning' ? 'dark' : 'success'} border-0 shadow-lg ${toast.show ? 'show' : 'hide'}`} role="alert">
-          <div className="d-flex">
-            <div className="toast-body">
-              <i className={`bi bi-${toast.type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2`}></i>
+      {/* Toast Notification - Relocated to Top Right */}
+      <div className="toast-container position-fixed top-0 end-0 p-4" style={{ zIndex: 1200 }}>
+        <div className={`toast align-items-center text-white border-0 shadow-lg ${toast.show ? 'show' : 'hide'}`} 
+             style={{ 
+               backgroundColor: getToastBg(),
+               borderRadius: '10px',
+               minWidth: '300px'
+             }} 
+             role="alert">
+          <div className="d-flex p-2 align-items-center">
+            <div className="toast-body fw-semibold flex-grow-1 py-2 px-3">
+              <i className={`bi bi-${toast.type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill'} me-2`}></i>
               {toast.message}
             </div>
             <button type="button" className="btn-close btn-close-white me-2 m-auto" onClick={() => setToast({ ...toast, show: false })}></button>
@@ -86,78 +135,126 @@ function NewSubject() {
         </div>
       </div>
 
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-10 col-lg-6">
-          
-          {/* Back Button and Breadcrumb */}
-          <div className="mb-4 d-flex align-items-center">
-             <button onClick={() => window.history.back()} className="btn btn-link text-decoration-none text-muted p-0 me-3">
-                <i className="bi bi-arrow-left fs-5"></i>
-             </button>
-             <span className="text-muted fw-medium">Back to Subjects</span>
+      <div className="container" style={{ maxWidth: "1000px" }}>
+        {/* Header Section */}
+        <div className="row mb-4 align-items-end">
+          <div className="col">
+            <button onClick={() => window.history.back()} className="btn btn-white shadow-sm rounded-3 mb-3 border">
+              <i className="bi bi-chevron-left me-1"></i> Back
+            </button>
+            <h1 className="display-6 fw-bold text-dark mb-1">Define Curriculum</h1>
+            <p className="text-muted">Configure academic subjects and streams for your institution.</p>
           </div>
+          <div className="col-auto d-none d-md-block">
+            <button form="curriculum-form" type="submit" className="btn btn-primary px-5 py-2 fw-bold rounded-3 shadow-sm" disabled={loading}>
+                {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check2-circle me-2"></i>}
+                Save Configuration
+            </button>
+          </div>
+        </div>
 
-          <div className="card border-0 shadow-sm p-4 p-md-5" style={{ borderRadius: "24px" }}>
-            <div className="text-center mb-5">
-              <div className="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style={{ width: "64px", height: "64px" }}>
-                <i className="bi bi-journal-plus fs-2"></i>
+        <form id="curriculum-form" onSubmit={handleSubmit}>
+          <div className="row g-4">
+            
+            {/* Left: Configuration Controls */}
+            <div className="col-lg-5">
+              <div className="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div className="d-flex align-items-center mb-4">
+                  <div className="bg-primary bg-opacity-10 text-primary rounded-3 p-2 me-3">
+                    <i className="bi bi-layers-half fs-4"></i>
+                  </div>
+                  <h5 className="mb-0 fw-bold">Class & Stream</h5>
+                </div>
+
+                <div className="mb-4">
+                  <label className="form-label small fw-bold text-muted text-uppercase">Target Grade</label>
+                  <select
+                    className="form-select form-select-lg custom-input"
+                    value={selectedClass}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedClass(value);
+                      const cls = classes.find((c) => String(c.className) === String(value));
+                      setStreamOptions(Array.isArray(cls?.streams) ? cls.streams.map((s) => ({ ...s })) : []);
+                      setSelectedStream("");
+                      setStreamSubjects([{ subjectName: "" }]);
+                      if (value) {
+                        api.get(`/api/subjects/getSubjects/${value}`)
+                          .then((res) => {
+                            const list = Array.isArray(res.data) ? res.data : [];
+                            setSubjects(list.length ? list : [{ subjectName: "" }]);
+                          })
+                          .catch(() => setSubjects([{ subjectName: "" }]));
+                      } else {
+                        setSubjects([{ subjectName: "" }]);
+                      }
+                    }}
+                    required
+                  >
+                    <option value="">Select a Class...</option>
+                    {classes.map((cls) => (
+                      <option key={cls._id} value={cls.className}>Class {cls.className}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label small fw-bold text-muted text-uppercase">Specific Stream</label>
+                  {!selectedClass ? (
+                    <div className="alert alert-secondary py-2 border-0 small">Please select a class first.</div>
+                  ) : (selectedClassObj?.streams || []).length === 0 ? (
+                    <div className="alert alert-secondary py-2 border-0 small">No streams available for Class {selectedClass}.</div>
+                  ) : (
+                    <select
+                      className="form-select form-select-lg custom-input"
+                      value={selectedStream}
+                      onChange={(e) => setSelectedStream(e.target.value)}
+                    >
+                      <option value="">Common Subjects</option>
+                      {selectedClassObj.streams.map((st) => (
+                        <option key={st.name} value={st.name}>{st.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
-              <h3 className="fw-bold text-dark">Define Curriculum</h3>
-              <p className="text-muted">Batch assign subjects to specific class.</p>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              {/* Section 1: Target */}
-              <div className="mb-5">
-                <div className="d-flex align-items-center mb-3">
-                    <span className="badge bg-primary rounded-circle me-2" style={{ padding: "6px 10px" }}>1</span>
-                    <label className="form-label mb-0 fw-bold text-dark">Target Grade</label>
+            {/* Right: Subject List Editor */}
+            <div className="col-lg-7">
+              <div className="card border-0 shadow-sm rounded-4 p-4">
+                <div className="d-flex align-items-center justify-content-between mb-4">
+                  <h5 className="mb-0 fw-bold">
+                    {selectedStream ? `Stream: ${selectedStream}` : "Common Subjects"}
+                  </h5>
+                  <span className="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                    {activeSubjects.length} Total
+                  </span>
                 </div>
-                <select
-                  className="form-select border-0 bg-light py-3 px-4 shadow-none"
-                  style={{ borderRadius: "14px", fontSize: "1rem" }}
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  required
-                >
-                  <option value="">Select Class / Grade Level</option>
-                  {classes.map((cls) => (
-                    <option key={cls._id} value={cls.className}>
-                      Class {cls.className} 
-                    </option>
-                  ))}
-                </select>
-              </div>
 
-              {/* Section 2: Subject Entries */}
-              <div className="mb-4">
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <div className="d-flex align-items-center">
-                        <span className="badge bg-primary rounded-circle me-2" style={{ padding: "6px 10px" }}>2</span>
-                        <label className="form-label mb-0 fw-bold text-dark">Subject Details</label>
-                    </div>
-                    <span className="text-muted small">{subjects.length} item(s)</span>
-                </div>
-                
-                <div className="subject-container">
-                  {subjects.map((sub, index) => (
-                    <div className="group-input position-relative mb-3 animate__animated animate__fadeInUp" key={index}>
+                <div className="subject-container px-1" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  {activeSubjects.map((sub, index) => (
+                    <div className="input-group mb-3 animate-slide-in" key={index}>
+                      <span className="input-group-text border-0 bg-light text-muted fw-bold px-3" style={{ borderRadius: '12px 0 0 12px' }}>
+                        {index + 1}
+                      </span>
                       <input
                         type="text"
-                        className="form-control border-0 bg-light py-3 px-4 pe-5"
-                        style={{ borderRadius: "14px" }}
-                        placeholder="Enter subject name (e.g. Advanced Mathematics)"
+                        className="form-control form-control-lg border-0 bg-light py-3"
+                        placeholder="Enter subject name (e.g. Mathematics)"
                         value={sub.subjectName}
                         onChange={(e) => handleChange(index, "subjectName", e.target.value)}
                         required
+                        style={{ borderLeft: '1px solid #dee2e6' }}
                       />
-                      {subjects.length > 1 && (
+                      {activeSubjects.length > 1 && (
                         <button 
                           type="button" 
-                          className="btn btn-link text-danger position-absolute end-0 top-50 translate-middle-y me-2 text-decoration-none"
+                          className="btn btn-light border-0 text-danger px-3" 
                           onClick={() => removeSpecificSubject(index)}
+                          style={{ borderRadius: '0 12px 12px 0' }}
                         >
-                          <i className="bi bi-x-circle-fill"></i>
+                          <i className="bi bi-trash3-fill"></i>
                         </button>
                       )}
                     </div>
@@ -166,71 +263,56 @@ function NewSubject() {
 
                 <button
                   type="button"
-                  className="btn btn-outline-primary border-0 w-100 py-2 mt-2"
+                  className="btn btn-outline-primary border-2 fw-bold w-100 py-3 mt-3 rounded-4 dashed-border"
                   onClick={addSubject}
-                  style={{ borderRadius: "12px", borderStyle: "dashed !important", backgroundColor: "#f0f7ff" }}
                 >
-                  <i className="bi bi-plus-circle me-2"></i>Add Another Subject
+                  <i className="bi bi-plus-circle-dotted me-2"></i>Add New Subject
                 </button>
               </div>
-
-              {/* Action Footer */}
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100 py-3 fw-bold shadow-sm transition-all submit-btn"
-                  style={{ borderRadius: "14px", letterSpacing: "0.5px" }}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <span className="spinner-border spinner-border-sm me-2"></span>
-                  ) : (
-                    "Save Subjects"
-                  )}
-                </button>
-                <p className="text-center text-muted small mt-3">
-                    Review entries before saving. Subjects will be visible to students immediately.
-                </p>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
+
+          {/* Mobile Footer */}
+          <div className="d-md-none fixed-bottom p-3 bg-white border-top">
+            <button type="submit" className="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow" disabled={loading}>
+              {loading ? "Saving..." : "Save Curriculum"}
+            </button>
+          </div>
+        </form>
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-        
-        .transition-all { transition: all 0.3s ease; }
-        
-        .submit-btn {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            border: none;
+        .bg-light-subtle { background-color: #f8f9fc; }
+        .custom-input {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
         }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3) !important;
-            filter: brightness(1.1);
+        .custom-input:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+            background-color: #fff;
         }
-
-        .form-select:focus, .form-control:focus {
-            background-color: #fff !important;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
-            border: 1px solid #6366f1 !important;
+        .dashed-border {
+            border-style: dashed !important;
+            background-color: transparent;
         }
-
-        .subject-container {
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 5px;
+        .dashed-border:hover {
+            background-color: rgba(13, 110, 253, 0.05);
         }
-
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
         .subject-container::-webkit-scrollbar {
-            width: 4px;
+            width: 6px;
         }
-
         .subject-container::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
+            background-color: #e2e8f0;
             border-radius: 10px;
         }
       `}</style>

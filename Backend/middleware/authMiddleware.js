@@ -11,7 +11,7 @@ exports.verifyToken = (req, res, next) => {
     req.user = {
       id: decoded.id,
       role: decoded.role,
-      className: decoded.className ?? decoded.classId ?? null, // ✅ student class number
+      className: decoded.className ?? decoded.classId ?? null, 
       teacherId: decoded.teacherId ?? null,
       email: decoded.email ?? null,
     };

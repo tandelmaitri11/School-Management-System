@@ -1,23 +1,20 @@
 const express = require("express");
 const {
-  addTimetable,
-  checkConflict,
   getClassTimetable,
-  getSubjectsByClass,
-  autoGenerateClassTimetable,
-  autoGenerateClassTimetablePreview,
-  autoGenerateAllClassesTimetable
+  previewTimetable,
+  generateTimetable,
+  manualUpsertTimetable,
+  deleteTimetableSlot,
+  deleteFullTimetable,
 } = require("../controller/timetableController");
 
 const router = express.Router();
 
-router.post("/", addTimetable);
-router.post("/check-conflict", checkConflict);
-router.post("/auto-generate-class", autoGenerateClassTimetable);
-router.post("/auto-generate-class/preview", autoGenerateClassTimetablePreview);
-router.post("/auto-generate-all", autoGenerateAllClassesTimetable);
 router.get("/class/:classId", getClassTimetable);
-
-router.get("/subjects/:className", getSubjectsByClass);
+router.post("/preview", previewTimetable);
+router.post("/generate", generateTimetable);
+router.post("/manual", manualUpsertTimetable);
+router.post("/manual/delete", deleteTimetableSlot);
+router.post("/manual/delete-full", deleteFullTimetable);
 
 module.exports = router;

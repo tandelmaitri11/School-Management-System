@@ -20,6 +20,8 @@ const buildExamEmailHtml = ({ studentName, exam, headline, message }) => `
         <tr><td style="padding: 6px 0;">Exam</td><td style="padding: 6px 0;"><strong>${exam.title}</strong></td></tr>
         <tr><td style="padding: 6px 0;">Subject</td><td style="padding: 6px 0;">${exam.subjectName || "-"}</td></tr>
         <tr><td style="padding: 6px 0;">Class</td><td style="padding: 6px 0;">${exam.className ?? "-"}</td></tr>
+        <tr><td style="padding: 6px 0;">Section</td><td style="padding: 6px 0;">${exam.section || "-"}</td></tr>
+        ${exam.stream ? `<tr><td style="padding: 6px 0;">Stream</td><td style="padding: 6px 0;">${exam.stream}</td></tr>` : ""}
         <tr><td style="padding: 6px 0;">Start Time</td><td style="padding: 6px 0;">${formatDateTime(exam.startTime)}</td></tr>
         <tr><td style="padding: 6px 0;">Duration</td><td style="padding: 6px 0;">${exam.duration || 0} min</td></tr>
         <tr><td style="padding: 6px 0;">Total Marks</td><td style="padding: 6px 0;">${exam.totalMarks || 0}</td></tr>
@@ -34,10 +36,13 @@ const buildExamEmailHtml = ({ studentName, exam, headline, message }) => `
   </div>
 `;
 
-const loadStudentsForExam = async (exam) =>
-  Student.find({ studentClass: Number(exam.className) })
-    .select("name email studentId")
-    .lean();
+const loadStudentsForExam = async (exam) => {
+  const query = { studentClass: Number(exam.className) };
+  if (exam.section) query.section = String(exam.section).trim().toUpperCase();
+  if (exam.stream) query.stream = String(exam.stream).trim();
+
+  return Student.find(query).select("name email studentId").lean();
+};
 
 const sendExamEmailToStudents = async (exam, subject, headline, message) => {
   const students = await loadStudentsForExam(exam);
@@ -92,31 +97,16 @@ const processExamReminders = async () => {
     const msToStart = startTime.getTime() - now.getTime();
     const notification = exam.notification || {};
 
-    const canSend60 =
-      !notification.reminder60SentAt &&
-      msToStart <= 60 * MINUTE &&
-      msToStart > 15 * MINUTE;
-
     const canSend15 =
       !notification.reminder15SentAt && msToStart <= 15 * MINUTE && msToStart > 0;
 
-    if (!canSend60 && !canSend15) continue;
+    if (!canSend15) continue;
 
-    if (canSend60) {
-      await sendExamReminderEmails(exam, 60);
-      await Exam.updateOne(
-        { _id: exam._id },
-        { $set: { "notification.reminder60SentAt": new Date() } }
-      );
-    }
-
-    if (canSend15) {
-      await sendExamReminderEmails(exam, 15);
-      await Exam.updateOne(
-        { _id: exam._id },
-        { $set: { "notification.reminder15SentAt": new Date() } }
-      );
-    }
+    await sendExamReminderEmails(exam, 15);
+    await Exam.updateOne(
+      { _id: exam._id },
+      { $set: { "notification.reminder15SentAt": new Date() } }
+    );
   }
 };
 

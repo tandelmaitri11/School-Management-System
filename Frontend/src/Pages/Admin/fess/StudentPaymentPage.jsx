@@ -5,7 +5,9 @@ import QRCode from "react-qr-code";
 
 export default function StudentPaymentPage() {
   const [classes, setClasses] = useState([]);
+  const [classFeeRows, setClassFeeRows] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedStream, setSelectedStream] = useState("");
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -15,14 +17,13 @@ export default function StudentPaymentPage() {
   const [utr, setUtr] = useState(""); // for QR (UPI UTR)
 
   // Reminder states
-  const [dueDate, setDueDate] = useState("");
-  const [lateFee, setLateFee] = useState("");
   const [sendingReminder, setSendingReminder] = useState(false);
 
   // UI states
   const [activeTab, setActiveTab] = useState("pay");
   const [message, setMessage] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(false);
+  const [autoToggleBusy, setAutoToggleBusy] = useState(false);
 
   // ✅ Set your UPI details (static QR)
   const UPI_VPA = "myschool@upi";
@@ -36,15 +37,41 @@ export default function StudentPaymentPage() {
   const formatMoney = (amount) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount || 0);
 
-  const isFullyPaid = useMemo(
-    () => (selectedStudent?.fees?.remainingAmount ?? 0) <= 0,
-    [selectedStudent]
+  const feeSummary = useMemo(() => selectedStudent?.feeSummary || {}, [selectedStudent]);
+  const baseRemaining = useMemo(
+    () => Number(feeSummary?.baseRemaining ?? selectedStudent?.fees?.remainingAmount ?? 0),
+    [feeSummary, selectedStudent]
   );
+  const lateFeeAmount = useMemo(
+    () => Number(feeSummary?.lateFee ?? selectedStudent?.fees?.lateFeeAccrued ?? 0),
+    [feeSummary, selectedStudent]
+  );
+  const totalDue = useMemo(
+    () => Number(feeSummary?.totalDue ?? (baseRemaining + lateFeeAmount)),
+    [feeSummary, baseRemaining, lateFeeAmount]
+  );
+  const isFullyPaid = useMemo(() => totalDue <= 0, [totalDue]);
 
-  const remaining = useMemo(
-    () => Number(selectedStudent?.fees?.remainingAmount || 0),
-    [selectedStudent]
-  );
+  const streamOptions = useMemo(() => {
+    if (!selectedClass) return [];
+    const rows = classFeeRows.filter(
+      (r) => String(r.className) === String(selectedClass) && String(r.stream || "").trim()
+    );
+    return Array.from(new Set(rows.map((r) => String(r.stream).trim())));
+  }, [classFeeRows, selectedClass]);
+
+  const selectedScopeFeeRows = useMemo(() => {
+    if (!selectedClass) return [];
+    const classRows = classFeeRows.filter((r) => String(r.className) === String(selectedClass));
+    const streamKey = String(selectedStream || "").trim();
+    if (!streamKey) return classRows;
+    return classRows.filter((r) => String(r.stream || "").trim() === streamKey);
+  }, [classFeeRows, selectedClass, selectedStream]);
+
+  const hasScopeConfig = selectedScopeFeeRows.length > 0;
+  const autoReminderEnabled = hasScopeConfig
+    ? selectedScopeFeeRows.every((r) => r.autoReminderEnabled !== false)
+    : true;
 
   // ✅ Build UPI QR string (upi://pay?...), includes amount & note
   const upiQrValue = useMemo(() => {
@@ -69,7 +96,12 @@ export default function StudentPaymentPage() {
     try {
       // ✅ correct route from your router: GET /class-fee
       const res = await api.get("/api/fees/class-fee");
-      setClasses(res.data.classFees || []);
+      const rows = res.data.classFees || [];
+      setClassFeeRows(rows);
+      const uniqByClass = Array.from(
+        new Map(rows.map((r) => [String(r.className), { className: r.className }])).values()
+      ).sort((a, b) => Number(a.className) - Number(b.className));
+      setClasses(uniqByClass);
     } catch (err) {
       console.error(err);
       showToast("error", err?.response?.data?.message || "Error loading classes");
@@ -80,15 +112,16 @@ export default function StudentPaymentPage() {
     loadClasses();
   }, []);
 
-  const loadStudents = async (cls) => {
+  const loadStudents = async (cls, stream = "") => {
     if (!cls) return;
-    setSelectedClass(cls);
     setLoading(true);
     setSelectedStudent(null);
 
     try {
       // ✅ correct route: GET /students/:className
-      const res = await api.get(`/api/fees/students/${cls}`);
+      const res = await api.get(`/api/fees/students/${cls}`, {
+        params: stream ? { stream } : {},
+      });
       const allStudents = res.data.students || [];
 
       // attach fees snapshot
@@ -97,9 +130,13 @@ export default function StudentPaymentPage() {
           try {
             // ✅ correct route: GET /student/:studentId
             const feesRes = await api.get(`/api/fees/student/${student._id}`);
-            return { ...student, fees: feesRes.data.fees || null };
+            return {
+              ...student,
+              fees: feesRes.data.fees || null,
+              feeSummary: feesRes.data.feeSummary || null,
+            };
           } catch {
-            return { ...student, fees: null };
+            return { ...student, fees: null, feeSummary: null };
           }
         })
       );
@@ -115,7 +152,7 @@ export default function StudentPaymentPage() {
   };
 
   const handleSelectStudent = async (student) => {
-    setSelectedStudent({ ...student, fees: student.fees || {} });
+    setSelectedStudent({ ...student, fees: student.fees || {}, feeSummary: student.feeSummary || {} });
 
     try {
       // ✅ correct route: GET /student/:studentId
@@ -128,17 +165,20 @@ export default function StudentPaymentPage() {
           paymentHistory: [],
         };
 
-      setSelectedStudent({ ...student, fees: feesData });
+      const summaryData = res.data.feeSummary || {
+        baseRemaining: Number(feesData.remainingAmount || 0),
+        lateFee: Number(feesData.lateFeeAccrued || 0),
+        totalDue: Number(feesData.remainingAmount || 0) + Number(feesData.lateFeeAccrued || 0),
+      };
+
+      setSelectedStudent({ ...student, fees: feesData, feeSummary: summaryData });
 
       // reset forms
       setPaymentAmount("");
       setPaymentMode("Cash");
       setUtr("");
-      setDueDate("");
-      setLateFee("");
-
       // auto tab
-      setActiveTab(feesData.remainingAmount <= 0 ? "history" : "pay");
+      setActiveTab(Number(summaryData.totalDue || 0) <= 0 ? "history" : "pay");
     } catch (err) {
       console.error(err);
       showToast("error", err?.response?.data?.message || "Error fetching student fees");
@@ -154,8 +194,8 @@ export default function StudentPaymentPage() {
     const amt = Number(paymentAmount);
     if (!amt || amt <= 0) return showToast("error", "Enter a valid payment amount");
 
-    if (amt > remaining) {
-      return showToast("error", `Amount exceeds remaining balance of ${formatMoney(remaining)}`);
+    if (amt > totalDue) {
+      return showToast("error", `Amount exceeds total due of ${formatMoney(totalDue)}`);
     }
 
     const isQr = paymentMode === "QR";
@@ -169,14 +209,19 @@ export default function StudentPaymentPage() {
 
     try {
       // ✅ correct route from your router: POST /payment/cash
-      await api.post("/api/fees/payment/cash", {
+      const res = await api.post("/api/fees/payment/cash", {
         studentId: selectedStudent._id,
         amount: amt,
         mode: isQr ? "UPI (QR)" : "Cash",
         transactionId: isQr ? utr.trim() : undefined, // needs controller update
       });
 
-      showToast("success", isQr ? "QR payment recorded" : "Cash payment recorded");
+      const emailInfo = res.data?.emailStatus?.sent
+        ? " Receipt email sent."
+        : res.data?.emailStatus?.reason
+          ? ` Receipt email not sent: ${res.data.emailStatus.reason}.`
+          : "";
+      showToast("success", `${isQr ? "QR payment recorded." : "Cash payment recorded."}${emailInfo}`);
       handleSelectStudent(selectedStudent); // refresh
     } catch (err) {
       console.error(err);
@@ -191,18 +236,48 @@ export default function StudentPaymentPage() {
     if (!selectedStudent?._id) return;
     setSendingReminder(true);
     try {
-      const payload = {};
-      if (dueDate) payload.dueDate = dueDate;
-      if (lateFee) payload.lateFee = Number(lateFee);
-
-      // ✅ correct route: POST /reminder/:studentId
-      const res = await api.post(`/api/fees/reminder/${selectedStudent._id}`, payload);
+      const res = await api.post(`/api/fees/reminder/${selectedStudent._id}`, {});
       showToast("success", res.data?.message || "Reminder email sent");
     } catch (err) {
       console.error(err);
       showToast("error", err?.response?.data?.message || "Error sending reminder");
     } finally {
       setSendingReminder(false);
+    }
+  };
+
+  const handleToggleAutoReminder = async () => {
+    if (!selectedClass) return;
+    if (!hasScopeConfig) {
+      showToast("error", "Class fee config not found for this class/stream");
+      return;
+    }
+
+    const nextEnabled = !autoReminderEnabled;
+    setAutoToggleBusy(true);
+    try {
+      const payload = {
+        className: Number(selectedClass),
+        enabled: nextEnabled,
+      };
+      const streamKey = String(selectedStream || "").trim();
+      if (streamKey) payload.stream = streamKey;
+      const res = await api.patch("/api/fees/class-fee/auto-reminder", payload);
+
+      setClassFeeRows((prev) =>
+        prev.map((row) =>
+          String(row.className) === String(selectedClass) &&
+          (!streamKey || String(row.stream || "").trim() === streamKey)
+            ? { ...row, autoReminderEnabled: nextEnabled }
+            : row
+        )
+      );
+      showToast("success", res.data?.message || "Auto reminder setting updated");
+    } catch (err) {
+      console.error(err);
+      showToast("error", err?.response?.data?.message || "Error updating auto reminder setting");
+    } finally {
+      setAutoToggleBusy(false);
     }
   };
 
@@ -226,15 +301,73 @@ export default function StudentPaymentPage() {
             className="form-select border-0 fw-bold text-primary"
             style={{ boxShadow: "none", cursor: "pointer" }}
             value={selectedClass}
-            onChange={(e) => loadStudents(e.target.value)}
+            onChange={(e) => {
+              const cls = e.target.value;
+              setSelectedClass(cls);
+              setSelectedStream("");
+              if (!cls) {
+                setStudents([]);
+                setSelectedStudent(null);
+                return;
+              }
+              loadStudents(cls, "");
+            }}
           >
             <option value="">Select Class</option>
             {classes.map((c) => (
-              <option key={c._id} value={c.className}>
+              <option key={c.className} value={c.className}>
                 {c.className}
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="bg-white p-2 rounded shadow-sm d-flex align-items-center ms-2" style={{ minWidth: "220px" }}>
+          <i className="bi bi-diagram-3 text-muted ms-2 me-2"></i>
+          <select
+            className="form-select border-0 fw-bold text-primary"
+            style={{ boxShadow: "none", cursor: "pointer" }}
+            value={selectedStream}
+            disabled={!selectedClass || streamOptions.length === 0}
+            onChange={(e) => {
+              const stream = e.target.value;
+              setSelectedStream(stream);
+              if (selectedClass) loadStudents(selectedClass, stream);
+            }}
+          >
+            <option value="">All Streams</option>
+            {streamOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="bg-white p-2 rounded shadow-sm d-flex align-items-center ms-2" style={{ minWidth: "300px" }}>
+          <i className="bi bi-bell text-muted ms-2 me-2"></i>
+          <div className="d-flex align-items-center justify-content-between w-100 pe-2">
+            <div>
+              <div className="small fw-bold text-dark">Auto Reminder</div>
+              <div className="text-muted" style={{ fontSize: "12px" }}>
+                {!selectedClass
+                  ? "Select class"
+                  : hasScopeConfig
+                    ? `${selectedStream ? `Stream: ${selectedStream}` : "All Streams"}`
+                    : "Config not found"}
+              </div>
+            </div>
+            <div className="form-check form-switch m-0">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                checked={autoReminderEnabled}
+                disabled={!selectedClass || !hasScopeConfig || autoToggleBusy}
+                onChange={handleToggleAutoReminder}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -268,16 +401,20 @@ export default function StudentPaymentPage() {
                   <tr>
                     <th className="py-3 ps-4">Student Name</th>
                     <th className="py-3">Roll / ID</th>
+                    <th className="py-3">Stream</th>
                     <th className="py-3 text-end">Total</th>
                     <th className="py-3 text-end">Paid</th>
-                    <th className="py-3 text-end">Balance</th>
+                    <th className="py-3 text-end">Total Due</th>
                     <th className="py-3 text-center">Status</th>
                     <th className="py-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((s) => {
-                    const balance = s.fees?.remainingAmount || 0;
+                    const balance = Number(
+                      s.feeSummary?.totalDue ??
+                        ((s.fees?.remainingAmount || 0) + (s.fees?.lateFeeAccrued || 0))
+                    );
                     const paidOk = balance <= 0;
                     return (
                       <tr key={s._id} style={{ cursor: "pointer" }} onClick={() => handleSelectStudent(s)}>
@@ -295,6 +432,7 @@ export default function StudentPaymentPage() {
                           </div>
                         </td>
                         <td className="text-muted small">{s.studentId || "N/A"}</td>
+                        <td className="text-muted small">{s.stream || "General"}</td>
                         <td className="text-end text-secondary">{formatMoney(s.fees?.totalFees)}</td>
                         <td className="text-end text-success">{formatMoney(s.fees?.paidAmount)}</td>
                         <td className="text-end fw-bold text-dark">{formatMoney(balance)}</td>
@@ -342,12 +480,15 @@ export default function StudentPaymentPage() {
               </div>
               <h4 className="fw-bold mb-1">{selectedStudent.name}</h4>
               <p className="text-muted small mb-4">
-                {selectedStudent.studentClass} | Roll: {selectedStudent.studentId || "N/A"}
+                {selectedStudent.studentClass}
+                {selectedStudent.stream ? ` | ${selectedStudent.stream}` : ""}
+                {" | "}
+                Roll: {selectedStudent.studentId || "N/A"}
               </p>
 
               <div className={`card border-0 rounded-3 p-3 mb-3 ${isFullyPaid ? "bg-success text-white" : "bg-primary text-white"}`}>
-                <span className="opacity-75 small">Remaining Balance</span>
-                <h2 className="fw-bold my-1">{formatMoney(selectedStudent.fees.remainingAmount)}</h2>
+                <span className="opacity-75 small">Total Due</span>
+                <h2 className="fw-bold my-1">{formatMoney(totalDue)}</h2>
                 {isFullyPaid && <small className="opacity-75">All fees cleared!</small>}
               </div>
 
@@ -361,6 +502,18 @@ export default function StudentPaymentPage() {
                   <div className="fw-bold text-success">{formatMoney(selectedStudent.fees.paidAmount)}</div>
                 </div>
               </div>
+              {!isFullyPaid && (
+                <div className="mt-3 border-top pt-3 text-start">
+                  <div className="d-flex justify-content-between small mb-1">
+                    <span className="text-muted">Base Pending</span>
+                    <span className="fw-semibold">{formatMoney(baseRemaining)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between small">
+                    <span className="text-muted">Late Fee</span>
+                    <span className="fw-semibold text-danger">{formatMoney(lateFeeAmount)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -435,7 +588,7 @@ export default function StudentPaymentPage() {
                               />
                             </div>
                             <div className="form-text">
-                              Remaining: <b>{formatMoney(remaining)}</b>
+                              Total Due: <b>{formatMoney(totalDue)}</b>
                             </div>
                           </div>
 
@@ -561,21 +714,17 @@ export default function StudentPaymentPage() {
                         <h5 className="mb-4">Send Payment Reminder</h5>
 
                         <div className="bg-light p-3 rounded-3 border mb-3">
-                          <div className="row g-3">
-                            <div className="col-md-6">
-                              <label className="form-label small">Due Date</label>
-                              <input type="date" className="form-control" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label small">Late Fee Charge (Optional)</label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                placeholder="0"
-                                value={lateFee}
-                                onChange={(e) => setLateFee(e.target.value)}
-                              />
-                            </div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Base Pending</span>
+                            <span className="fw-semibold">{formatMoney(baseRemaining)}</span>
+                          </div>
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Late Fee</span>
+                            <span className="fw-semibold text-danger">{formatMoney(lateFeeAmount)}</span>
+                          </div>
+                          <div className="d-flex justify-content-between fw-bold">
+                            <span>Total Due</span>
+                            <span>{formatMoney(totalDue)}</span>
                           </div>
                         </div>
 
@@ -602,3 +751,4 @@ export default function StudentPaymentPage() {
     </div>
   );
 }
+

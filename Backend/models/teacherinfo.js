@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const isValidPhone = (v) => /^\d{10}$/.test(String(v || "").trim());
+
 const teacherInfoSchema = new mongoose.Schema({
   regNumber: {
     type: String,
@@ -20,6 +22,11 @@ const teacherInfoSchema = new mongoose.Schema({
   mobile: {
     type: String,
     required: true,
+    trim: true,
+    validate: {
+      validator: isValidPhone,
+      message: "mobile must be exactly 10 digits",
+    },
   },
   salary: {
     type: Number,
@@ -55,6 +62,15 @@ const teacherInfoSchema = new mongoose.Schema({
   picture: {
     type: String,
   },
+  subjects: [{ type: String, trim: true }],
+  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Class" }],
+  assignedSections: [
+    {
+      classId: { type: mongoose.Schema.Types.ObjectId, ref: "Class" },
+      section: { type: String, trim: true, default: "" },
+      stream: { type: String, trim: true, default: "" },
+    },
+  ],
 }, { timestamps: true });
 
 module.exports = mongoose.model("TeacherInfo", teacherInfoSchema);
