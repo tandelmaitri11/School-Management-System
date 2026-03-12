@@ -3,6 +3,9 @@ import api from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+const normalizeUpper = (value) => String(value || "").trim().toUpperCase();
+const formatSectionLabel = (value) => (normalizeUpper(value) === "BOTH" ? "Both" : normalizeUpper(value));
+
 export default function StudentExamList() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +92,11 @@ export default function StudentExamList() {
                     </div>
 
                     <div className="card-body px-4">
+                      <div className="small text-muted mb-3">
+                        Class {e.className || "-"}
+                        {e.section ? ` • Section ${formatSectionLabel(e.section)}` : ""}
+                        {e.stream ? ` • ${e.stream}` : ""}
+                      </div>
                       <div className="d-flex align-items-center mb-3">
                          <div className="bg-light rounded-circle p-2 me-3 text-primary"><i className="bi bi-calendar-event"></i></div>
                          <div>

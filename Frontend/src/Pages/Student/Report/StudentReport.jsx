@@ -1,126 +1,131 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import api from "../../../api/api";
 import {
-  AreaChart,
   Area,
-  CartesianGrid,
-  XAxis,
-  Tooltip,
-  BarChart,
+  AreaChart,
   Bar,
-  ResponsiveContainer,
-  RadialBarChart,
+  BarChart,
+  CartesianGrid,
   RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
 } from "recharts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// --- REFINED STYLES ---
 const styles = {
   page: { backgroundColor: "#f8fafc", minHeight: "100vh", paddingBottom: "80px" },
-
-  // Floating Action Bar (Sticky)
   actionBar: {
     position: "sticky",
     top: "20px",
     zIndex: 1000,
     margin: "0 auto 30px auto",
-    maxWidth: "1000px",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    maxWidth: "1100px",
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
     backdropFilter: "blur(10px)",
-    borderRadius: "100px", // Pill shape
-    padding: "10px 25px",
-    boxShadow: "0 10px 30px -10px rgba(0, 0, 0, 0.1)",
+    borderRadius: "999px",
+    padding: "10px 20px",
+    boxShadow: "0 10px 30px -10px rgba(0, 0, 0, 0.12)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    border: "1px solid rgba(255,255,255,0.8)",
+    border: "1px solid rgba(255,255,255,0.85)",
   },
-
-  // The Report Area
   reportContainer: {
-    maxWidth: "1000px",
+    maxWidth: "1100px",
     margin: "0 auto",
-    backgroundColor: "#f8fafc", // Matches page bg
     padding: "20px",
   },
-
-  // Gradient Profile Card
   banner: {
-    background: "linear-gradient(120deg, #2563eb 0%, #7c3aed 100%)", // Blue to Purple
+    background: "linear-gradient(135deg, #0f172a 0%, #2563eb 55%, #14b8a6 100%)",
     borderRadius: "24px",
-    padding: "40px",
+    padding: "36px",
     color: "white",
-    boxShadow: "0 20px 40px -10px rgba(37, 99, 235, 0.3)",
-    marginBottom: "30px",
+    boxShadow: "0 20px 40px -10px rgba(37, 99, 235, 0.28)",
+    marginBottom: "28px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: "20px",
   },
-
-  // Standard Card
   card: {
     backgroundColor: "white",
     borderRadius: "20px",
-    padding: "30px",
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03)",
+    padding: "28px",
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.03)",
     height: "100%",
     border: "1px solid #f1f5f9",
   },
-
   cardHeader: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    marginBottom: "25px",
+    marginBottom: "22px",
     color: "#1e293b",
     fontWeight: "700",
     fontSize: "1.1rem",
   },
-
-  // Stat Grid Box
   statBox: {
     backgroundColor: "#f8fafc",
     borderRadius: "16px",
-    padding: "20px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
+    padding: "18px",
     border: "1px solid #e2e8f0",
+    height: "100%",
   },
 };
 
+const monthOptions = [
+  { label: "Year To Date", value: "" },
+  { label: "January", value: "2026-01" },
+  { label: "February", value: "2026-02" },
+  { label: "March", value: "2026-03" },
+];
+
+const statCard = (label, value, tone = "dark") => (
+  <div style={styles.statBox}>
+    <small className="text-muted text-uppercase fw-bold" style={{ fontSize: "0.7rem" }}>
+      {label}
+    </small>
+    <div className={`fw-bold text-${tone} mt-2`} style={{ fontSize: "1.35rem" }}>
+      {value}
+    </div>
+  </div>
+);
+
 export default function StudentReportPage() {
+  const { studentId: routeStudentId } = useParams();
+  const location = useLocation();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState("");
-  const reportRef = useRef();
+  const reportRef = useRef(null);
+  const autoDownloadTriggeredRef = useRef(false);
 
-  // --- LOGIC ---
   useEffect(() => {
     const fetchReport = async () => {
       try {
         setLoading(true);
-        const studentId = localStorage.getItem("studentId");
+        const studentId = routeStudentId || localStorage.getItem("studentId");
         const res = await api.get(`/api/reports/student/${studentId}`, { params: { month } });
         setReport(res.data);
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Error loading report:", error);
       } finally {
         setLoading(false);
       }
     };
     fetchReport();
-  }, [month]);
+  }, [month, routeStudentId]);
 
   const downloadPDF = async () => {
-    const element = reportRef.current;
+    if (!reportRef.current || !report) return;
 
-    // Scale 3 for High Res, white background for clean print
-    const canvas = await html2canvas(element, {
-      scale: 3,
+    const canvas = await html2canvas(reportRef.current, {
+      scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
     });
@@ -137,76 +142,93 @@ export default function StudentReportPage() {
     pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
     heightLeft -= pdfHeight;
 
-    while (heightLeft >= 0) {
+    while (heightLeft > 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
       heightLeft -= pdfHeight;
     }
 
-    pdf.save(`Report_${report.studentName}.pdf`);
+    pdf.save(`Report_${report.studentName || "Student"}.pdf`);
   };
 
-  if (loading)
+  useEffect(() => {
+    const shouldAutoDownload = new URLSearchParams(location.search).get("pdf") === "1";
+    if (!shouldAutoDownload || loading || !report || autoDownloadTriggeredRef.current) return;
+
+    autoDownloadTriggeredRef.current = true;
+    downloadPDF();
+  }, [location.search, loading, report]);
+
+  useEffect(() => {
+    autoDownloadTriggeredRef.current = false;
+  }, [routeStudentId, month, location.search]);
+
+  if (loading) {
     return (
       <div className="d-flex justify-content-center pt-5">
         <div className="spinner-border text-primary" />
       </div>
     );
-  if (!report) return <div className="text-center pt-5">No Data</div>;
+  }
 
-  // Score Calculation
-  const attendancePct = Number(report?.attendance?.percentage) || 0;
-  const avgGradeNum = Number.parseFloat(report?.assignments?.avgGrade);
-  const safeAvgGrade = Number.isFinite(avgGradeNum) ? avgGradeNum : 0;
-  const score = Math.round(attendancePct * 0.5 + safeAvgGrade * 10 * 0.5);
+  if (!report) {
+    return <div className="text-center pt-5">No report data available.</div>;
+  }
 
+  const score = Number(report?.overallResult?.score || 0);
   const radialData = [
-    { name: "Score", uv: 100, fill: "#f3f4f6" }, // Background Ring
-    { name: "Score", uv: score, fill: "#8b5cf6" }, // Actual Score
+    { name: "Background", uv: 100, fill: "#e2e8f0" },
+    { name: "Score", uv: score, fill: "#2563eb" },
   ];
+  const aiRiskTone =
+    report?.aiInsights?.riskLevel === "High"
+      ? "danger"
+      : report?.aiInsights?.riskLevel === "Medium"
+      ? "warning"
+      : "success";
 
   return (
     <div style={styles.page}>
-      {/* --- FLOATING CONTROLS --- */}
       <div style={styles.actionBar}>
         <div className="d-flex align-items-center gap-2">
           <div
             className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
             style={{ width: "35px", height: "35px", fontSize: "0.9rem" }}
           >
-            {report.studentName.charAt(0)}
+            {(report.studentName || "S").charAt(0).toUpperCase()}
           </div>
-          <span className="fw-bold text-dark d-none d-sm-block">Performance Report</span>
+          <span className="fw-bold text-dark d-none d-sm-block">Student Performance Report</span>
         </div>
 
         <div className="d-flex gap-2">
           <select
             className="form-select form-select-sm border-0 bg-secondary-subtle fw-semibold rounded-pill"
-            style={{ width: "140px" }}
+            style={{ width: "145px" }}
             value={month}
             onChange={(e) => setMonth(e.target.value)}
           >
-            <option value="">Year To Date</option>
-            <option value="2025-01">January</option>
-            <option value="2025-02">February</option>
-            <option value="2025-03">March</option>
+            {monthOptions.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <button
             onClick={downloadPDF}
             className="btn btn-dark btn-sm rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2"
           >
-            <i className="bi bi-download"></i> <span className="d-none d-sm-block">Download</span>
+            <i className="bi bi-download"></i>
+            <span className="d-none d-sm-block">Download</span>
           </button>
         </div>
       </div>
 
-      {/* --- REPORT CONTAINER --- */}
       <div ref={reportRef} style={styles.reportContainer}>
-        {/* PDF Header (Brand) */}
         <div className="d-flex justify-content-between align-items-center mb-4 px-2">
           <h4 className="fw-bold text-dark m-0 d-flex align-items-center gap-2">
-            <i className="bi bi-mortarboard-fill text-primary"></i> SchoolY
+            <i className="bi bi-mortarboard-fill text-primary"></i>
+            SchoolY
           </h4>
           <div className="text-end">
             <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "0.65rem" }}>
@@ -216,7 +238,6 @@ export default function StudentReportPage() {
           </div>
         </div>
 
-        {/* 1. Student Banner */}
         <div style={styles.banner}>
           <div>
             <div className="badge bg-white bg-opacity-25 text-white mb-2 px-3 py-1 rounded-pill border border-white border-opacity-25">
@@ -224,166 +245,286 @@ export default function StudentReportPage() {
             </div>
             <h2 className="fw-bold mb-1">{report.studentName}</h2>
             <div className="opacity-75 small mt-2">
-              Class: <strong>{report.className}</strong> &nbsp;|&nbsp; ID: <strong>{report.studentId || "-"}</strong>
+              Class: <strong>{report.className}</strong> | ID: <strong>{report.studentId || "-"}</strong>
             </div>
           </div>
           <div className="text-end d-none d-md-block">
             <div className="display-4 fw-bold">{score}</div>
-            <div className="small opacity-75">Overall Score</div>
+            <div className="small opacity-75">{report?.overallResult?.label || "Overall Result"}</div>
           </div>
         </div>
 
         <div className="row g-4">
-          {/* 2. Attendance Graph */}
+          <div className="col-12">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-dark-subtle text-dark p-2 rounded-3 d-flex">
+                  <i className="bi bi-person-vcard-fill"></i>
+                </div>
+                <span>Student Details</span>
+              </div>
+              <div className="row g-3">
+                <div className="col-md-3">{statCard("Name", report.studentDetails?.name || "-")}</div>
+                <div className="col-md-2">{statCard("Student ID", report.studentDetails?.studentId || "-")}</div>
+                <div className="col-md-2">{statCard("Class", report.studentDetails?.className || "-")}</div>
+                <div className="col-md-2">{statCard("Section", report.studentDetails?.section || "-")}</div>
+                <div className="col-md-3">{statCard("Stream / Choice", `${report.studentDetails?.stream || "General"}${report.studentDetails?.subjectChoice ? ` / ${report.studentDetails.subjectChoice}` : ""}`)}</div>
+              </div>
+            </div>
+          </div>
+
           <div className="col-lg-8">
             <div style={styles.card}>
               <div style={styles.cardHeader}>
                 <div className="bg-success-subtle text-success p-2 rounded-3 d-flex">
                   <i className="bi bi-calendar-check-fill"></i>
                 </div>
-                <span>Attendance Trends</span>
+                <span>Attendance Summary</span>
               </div>
 
-              <div className="d-flex gap-4 mb-4 border-bottom pb-3">
-                <div>
-                  <small className="text-muted text-uppercase fw-bold" style={{ fontSize: "0.7rem" }}>
-                    Present
-                  </small>
-                  <h4 className="fw-bold text-success mb-0">
-                    {report.attendance.presentDays} <small className="text-muted fs-6">Days</small>
-                  </h4>
-                </div>
-                <div>
-                  <small className="text-muted text-uppercase fw-bold" style={{ fontSize: "0.7rem" }}>
-                    Absent
-                  </small>
-                  <h4 className="fw-bold text-danger mb-0">
-                    {report.attendance.absentDays} <small className="text-muted fs-6">Days</small>
-                  </h4>
-                </div>
-                <div className="ms-auto text-end">
-                  <small className="text-muted text-uppercase fw-bold" style={{ fontSize: "0.7rem" }}>
-                    Rate
-                  </small>
-                  <h4 className="fw-bold text-dark mb-0">{report.attendance.percentage}%</h4>
-                </div>
+              <div className="row g-3 mb-4">
+                <div className="col-md-3">{statCard("Present", report.attendance?.presentDays || 0, "success")}</div>
+                <div className="col-md-3">{statCard("Absent", report.attendance?.absentDays || 0, "danger")}</div>
+                <div className="col-md-3">{statCard("Total Days", report.attendance?.totalDays || 0)}</div>
+                <div className="col-md-3">{statCard("Attendance %", `${report.attendance?.percentage || 0}%`, "primary")}</div>
               </div>
 
-              <div style={{ height: "220px", minHeight: "220px", minWidth: 0 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
-                  <AreaChart data={report.attendance.chart}>
+              <div style={{ height: "220px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={report.attendance?.chart || []}>
                     <defs>
-                      <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="attendanceFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} />
-                    <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                    <Area type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorPresent)" />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#attendanceFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* 3. Performance Radial */}
           <div className="col-lg-4">
             <div style={styles.card} className="d-flex flex-column align-items-center justify-content-center text-center">
-              <h6 className="fw-bold text-dark mb-4">Performance Index</h6>
-
-              <div style={{ height: "200px", width: "100%", minHeight: "200px", minWidth: 0, position: "relative" }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
+              <h6 className="fw-bold text-dark mb-4">Overall Result</h6>
+              <div style={{ height: "200px", width: "100%", position: "relative" }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <RadialBarChart innerRadius="80%" outerRadius="100%" barSize={15} data={radialData} startAngle={90} endAngle={-270}>
                     <RadialBar background dataKey="uv" cornerRadius={10} />
                   </RadialBarChart>
                 </ResponsiveContainer>
-                {/* Centered Text */}
                 <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}>
                   <div className="display-5 fw-bold text-dark">{score}</div>
-                  <div className="small text-muted fw-bold text-uppercase" style={{ fontSize: "0.6rem" }}>
-                    Points
+                  <div className="small text-muted fw-bold text-uppercase" style={{ fontSize: "0.65rem" }}>
+                    Score
                   </div>
                 </div>
               </div>
-
-              <div className="mt-3">
-                <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Excellent</span>
-              </div>
-              <p className="text-muted small mt-3 px-2 mb-0">
-                Your academic consistency is in the top <strong>10%</strong> of your class.
-              </p>
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 mt-3">
+                {report?.overallResult?.label || "Overall"}
+              </span>
+              <p className="text-muted small mt-3 mb-0">{report?.aiInsights?.summary || "No summary available."}</p>
             </div>
           </div>
 
-          {/* 4. Assignment Metrics Grid */}
-          <div className="col-12">
+          <div className="col-lg-7">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-warning-subtle text-warning p-2 rounded-3 d-flex">
+                  <i className="bi bi-graph-up-arrow"></i>
+                </div>
+                <span>Academic Performance</span>
+              </div>
+
+              <div className="row g-3 mb-4">
+                <div className="col-md-3">{statCard("Exams", report.academicPerformance?.totalExams || 0)}</div>
+                <div className="col-md-3">{statCard("Average %", `${report.academicPerformance?.averagePercentage || 0}%`, "primary")}</div>
+                <div className="col-md-3">{statCard("Best %", `${report.academicPerformance?.bestPercentage || 0}%`, "success")}</div>
+                <div className="col-md-3">{statCard("Pass Count", report.academicPerformance?.passCount || 0, "success")}</div>
+              </div>
+
+              <div style={{ height: "220px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={report.academicPerformance?.chart || []} barSize={34}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="title" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <Tooltip />
+                    <Bar dataKey="percentage" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-5">
             <div style={styles.card}>
               <div style={styles.cardHeader}>
                 <div className="bg-primary-subtle text-primary p-2 rounded-3 d-flex">
                   <i className="bi bi-journal-bookmark-fill"></i>
                 </div>
-                <span>Assignment Analytics</span>
+                <span>Assignment Performance</span>
               </div>
+              <div className="row g-3">
+                <div className="col-6">{statCard("Submitted", report.assignments?.totalSubmitted || 0, "success")}</div>
+                <div className="col-6">{statCard("Graded", report.assignments?.graded || 0, "warning")}</div>
+                <div className="col-6">{statCard("Avg Grade", report.assignments?.avgGrade || 0, "info")}</div>
+                <div className="col-6">{statCard("Submission %", `${report.assignments?.submissionRate || 0}%`, "primary")}</div>
+              </div>
+            </div>
+          </div>
 
-              <div className="row g-4">
-                {/* Metric Cards */}
-                <div className="col-6 col-md-3">
-                  <div style={styles.statBox}>
-                    <h2 className="fw-bold text-primary mb-0">{report.assignments.totalAssignments}</h2>
-                    <small className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem" }}>
-                      Total
-                    </small>
-                  </div>
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-info-subtle text-info p-2 rounded-3 d-flex">
+                  <i className="bi bi-laptop-fill"></i>
                 </div>
-                <div className="col-6 col-md-3">
-                  <div style={styles.statBox}>
-                    <h2 className="fw-bold text-success mb-0">{report.assignments.totalSubmitted}</h2>
-                    <small className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem" }}>
-                      Submitted
-                    </small>
-                  </div>
-                </div>
-                <div className="col-6 col-md-3">
-                  <div style={styles.statBox}>
-                    <h2 className="fw-bold text-warning mb-0">{report.assignments.graded}</h2>
-                    <small className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem" }}>
-                      Graded
-                    </small>
-                  </div>
-                </div>
-                <div className="col-6 col-md-3">
-                  <div style={styles.statBox}>
-                    <h2 className="fw-bold text-info mb-0">{report.assignments.avgGrade}</h2>
-                    <small className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem" }}>
-                      Avg Grade
-                    </small>
-                  </div>
-                </div>
+                <span>LMS Progress</span>
+              </div>
+              <div className="row g-3">
+                <div className="col-6">{statCard("Completed", report.lms?.completedMaterials || 0, "success")}</div>
+                <div className="col-6">{statCard("Completion %", `${report.lms?.completionRate || 0}%`, "primary")}</div>
+                <div className="col-6">{statCard("Avg Progress", `${report.lms?.averageProgress || 0}%`, "info")}</div>
+                <div className="col-6">{statCard("Watch Min", Math.round((report.lms?.totalWatchSeconds || 0) / 60))}</div>
+              </div>
+            </div>
+          </div>
 
-                {/* Simple Bar Chart */}
-                <div className="col-12 mt-4" style={{ height: "220px", minHeight: "220px", minWidth: 0 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
-                    <BarChart data={report.assignments.chart} barSize={40}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="title" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
-                      <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                      <Bar dataKey="gradeValue" fill="#6366f1" radius={[6, 6, 0, 0]} name="Grade" />
-                    </BarChart>
-                  </ResponsiveContainer>
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-danger-subtle text-danger p-2 rounded-3 d-flex">
+                  <i className="bi bi-wallet2"></i>
                 </div>
+                <span>Fee Status</span>
+              </div>
+              <div className="row g-3">
+                <div className="col-6">{statCard("Total Fees", `Rs ${report.feeStatus?.totalFees || 0}`)}</div>
+                <div className="col-6">{statCard("Paid", `Rs ${report.feeStatus?.paidAmount || 0}`, "success")}</div>
+                <div className="col-6">{statCard("Total Due", `Rs ${report.feeStatus?.totalDue || 0}`, "danger")}</div>
+                <div className="col-6">{statCard("Status", report.feeStatus?.status || "N/A")}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className={`bg-${aiRiskTone}-subtle text-${aiRiskTone} p-2 rounded-3 d-flex`}>
+                  <i className="bi bi-stars"></i>
+                </div>
+                <span>AI Performance Insight</span>
+              </div>
+              <span className={`badge bg-${aiRiskTone}-subtle text-${aiRiskTone} border border-${aiRiskTone}-subtle rounded-pill px-3 py-2 mb-3`}>
+                Risk Level: {report.aiInsights?.riskLevel || "Low"}
+              </span>
+              <p className="text-muted mb-0">{report.aiInsights?.summary || "No insight available."}</p>
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-secondary-subtle text-secondary p-2 rounded-3 d-flex">
+                  <i className="bi bi-chat-left-text-fill"></i>
+                </div>
+                <span>Teacher Remarks</span>
+              </div>
+              <p className="text-muted mb-0">{report.teacherRemarks || "No remarks available."}</p>
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-success-subtle text-success p-2 rounded-3 d-flex">
+                  <i className="bi bi-trophy-fill"></i>
+                </div>
+                <span>Strengths</span>
+              </div>
+              <ul className="mb-0 text-muted">
+                {(report.strengthsAndImprovements?.strengths || []).map((item, index) => (
+                  <li key={`strength-${index}`} className="mb-2">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="col-lg-6">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-danger-subtle text-danger p-2 rounded-3 d-flex">
+                  <i className="bi bi-arrow-up-right-circle-fill"></i>
+                </div>
+                <span>Improvements</span>
+              </div>
+              <ul className="mb-0 text-muted">
+                {(report.strengthsAndImprovements?.improvements || []).map((item, index) => (
+                  <li key={`improvement-${index}`} className="mb-2">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="col-12">
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div className="bg-dark-subtle text-dark p-2 rounded-3 d-flex">
+                  <i className="bi bi-table"></i>
+                </div>
+                <span>Graphs and Charts Data</span>
+              </div>
+              <div className="table-responsive">
+                <table className="table align-middle">
+                  <thead>
+                    <tr>
+                      <th>Assignment</th>
+                      <th>Due Date</th>
+                      <th>Grade</th>
+                      <th>Submitted At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report.assignments?.details || []).length ? (
+                      report.assignments.details.map((item, index) => (
+                        <tr key={`assignment-detail-${index}`}>
+                          <td>{item.title || "-"}</td>
+                          <td>{item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "-"}</td>
+                          <td>{item.grade || "-"}</td>
+                          <td>{item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : "-"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" className="text-center text-muted">
+                          No assignment records found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer for PDF */}
         <div className="text-center mt-5 pt-4 border-top text-muted small">
           <p className="mb-1">This report is system generated. Signature is not required.</p>
-          <p className="fw-bold">� {new Date().getFullYear()} SchoolY Portal</p>
+          <p className="fw-bold">© {new Date().getFullYear()} SchoolY Portal</p>
         </div>
       </div>
     </div>
   );
 }
+
+
+
+

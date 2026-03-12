@@ -35,6 +35,14 @@ const colors = {
   bg: "#f8fafc",
 };
 
+const periodTimeMap = {
+  1: "09:00 - 10:00",
+  2: "10:00 - 11:00",
+  3: "11:15 - 12:15",
+  4: "14:00 - 15:00",
+  5: "15:00 - 16:00",
+};
+
 // --- ANIMATION STYLES ---
 const styles = `
   .fade-in { animation: fadeIn 0.5s ease-in-out; }
@@ -46,6 +54,8 @@ const styles = `
 
 export default function StudentDashboard() {
   const studentId = localStorage.getItem("studentId");
+  const token = localStorage.getItem("token");
+  const lastSeenAssignmentGradeAt = localStorage.getItem("lastSeenAssignmentGradeAt");
   const [student, setStudent] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [attendance, setAttendance] = useState({ presentDays: 0, absentDays: 0 });
@@ -53,6 +63,7 @@ export default function StudentDashboard() {
   const [fees, setFees] = useState(null);
   const [feeSummary, setFeeSummary] = useState(null);
   const [exams, setExams] = useState([]);
+  const [timetable, setTimetable] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   
@@ -73,12 +84,15 @@ export default function StudentDashboard() {
         const profileRes = await api.get(`/api/studentDashboard/profile/${studentId}`);
         setStudent(profileRes.data);
 
-        const [assignRes, attendRes, submitRes, feeRes, examsRes] = await Promise.all([
+        const [assignRes, attendRes, submitRes, feeRes, examsRes, timetableRes] = await Promise.all([
           api.get(`/api/studentDashboard/assignments/${profileRes.data.studentClass}?studentId=${studentId}`),
           api.get(`/api/studentDashboard/attendance/${studentId}`),
           api.get(`/api/studentDashboard/submissions/${studentId}`),
           api.get(`/api/fees/student/${studentId}`),
           api.get(`/api/student/exams`),
+          api.get(`/api/students/timetable/${studentId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: {} })),
         ]);
 
         setAssignments(assignRes.data);
@@ -87,6 +101,7 @@ export default function StudentDashboard() {
         setFees(feeRes.data.fees);
         setFeeSummary(feeRes.data.feeSummary || null);
         setExams(examsRes.data.exams || []);
+        setTimetable(timetableRes.data || {});
         setLoadError("");
       } catch (err) {
         console.error("Dashboard Load Error:", err);
@@ -97,7 +112,17 @@ export default function StudentDashboard() {
       }
     };
     loadDashboard();
-  }, [studentId]);
+  }, [studentId, token]);
+
+  useEffect(() => {
+    const latestGraded = [...submissions]
+      .filter((s) => s?.grade)
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+
+    if (latestGraded) {
+      localStorage.setItem("lastSeenAssignmentGradeAt", latestGraded.updatedAt || latestGraded.createdAt);
+    }
+  }, [submissions]);
 
   if (loading)
     return (
@@ -114,8 +139,14 @@ export default function StudentDashboard() {
     ? ((attendance.presentDays / totalDays) * 100).toFixed(1)
     : 0;
 
+  const submittedAssignmentIds = new Set(
+    submissions
+      .map((s) => String(s.assignmentId?._id || s.assignmentId || ""))
+      .filter(Boolean)
+  );
+  const pendingAssignments = assignments.filter((a) => !submittedAssignmentIds.has(String(a._id)));
   const gradedCount = submissions.filter((s) => s.grade).length;
-  const pendingSubmission = assignments.length - submissions.length;
+  const pendingSubmission = pendingAssignments.length;
   const totalDue = Number(feeSummary?.totalDue ?? ((fees?.remainingAmount || 0) + (fees?.lateFeeAccrued || 0)));
   const isPaid = totalDue <= 0;
   const now = new Date();
@@ -123,6 +154,22 @@ export default function StudentDashboard() {
     .filter((e) => new Date(e.startTime) > now)
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   const nextExam = upcomingExams[0];
+  const latestGradedSubmission = [...submissions]
+    .filter((s) => s?.grade)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+  const hasNewAssignmentGrade =
+    latestGradedSubmission &&
+    (!lastSeenAssignmentGradeAt ||
+      new Date(latestGradedSubmission.updatedAt || latestGradedSubmission.createdAt) > new Date(lastSeenAssignmentGradeAt));
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const todayTimetable = Array.isArray(timetable?.[todayName]) ? timetable[todayName] : [];
+  const todayPeriods = todayTimetable
+    .map((entry, index) => ({
+      period: index + 1,
+      time: periodTimeMap[index + 1] || "Time not set",
+      subject: entry?.subject || "Free",
+      teacher: entry?.teacher || "-",
+    }));
 
   // --- NOTIFICATION LOGIC ---
   const notifications = [];
@@ -162,6 +209,19 @@ export default function StudentDashboard() {
       message: `${nextExam.title} • ${nextExam.subjectName || "Subject"} • ${new Date(nextExam.startTime).toLocaleString()}`,
       action: 'View Exams',
       actionLink: '/student/exams',
+    });
+  }
+
+  // 4. Assignment Grade Notification
+  if (hasNewAssignmentGrade) {
+    notifications.push({
+      id: "assignment-grade",
+      type: "success",
+      icon: "bi-award-fill",
+      title: "Assignment Graded",
+      message: `${latestGradedSubmission.assignmentId?.title || "Your assignment"} has been graded: ${latestGradedSubmission.grade}`,
+      action: "View Assignments",
+      actionLink: "/student/assignments",
     });
   }
 
@@ -391,6 +451,47 @@ export default function StudentDashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            <div className="card border-0 shadow-sm rounded-4 mt-4">
+              <div className="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                <h6 className="fw-bold mb-0 text-secondary text-uppercase small">Today's Timetable</h6>
+                <Link to="/timetable" className="btn btn-sm btn-light text-primary fw-medium rounded-pill px-3">Full Timetable</Link>
+              </div>
+              <div className="card-body p-0">
+                {todayPeriods.length ? (
+                  <div className="table-responsive">
+                    <table className="table align-middle table-hover mb-0">
+                      <thead className="bg-light text-secondary small text-uppercase">
+                        <tr>
+                          <th className="px-4 border-0 rounded-start">Period</th>
+                          <th className="border-0">Time</th>
+                          <th className="border-0">Subject</th>
+                          <th className="px-4 border-0 rounded-end">Teacher</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {todayPeriods.map((entry) => (
+                          <tr key={`today-period-${entry.period}`} style={{ borderBottomColor: "#f8fafc" }}>
+                            <td className="px-4 py-3 fw-semibold text-dark">Period {entry.period}</td>
+                            <td className="text-muted small">{entry.time}</td>
+                            <td className="text-muted">{entry.subject}</td>
+                            <td className="px-4">
+                              <span className={`badge rounded-pill border fw-medium px-3 py-2 ${entry.subject === "Free" ? "text-bg-secondary" : "text-bg-light text-dark"}`}>
+                                {entry.teacher}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="px-4 py-5 text-center text-muted">
+                    No classes scheduled for {todayName}.
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -4,14 +4,14 @@ const notificationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["ANNOUNCEMENT", "ASSIGNMENT", "RESULT"],
+      enum: ["ANNOUNCEMENT", "ASSIGNMENT", "RESULT", "ATTENDANCE"],
       required: true,
     },
     title: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true },
     recipientRole: {
       type: String,
-      enum: ["Student", "Teacher", "Admin"],
+      enum: ["Student", "Teacher", "Admin", "Parent"],
       required: true,
     },
     targetUserId: { type: String, default: "" },

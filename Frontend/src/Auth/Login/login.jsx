@@ -54,6 +54,7 @@ export default function LoginPage() {
 
       if (user.role === "Admin") localStorage.setItem("adminId", user.id);
       if (user.role === "Teacher") localStorage.setItem("teacherId", user.id);
+      if (user.role === "Parent") localStorage.setItem("parentId", user.parentId || user.id);
       if (user.role === "Student") {
         localStorage.setItem("studentId", user.id);
         localStorage.setItem("studentClass", user.studentClass);
@@ -67,6 +68,7 @@ export default function LoginPage() {
       setTimeout(() => {
         if (user.role === "Admin") navigate("/Dashboard");
         else if (user.role === "Teacher") navigate("/teacher/dashboard");
+        else if (user.role === "Parent") navigate("/parent/dashboard");
         else navigate("/student/dashboard");
       }, 1000);
     } catch (err) {

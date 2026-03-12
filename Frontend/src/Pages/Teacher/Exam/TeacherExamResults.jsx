@@ -31,18 +31,35 @@ const TeacherExamResults = () => {
   const stats = useMemo(() => {
     if (!results.length) return null;
 
+    const submittedRows = results.filter((r) => String(r.attendanceStatus || "").toUpperCase() === "SUBMITTED");
+    const notSubmittedRows = results.filter((r) => String(r.attendanceStatus || "").toUpperCase() === "NOT_SUBMITTED");
+    const evaluatedRows = results.filter((r) => {
+      const status = String(r.attendanceStatus || "").toUpperCase();
+      return status === "SUBMITTED" || status === "ABSENT";
+    });
     const totalStudents = results.length;
-    const highest = Math.max(...results.map((r) => r.obtainedMarks));
-    const average =
-      (
-        results.reduce((sum, r) => sum + r.percentage, 0) / totalStudents
-      ).toFixed(2);
-    const passed = results.filter(
+    const submittedCount = submittedRows.length;
+    const highest = evaluatedRows.length ? Math.max(...evaluatedRows.map((r) => Number(r.obtainedMarks || 0))) : 0;
+    const average = evaluatedRows.length
+      ? (
+          evaluatedRows.reduce((sum, r) => sum + Number(r.percentage || 0), 0) / evaluatedRows.length
+        ).toFixed(2)
+      : "0.00";
+    const passed = evaluatedRows.filter(
       (r) => String(r.resultStatus || "").toUpperCase() === "PASS" || Number(r.percentage) >= 40
     ).length;
-    const passRate = ((passed / totalStudents) * 100).toFixed(2);
+    const passRate = evaluatedRows.length ? ((passed / evaluatedRows.length) * 100).toFixed(2) : "0.00";
 
-    return { totalStudents, highest, average, passed, passRate };
+    return {
+      totalStudents,
+      submittedCount,
+      notSubmittedCount: notSubmittedRows.length,
+      highest,
+      average,
+      passed,
+      passRate,
+      evaluatedCount: evaluatedRows.length,
+    };
   }, [results]);
 
   if (loading) {
@@ -69,8 +86,20 @@ const TeacherExamResults = () => {
           <div className="col-md-3 mb-2">
             <div className="card text-center shadow-sm">
               <div className="card-body">
-                <h6 className="text-muted">Students Appeared</h6>
+                <h6 className="text-muted">Eligible Students</h6>
                 <h3 className="fw-bold">{stats.totalStudents}</h3>
+                <div className="small text-muted">
+                  {stats.submittedCount} Submitted
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-md-3 mb-2">
+            <div className="card text-center shadow-sm">
+              <div className="card-body">
+                <h6 className="text-muted">Not Submitted</h6>
+                <h3 className="fw-bold text-warning">{stats.notSubmittedCount}</h3>
               </div>
             </div>
           </div>
@@ -101,7 +130,7 @@ const TeacherExamResults = () => {
                 <h6 className="text-muted">Pass Rate</h6>
                 <h3 className="fw-bold">{stats.passRate}%</h3>
                 <div className="small text-muted">
-                  {stats.passed} / {stats.totalStudents} Passed
+                  {stats.passed} / {stats.evaluatedCount} Passed
                 </div>
               </div>
             </div>
@@ -121,6 +150,7 @@ const TeacherExamResults = () => {
               <tr>
                 <th>Rank</th>
                 <th>Student</th>
+                <th>Submission</th>
                 <th>Marks</th>
                 <th>Percentage</th>
                 <th>Grade</th>
@@ -132,13 +162,29 @@ const TeacherExamResults = () => {
               {results.map((r, index) => (
                 <tr key={r.studentId}>
                   <td className="fw-bold">
-                    {index + 1}
-                    {index === 0 && " (Top 1)"}
-                    {index === 1 && " (Top 2)"}
-                    {index === 2 && " (Top 3)"}
+                    {String(r.attendanceStatus || "").toUpperCase() === "NOT_SUBMITTED"
+                      ? "-"
+                      : index + 1}
+                    {String(r.attendanceStatus || "").toUpperCase() !== "NOT_SUBMITTED" && index === 0 && " (Top 1)"}
+                    {String(r.attendanceStatus || "").toUpperCase() !== "NOT_SUBMITTED" && index === 1 && " (Top 2)"}
+                    {String(r.attendanceStatus || "").toUpperCase() !== "NOT_SUBMITTED" && index === 2 && " (Top 3)"}
                   </td>
 
                   <td>{r.studentName}</td>
+
+                  <td>
+                    <span
+                      className={`badge ${
+                        String(r.attendanceStatus || "").toUpperCase() === "SUBMITTED"
+                          ? "bg-success"
+                          : String(r.attendanceStatus || "").toUpperCase() === "ABSENT"
+                          ? "bg-danger"
+                          : "bg-warning text-dark"
+                      }`}
+                    >
+                      {String(r.attendanceStatus || "NOT_SUBMITTED").toUpperCase()}
+                    </span>
+                  </td>
 
                   <td className="fw-bold">
                     {r.obtainedMarks} / {exam.totalMarks}
@@ -147,7 +193,11 @@ const TeacherExamResults = () => {
                   <td>
                     <span
                       className={`badge ${
-                        r.percentage >= 40 ? "bg-success" : "bg-danger"
+                        String(r.attendanceStatus || "").toUpperCase() === "NOT_SUBMITTED"
+                          ? "bg-secondary"
+                          : r.percentage >= 40
+                          ? "bg-success"
+                          : "bg-danger"
                       }`}
                     >
                       {r.percentage}%
@@ -159,7 +209,9 @@ const TeacherExamResults = () => {
                   <td>
                     <span
                       className={`badge ${
-                        String(r.resultStatus || "").toUpperCase() === "PASS" || Number(r.percentage) >= 40
+                        String(r.resultStatus || "").toUpperCase() === "NOT_SUBMITTED"
+                          ? "bg-secondary"
+                          : String(r.resultStatus || "").toUpperCase() === "PASS" || Number(r.percentage) >= 40
                           ? "bg-success"
                           : "bg-danger"
                       }`}
@@ -169,7 +221,7 @@ const TeacherExamResults = () => {
                   </td>
 
                   <td>
-                    {new Date(r.submittedAt).toLocaleString()}
+                    {r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "-"}
                   </td>
                 </tr>
               ))}

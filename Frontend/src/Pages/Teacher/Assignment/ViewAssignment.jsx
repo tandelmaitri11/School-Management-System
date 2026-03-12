@@ -158,6 +158,10 @@ export default function ViewAssignments() {
     });
   };
 
+  const handleExtendDueDate = (assignment) => {
+    handleEdit(assignment);
+  };
+
   const handleEditChange = (e) => {
     const { name, value, files } = e.target;
 
@@ -368,6 +372,18 @@ export default function ViewAssignments() {
                             Submissions
                           </Button>
                         </OverlayTrigger>
+                        {ass.dueDate && new Date(ass.dueDate) < new Date() && (
+                          <OverlayTrigger placement="top" overlay={tt("Extend assignment due date")}>
+                            <Button
+                              size="sm"
+                              variant="warning"
+                              className="rounded-pill px-3"
+                              onClick={() => handleExtendDueDate(ass)}
+                            >
+                              Extend Date
+                            </Button>
+                          </OverlayTrigger>
+                        )}
                         <OverlayTrigger placement="top" overlay={tt("Edit assignment")}>
                           <Button
                             size="sm"
@@ -422,6 +438,7 @@ export default function ViewAssignments() {
                 <thead className="bg-light">
                   <tr className="small text-uppercase">
                     <th>Student Name</th>
+                    <th>Status</th>
                     <th>Submitted On</th>
                     <th>Grade</th>
                     <th className="text-end">Action</th>
@@ -429,24 +446,35 @@ export default function ViewAssignments() {
                 </thead>
                 <tbody>
                   {submissions.map((s) => (
-                    <tr key={s._id}>
+                    <tr key={s._id || s.studentMongoId}>
                       <td className="fw-semibold">{s.name || "Unknown Student"}</td>
+                      <td>
+                        <Badge bg={s.submitted ? "success" : "secondary"} className="rounded-pill">
+                          {s.submissionStatus || (s.submitted ? "Submitted" : "Not Submitted")}
+                        </Badge>
+                      </td>
                       <td className="small text-muted">{s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : "-"}</td>
                       <td>
-                        {s.grade ? (
+                        {s.submitted && s.grade ? (
                           <Badge bg="success" className="bg-opacity-10 text-success border border-success">
                             {s.grade}
                           </Badge>
-                        ) : (
+                        ) : s.submitted ? (
                           <span className="text-muted small italic">Pending</span>
+                        ) : (
+                          <span className="text-muted small italic">Not Submitted</span>
                         )}
                       </td>
                       <td className="text-end">
                         <div className="d-flex gap-2 justify-content-end align-items-center">
-                          <a href={`http://localhost:3000/${s.file}`} target="_blank" className="btn btn-sm btn-link text-decoration-none">
-                            Open
-                          </a>
-                          {grading === s._id ? (
+                          {s.submitted && s.file ? (
+                            <a href={`http://localhost:3000/${s.file}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-link text-decoration-none">
+                              Open
+                            </a>
+                          ) : (
+                            <span className="text-muted small">No File</span>
+                          )}
+                          {s.submitted && grading === s._id ? (
                             <div className="d-flex gap-1">
                               <Form.Control
                                 size="sm"
@@ -457,10 +485,14 @@ export default function ViewAssignments() {
                               />
                               <Button size="sm" variant="success" onClick={() => handleGrade(s._id)}>✓</Button>
                             </div>
-                          ) : (
+                          ) : s.submitted ? (
                             <OverlayTrigger placement="top" overlay={tt("Add or update grade")}>
                               <Button size="sm" variant="dark" className="rounded-pill px-3" onClick={() => setGrading(s._id)}>Grade</Button>
                             </OverlayTrigger>
+                          ) : (
+                            <Button size="sm" variant="light" className="rounded-pill px-3" disabled>
+                              Grade
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -471,7 +503,7 @@ export default function ViewAssignments() {
             </div>
           ) : (
             <div className="text-center py-4 border rounded-3 bg-light">
-               <p className="text-muted mb-0 small">No students have submitted this assignment yet.</p>
+               <p className="text-muted mb-0 small">No students found for this assignment.</p>
             </div>
           )}
         </Modal.Body>
@@ -484,6 +516,11 @@ export default function ViewAssignments() {
         </Modal.Header>
         <Modal.Body className="px-4 pb-4">
           <Form onSubmit={handleEditSubmit}>
+            {editingAssignment?.dueDate && new Date(editingAssignment.dueDate) < new Date() && (
+              <div className="alert alert-warning small border-0 mb-3">
+                This assignment is past due. Update the due date below to reopen submissions.
+              </div>
+            )}
             <Form.Group className="mb-3">
               <Form.Label className="small fw-bold text-muted">ASSIGNMENT TITLE</Form.Label>
               <Form.Control name="title" className="py-2 border-2" value={editForm.title} onChange={handleEditChange} />

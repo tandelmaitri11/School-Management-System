@@ -156,6 +156,11 @@ const AddExam = () => {
     return Array.from(new Map(base.map((s) => [s.name, s])).values());
   }, [selectedClass, assignedForClass, classHasStreams, examData.stream]);
 
+  const sectionSelectOptions = useMemo(() => {
+    if (sectionOptions.length <= 1) return sectionOptions;
+    return [{ name: "BOTH" }, ...sectionOptions];
+  }, [sectionOptions]);
+
   useEffect(() => {
     const fetchSubjects = async () => {
       if (!examData.className) return;
@@ -503,9 +508,9 @@ const AddExam = () => {
                       onChange={(e) => setExamData((prev) => ({ ...prev, section: e.target.value }))}
                     >
                       <option value="">Select</option>
-                      {sectionOptions.map((s) => (
+                      {sectionSelectOptions.map((s) => (
                         <option key={s.name} value={s.name}>
-                          {s.name}
+                          {s.name === "BOTH" ? "Both" : s.name}
                         </option>
                       ))}
                     </select>

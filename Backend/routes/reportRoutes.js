@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { getStudentReport } = require("../controller/reportController");
+const { getStudentReport, saveStudentReportRemark } = require("../controller/reportController");
+const { verifyToken } = require("../middleware/authMiddleware");
 
 router.get("/student/:studentId", getStudentReport);
+router.put("/student/:studentId/remark", verifyToken, saveStudentReportRemark);
 
 module.exports = router;

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const normalize = (v) => String(v || "").trim();
 const normalizeUpper = (v) => normalize(v).toUpperCase();
+const formatSectionLabel = (value) => (normalizeUpper(value) === "BOTH" ? "Both" : normalizeUpper(value) || "N/A");
 
 const toDateTimeLocal = (value) => {
   const d = new Date(value);
@@ -150,6 +151,11 @@ const ManageExams = () => {
     }
     return Array.from(new Map(base.map((s) => [s.name, s])).values());
   }, [selectedEditClass, assignedForClass, classHasStreams, editForm.stream]);
+
+  const sectionSelectOptions = useMemo(() => {
+    if (sectionOptions.length <= 1) return sectionOptions;
+    return [{ name: "BOTH" }, ...sectionOptions];
+  }, [sectionOptions]);
 
   useEffect(() => {
     const loadSubjects = async () => {
@@ -365,7 +371,7 @@ const ManageExams = () => {
                     <div className="bg-light rounded-3 p-2 text-center">
                       <div className="small text-muted mb-0">Class / Section / Stream</div>
                       <div className="fw-bold text-dark">
-                        {exam.classId?.className || exam.className || "N/A"} - {exam.section || "N/A"}
+                        {exam.classId?.className || exam.className || "N/A"} - {formatSectionLabel(exam.section)}
                         {exam.stream ? ` (${exam.stream})` : ""}
                       </div>
                       <div className="small text-muted mt-1">{exam.subjectName || "N/A"}</div>
@@ -476,9 +482,9 @@ const ManageExams = () => {
                         required
                       >
                         <option value="">Select</option>
-                        {sectionOptions.map((s) => (
+                        {sectionSelectOptions.map((s) => (
                           <option key={s.name} value={s.name}>
-                            {s.name}
+                            {formatSectionLabel(s.name)}
                           </option>
                         ))}
                       </select>

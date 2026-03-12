@@ -1,5 +1,8 @@
 const Exam = require("../models/Exam");
 const Student = require("../models/studentregister");
+const Class = require("../models/class");
+const TeacherRegister = require("../models/techerregister");
+const TeacherInfo = require("../models/teacherinfo");
 
 const gradeFromAverage = (avg) => {
   if (avg >= 90) return "A";
@@ -8,6 +11,38 @@ const gradeFromAverage = (avg) => {
   if (avg >= 60) return "D";
   if (avg >= 50) return "E";
   return "F";
+};
+
+const getTeacherAssignmentScope = async (teacherMongoId) => {
+  const teacher = await TeacherRegister.findById(teacherMongoId)
+    .select("teacherId name")
+    .lean();
+  if (!teacher?.teacherId) return { classes: [], assignedSections: [] };
+
+  const info = await TeacherInfo.findOne({ regNumber: teacher.teacherId })
+    .select("classes assignedSections")
+    .lean();
+  if (!info?.classes?.length) return { classes: [], assignedSections: [] };
+
+  const classes = await Class.find({ _id: { $in: info.classes } })
+    .select("_id className")
+    .lean();
+
+  const classMap = new Map(classes.map((cls) => [String(cls._id), cls]));
+  const assignedSections = (Array.isArray(info.assignedSections) ? info.assignedSections : [])
+    .filter((row) => classMap.has(String(row?.classId || "")))
+    .map((row) => {
+      const cls = classMap.get(String(row.classId));
+      return {
+        classId: String(row.classId),
+        className: Number(cls?.className || 0),
+        section: String(row?.section || "").trim().toUpperCase(),
+        stream: String(row?.stream || "").trim(),
+      };
+    })
+    .filter((row) => row.className && row.section);
+
+  return { classes, assignedSections };
 };
 
 exports.getAllPerformance = async (req, res) => {
@@ -23,10 +58,76 @@ exports.getAllPerformance = async (req, res) => {
       .toUpperCase();
     const streamQuery = String(req.query.stream || "").trim();
 
-    const examFilter = { teacherId };
+    const { classes, assignedSections } = await getTeacherAssignmentScope(teacherId);
+    if (!classes.length || !assignedSections.length) {
+      return res.json({
+        summary: {
+          totalStudents: 0,
+          totalExams: 0,
+          averagePercentage: 0,
+          passRate: 0,
+        },
+        filters: {
+          classes: classes
+            .map((cls) => Number(cls.className || 0))
+            .filter(Boolean)
+            .sort((a, b) => a - b),
+          sections: [],
+          streams: [],
+        },
+        data: [],
+      });
+    }
+
+    const scopedRows = assignedSections.filter((row) => {
+      if (classQuery && Number(row.className) !== classQuery) return false;
+      if (sectionQuery && String(row.section || "") !== sectionQuery) return false;
+      if (streamQuery && String(row.stream || "").trim().toLowerCase() !== streamQuery.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+
+    const classValues = Array.from(
+      new Set(classes.map((cls) => Number(cls.className || 0)).filter(Boolean))
+    ).sort((a, b) => a - b);
+    const sectionValues = Array.from(
+      new Set(assignedSections.map((row) => String(row.section || "").trim().toUpperCase()).filter(Boolean))
+    ).sort();
+    const streamValues = Array.from(
+      new Set(assignedSections.map((row) => String(row.stream || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+
+    if ((classQuery || sectionQuery || streamQuery) && scopedRows.length === 0) {
+      return res.json({
+        summary: {
+          totalStudents: 0,
+          totalExams: 0,
+          averagePercentage: 0,
+          passRate: 0,
+        },
+        filters: {
+          classes: classValues,
+          sections: sectionValues,
+          streams: streamValues,
+        },
+        data: [],
+      });
+    }
+
+    const examFilter = {
+      teacherId,
+      className: { $in: Array.from(new Set(scopedRows.map((row) => Number(row.className)).filter(Boolean))) },
+    };
     if (classQuery) examFilter.className = classQuery;
-    if (sectionQuery) examFilter.section = sectionQuery;
-    if (streamQuery) examFilter.stream = streamQuery;
+    if (sectionQuery) {
+      examFilter.section = sectionQuery;
+    } else {
+      examFilter.section = { $in: Array.from(new Set(scopedRows.map((row) => row.section).filter(Boolean))) };
+    }
+    if (streamQuery) {
+      examFilter.stream = streamQuery;
+    }
 
     const exams = await Exam.find(examFilter).select(
       "title subjectName className section stream startTime totalMarks submissions"
@@ -72,33 +173,32 @@ exports.getAllPerformance = async (req, res) => {
       });
     });
 
-    if (stats.size === 0) {
-      return res.json({
-        summary: {
-          totalStudents: 0,
-          totalExams: exams.length,
-          averagePercentage: 0,
-          passRate: 0,
-        },
-        filters: {
-          classes: Array.from(
-            new Set(exams.map((e) => Number(e.className || 0)).filter(Boolean))
-          ).sort((a, b) => a - b),
-          sections: Array.from(
-            new Set(exams.map((e) => String(e.section || "").trim().toUpperCase()).filter(Boolean))
-          ).sort(),
-          streams: Array.from(
-            new Set(exams.map((e) => String(e.stream || "").trim()).filter(Boolean))
-          ).sort((a, b) => a.localeCompare(b)),
-        },
-        data: [],
-      });
+    const visibleRows = scopedRows.length ? scopedRows : assignedSections;
+
+    const rosterFilters = visibleRows.map((row) => {
+      const filter = {
+        studentClass: Number(row.className),
+        section: String(row.section || "").trim().toUpperCase(),
+      };
+      if (row.stream) filter.stream = String(row.stream).trim();
+      return filter;
+    });
+
+    const studentIdFilters = Array.from(stats.keys()).map((id) => ({ _id: id }));
+    const studentQuery = [];
+
+    if (rosterFilters.length) {
+      studentQuery.push(...rosterFilters);
+    }
+    if (studentIdFilters.length) {
+      studentQuery.push(...studentIdFilters);
     }
 
-    const studentIds = Array.from(stats.keys());
-    const students = await Student.find({ _id: { $in: studentIds } }).select(
-      "studentId name studentClass section stream"
-    );
+    const students = studentQuery.length
+      ? await Student.find({ $or: studentQuery }).select(
+          "studentId name studentClass section stream"
+        )
+      : [];
 
     const searchQuery = String(req.query.search || "").trim().toLowerCase();
     const data = students
@@ -142,22 +242,16 @@ exports.getAllPerformance = async (req, res) => {
     const passRate = data.length ? (passCount / data.length) * 100 : 0;
 
     res.json({
-      summary: {
-        totalStudents: data.length,
-        totalExams: exams.length,
-        averagePercentage: Number(avgOverall.toFixed(2)),
-        passRate: Number(passRate.toFixed(2)),
-      },
+        summary: {
+          totalStudents: data.length,
+          totalExams: exams.length,
+          averagePercentage: Number(avgOverall.toFixed(2)),
+          passRate: Number(passRate.toFixed(2)),
+        },
       filters: {
-        classes: Array.from(
-          new Set(exams.map((e) => Number(e.className || 0)).filter(Boolean))
-        ).sort((a, b) => a - b),
-        sections: Array.from(
-          new Set(exams.map((e) => String(e.section || "").trim().toUpperCase()).filter(Boolean))
-        ).sort(),
-        streams: Array.from(
-          new Set(exams.map((e) => String(e.stream || "").trim()).filter(Boolean))
-        ).sort((a, b) => a.localeCompare(b)),
+        classes: classValues,
+        sections: sectionValues,
+        streams: streamValues,
       },
       data,
     });

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
 
-const initialForm = { title: "", message: "", audience: "Both" };
+const initialForm = { title: "", message: "", audience: "All" };
 
 export default function AnnouncementPage() {
   const [rows, setRows] = useState([]);
@@ -80,7 +80,7 @@ export default function AnnouncementPage() {
     setForm({
       title: item.title || "",
       message: item.message || "",
-      audience: item.audience || "Both",
+      audience: item.audience || "All",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -161,7 +161,8 @@ export default function AnnouncementPage() {
                     >
                       <option value="Students">Students</option>
                       <option value="Teachers">Teachers</option>
-                      <option value="Both">Both</option>
+                      <option value="Parents">Parents</option>
+                      <option value="All">All</option>
                     </select>
                   </div>
                   <div className="col-12">
@@ -266,7 +267,7 @@ export default function AnnouncementPage() {
                         <td>
                           <div className="fw-semibold">{item.viewStats?.totalViews || 0}</div>
                           <div className="small text-muted">
-                            S: {item.viewStats?.studentViews || 0} | T: {item.viewStats?.teacherViews || 0}
+                            S: {item.viewStats?.studentViews || 0} | T: {item.viewStats?.teacherViews || 0} | P: {item.viewStats?.parentViews || 0}
                           </div>
                         </td>
                         <td className="text-muted small">

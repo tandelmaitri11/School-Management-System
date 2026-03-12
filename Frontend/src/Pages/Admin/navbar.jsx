@@ -102,6 +102,13 @@ function Navbar({ children }) {
       ],
     },
     {
+      label: "Parents",
+      icon: "bi-people-fill",
+      submenu: [
+        { label: "All Parents", path: "/admin/parents/all" },
+      ],
+    },
+    {
       label: "Teacher",
       icon: "bi-person-badge-fill",
       submenu: [

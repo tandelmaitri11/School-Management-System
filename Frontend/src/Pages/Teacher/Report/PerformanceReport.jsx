@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
-import { Card, Table, Form, Row, Col, Spinner, Badge, Button } from "react-bootstrap";
+import { Card, Table, Form, Row, Col, Spinner, Badge, Button, Modal } from "react-bootstrap";
 
 const EMPTY_SUMMARY = {
   totalStudents: 0,
@@ -16,6 +17,7 @@ const EMPTY_FILTERS = {
 };
 
 export default function PerformanceReport() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [serverFilters, setServerFilters] = useState(EMPTY_FILTERS);
@@ -31,6 +33,12 @@ export default function PerformanceReport() {
   });
   const [gradeFilter, setGradeFilter] = useState("");
   const [sortBy, setSortBy] = useState("average-desc");
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentReport, setStudentReport] = useState(null);
+  const [remarkDraft, setRemarkDraft] = useState("");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [savingRemark, setSavingRemark] = useState(false);
 
   const fetchPerformance = async (options = {}) => {
     const withLoading = Boolean(options.withLoading);
@@ -88,6 +96,40 @@ export default function PerformanceReport() {
 
     return filtered;
   }, [rows, gradeFilter, sortBy]);
+
+  const openStudentReport = async (student) => {
+    try {
+      setSelectedStudent(student);
+      setReportModalOpen(true);
+      setReportLoading(true);
+      const res = await api.get(`/api/reports/student/${student.studentMongoId || student.studentId}`);
+      setStudentReport(res.data || null);
+      setRemarkDraft(res.data?.teacherRemarksMeta?.hasCustomRemark ? res.data?.teacherRemarks || "" : "");
+    } catch (err) {
+      setStudentReport(null);
+      setRemarkDraft("");
+      setError(err.response?.data?.message || "Failed to load student report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const saveRemark = async () => {
+    if (!selectedStudent || !remarkDraft.trim()) return;
+    try {
+      setSavingRemark(true);
+      await api.put(`/api/reports/student/${selectedStudent.studentMongoId || selectedStudent.studentId}/remark`, {
+        remarks: remarkDraft.trim(),
+      });
+      const res = await api.get(`/api/reports/student/${selectedStudent.studentMongoId || selectedStudent.studentId}`);
+      setStudentReport(res.data || null);
+      setRemarkDraft(res.data?.teacherRemarks || "");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save report remark");
+    } finally {
+      setSavingRemark(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -233,6 +275,7 @@ export default function PerformanceReport() {
                 <th>Grade</th>
                 <th>Status</th>
                 <th>Last Exam</th>
+                <th>Report</th>
               </tr>
             </thead>
             <tbody className="text-center">
@@ -257,11 +300,16 @@ export default function PerformanceReport() {
                       </Badge>
                     </td>
                     <td>{p.lastExamAt ? new Date(p.lastExamAt).toLocaleDateString() : "N/A"}</td>
+                    <td>
+                      <Button size="sm" variant="outline-primary" onClick={() => openStudentReport(p)}>
+                        View Report
+                      </Button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="12" className="text-center text-muted py-3">
+                  <td colSpan="13" className="text-center text-muted py-3">
                     No performance data found
                   </td>
                 </tr>
@@ -270,6 +318,94 @@ export default function PerformanceReport() {
           </Table>
         </div>
       </Card>
+
+      <Modal show={reportModalOpen} onHide={() => setReportModalOpen(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Student Report Summary</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {reportLoading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" />
+            </div>
+          ) : studentReport ? (
+            <div className="d-flex flex-column gap-4">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <Card className="border-0 bg-light">
+                    <Card.Body>
+                      <div className="fw-bold">{studentReport.studentName}</div>
+                      <div className="small text-muted">
+                        {studentReport.studentId} | Class {studentReport.className}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </div>
+                <div className="col-md-6">
+                  <Card className="border-0 bg-light">
+                    <Card.Body>
+                      <div className="small text-muted">Overall Result</div>
+                      <div className="fw-bold">
+                        {studentReport.overallResult?.label || "N/A"} ({studentReport.overallResult?.score || 0})
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </div>
+                <div className="col-md-4">
+                  <Card className="border-0 bg-light"><Card.Body><div className="small text-muted">Attendance</div><div className="fw-bold">{studentReport.attendance?.percentage || 0}%</div></Card.Body></Card>
+                </div>
+                <div className="col-md-4">
+                  <Card className="border-0 bg-light"><Card.Body><div className="small text-muted">Exam Average</div><div className="fw-bold">{studentReport.academicPerformance?.averagePercentage || 0}%</div></Card.Body></Card>
+                </div>
+                <div className="col-md-4">
+                  <Card className="border-0 bg-light"><Card.Body><div className="small text-muted">Fee Status</div><div className="fw-bold">{studentReport.feeStatus?.status || "N/A"}</div></Card.Body></Card>
+                </div>
+              </div>
+
+              <div>
+                <div className="fw-bold mb-2">AI Insight</div>
+                <div className="small text-muted">{studentReport.aiInsights?.summary || "No insight available."}</div>
+              </div>
+
+              <div>
+                <div className="fw-bold mb-2">Teacher Remarks</div>
+                <Form.Control
+                  as="textarea"
+                  rows={5}
+                  value={remarkDraft}
+                  onChange={(e) => setRemarkDraft(e.target.value)}
+                  placeholder="Write teacher remarks for this student report"
+                />
+                <div className="d-flex justify-content-end mt-3">
+                  <Button
+                    variant="dark"
+                    className="me-2"
+                    onClick={() =>
+                      navigate(
+                        `/teacher/reports/student/${selectedStudent?.studentMongoId || selectedStudent?.studentId}?pdf=1`
+                      )
+                    }
+                  >
+                    PDF
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    className="me-2"
+                    onClick={() => navigate(`/teacher/reports/student/${selectedStudent?.studentMongoId || selectedStudent?.studentId}`)}
+                  >
+                    Full Report
+                  </Button>
+                  <Button onClick={saveRemark} disabled={savingRemark || !remarkDraft.trim()}>
+                    {savingRemark ? "Saving..." : "Save Remarks"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-muted py-4">No report found.</div>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }

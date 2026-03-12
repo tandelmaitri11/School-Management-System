@@ -459,3 +459,65 @@ exports.getSubmissionsByStudent = async (req, res) => {
     res.status(500).json({ message: "Error fetching student submissions", error });
   }
 };
+
+exports.viewSubmissions = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+
+    const assignment = await Assignment.findById(assignmentId).lean();
+    if (!assignment) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    const studentFilter = {
+      studentClass: Number(assignment.classAssigned),
+    };
+
+    const sectionAssigned = normalize(assignment.sectionAssigned).toUpperCase();
+    const streamAssigned = normalize(assignment.streamAssigned);
+    const subjectChoiceAssigned = normalize(assignment.subjectChoiceAssigned);
+
+    if (sectionAssigned) studentFilter.section = sectionAssigned;
+    if (streamAssigned) studentFilter.stream = streamAssigned;
+    if (subjectChoiceAssigned) studentFilter.subjectChoice = subjectChoiceAssigned;
+
+    const [students, submissions] = await Promise.all([
+      Student.find(studentFilter)
+        .select("name email studentId studentClass section stream subjectChoice")
+        .lean(),
+      Submission.find({ assignmentId })
+        .populate("studentId", "name email studentId studentClass section stream subjectChoice")
+        .lean(),
+    ]);
+
+    const submissionsByStudentId = new Map(
+      submissions.map((s) => [String(s.studentId?._id || s.studentId), s])
+    );
+
+    const formatted = students.map((student) => {
+      const submission = submissionsByStudentId.get(String(student._id));
+      return {
+        _id: submission?._id || null,
+        studentMongoId: String(student._id),
+        name: student.name || "Unknown",
+        email: student.email || "N/A",
+        studentUniqueId: student.studentId || "N/A",
+        studentClass: student.studentClass || "N/A",
+        section: student.section || "",
+        stream: student.stream || "",
+        subjectChoice: student.subjectChoice || "",
+        submitted: Boolean(submission),
+        submissionStatus: submission ? "Submitted" : "Not Submitted",
+        submittedAt: submission?.createdAt || null,
+        file: submission?.file || "",
+        grade: submission?.grade || "",
+        feedback: submission?.feedback || "",
+      };
+    });
+
+    res.status(200).json(formatted);
+  } catch (error) {
+    console.error("Error fetching submissions:", error);
+    res.status(500).json({ message: "Error fetching submissions", error });
+  }
+};

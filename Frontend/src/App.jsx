@@ -48,6 +48,7 @@ import ViewClassTimetable from "./Pages/Admin/TimeTable/ViewClassTimetable";
 import AdminLmsProgress from "./Pages/Admin/LMS/AdminLmsProgress";
 import ContactMessages from "./Pages/Admin/Contact/ContactMessages";
 import AnnouncementPage from "./Pages/Admin/Announcement/AnnouncementPage";
+import ViewParents from "./Pages/Admin/Parent/ViewParents";
 
 // ==========================================
 // 3. TEACHER IMPORTS
@@ -90,6 +91,14 @@ import StudentExamResult from "./Pages/Student/Exam/StudentExamResult";
 import StudentLms from "./Pages/Student/LMS/StudentLms";
 import StudentAnnouncements from "./Pages/Student/Announcement/StudentAnnouncements";
 import TeacherAnnouncements from "./Pages/Teacher/Announcement/TeacherAnnouncements";
+import ParentNavbar from "./Pages/Parent/parent_navbar";
+import ParentDashboard from "./Pages/Parent/Dashboard";
+import ParentProfile from "./Pages/Parent/Profile";
+import ParentAttendance from "./Pages/Parent/Attendance";
+import ParentPerformance from "./Pages/Parent/Performance";
+import ParentExams from "./Pages/Parent/Exams";
+import ParentFees from "./Pages/Parent/Fees";
+import ParentNotifications from "./Pages/Parent/Notifications";
 
 // ==========================================
 // 5. SHARED SETTINGS
@@ -138,6 +147,8 @@ function App() {
         <Route path="/admin/view/timetable" element={<Navbar><ViewClassTimetable /></Navbar>} />
         <Route path="/admin/contact/messages" element={<Navbar><ContactMessages /></Navbar>} />
         <Route path="/admin/announcements" element={<Navbar><AnnouncementPage /></Navbar>} />
+        <Route path="/admin/parents/all" element={<Navbar><ViewParents /></Navbar>} />
+        <Route path="/admin/reports/student/:studentId" element={<Navbar><StudentReport /></Navbar>} />
         <Route path="/settings/preferences" element={<Navbar><DashboardSettings /></Navbar>} />
         <Route path="/Settings/account" element={<Navbar><DashboardSettings /></Navbar>} />
 
@@ -163,6 +174,7 @@ function App() {
         <Route path="/teacher/my-salary" element={<TeacherNavbar><TeacherSalaryHistory /></TeacherNavbar>} />
         <Route path="/teacher/reports/attendance" element={<TeacherNavbar><AttendanceReport /></TeacherNavbar>} />
         <Route path="/teacher/reports/performance" element={<TeacherNavbar><PerformanceReport /></TeacherNavbar>} />
+        <Route path="/teacher/reports/student/:studentId" element={<TeacherNavbar><StudentReport /></TeacherNavbar>} />
         <Route path="/teacher/reports/salary" element={<TeacherNavbar><SalaryReport /></TeacherNavbar>} />
         <Route path="/teacher/addexam" element={<TeacherNavbar><AddExam /></TeacherNavbar>} />
         <Route path="/teacher/mangeexam" element={<TeacherNavbar><ManageExams /></TeacherNavbar>} />
@@ -186,6 +198,16 @@ function App() {
         <Route path="/student/lms" element={<StudentNavbar><StudentLms /></StudentNavbar>} />
         <Route path="/student/announcements" element={<StudentNavbar><StudentAnnouncements /></StudentNavbar>} />
         <Route path="/student/settings" element={<StudentNavbar><DashboardSettings /></StudentNavbar>} />
+
+        {/* --- Parent Section --- */}
+        <Route path="/parent/dashboard" element={<ParentNavbar><ParentDashboard /></ParentNavbar>} />
+        <Route path="/parent/profile" element={<ParentNavbar><ParentProfile /></ParentNavbar>} />
+        <Route path="/parent/attendance" element={<ParentNavbar><ParentAttendance /></ParentNavbar>} />
+        <Route path="/parent/performance" element={<ParentNavbar><ParentPerformance /></ParentNavbar>} />
+        <Route path="/parent/exams" element={<ParentNavbar><ParentExams /></ParentNavbar>} />
+        <Route path="/parent/fees" element={<ParentNavbar><ParentFees /></ParentNavbar>} />
+        <Route path="/parent/notifications" element={<ParentNavbar><ParentNotifications /></ParentNavbar>} />
+        <Route path="/parent/settings" element={<ParentNavbar><DashboardSettings /></ParentNavbar>} />
       </Routes>
 
       <Footer />

@@ -38,6 +38,7 @@ const styles = {
 export default function StudentAssignments({ studentClasses }) {
   const studentId = localStorage.getItem("studentId");
   const [assignments, setAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,15 +63,19 @@ export default function StudentAssignments({ studentClasses }) {
       }
 
       try {
-        const res = await api.get(`/api/assignments/classes`, {
-          params: { classes: classes.join(","), studentId },
-        });
+        const [assignRes, submissionRes] = await Promise.all([
+          api.get(`/api/assignments/classes`, {
+            params: { classes: classes.join(","), studentId },
+          }),
+          api.get(`/api/assignments/student/${studentId}`),
+        ]);
 
-        const data = res.data || [];
+        const data = assignRes.data || [];
         // Sort: Newest first
         data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         
         setAssignments(data);
+        setSubmissions(submissionRes.data || []);
         setFilteredAssignments(data);
         setSubjects([...new Set(data.map((a) => a.subject))]);
       } catch (err) {
@@ -120,6 +125,8 @@ export default function StudentAssignments({ studentClasses }) {
   };
 
   const isNew = (date) => lastViewed && new Date(date) > new Date(lastViewed);
+  const getSubmission = (assignmentId) =>
+    submissions.find((s) => String(s.assignmentId?._id || s.assignmentId) === String(assignmentId));
 
   if (loading) return (
     <div className="d-flex justify-content-center align-items-center vh-100">
@@ -188,6 +195,7 @@ export default function StudentAssignments({ studentClasses }) {
                     <th className="py-3">Subject</th>
                     <th className="py-3">Status</th>
                     <th className="py-3">Due Date</th>
+                    <th className="py-3">Grade</th>
                     <th className="py-3 text-end pe-4">Actions</th>
                   </tr>
                 </thead>
@@ -195,6 +203,8 @@ export default function StudentAssignments({ studentClasses }) {
                   {filteredAssignments.map((a) => {
                     const status = getStatus(a.dueDate);
                     const isNewItem = isNew(a.createdAt);
+                    const submission = getSubmission(a._id);
+                    const grade = submission?.grade || "";
 
                     return (
                       <tr key={a._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
@@ -243,6 +253,22 @@ export default function StudentAssignments({ studentClasses }) {
                                 {new Date(a.dueDate).toLocaleDateString()}
                              </>
                           ) : "No Date"}
+                        </td>
+
+                        <td>
+                          {submission ? (
+                            grade ? (
+                              <Badge bg="success" className="rounded-pill px-3">
+                                {grade}
+                              </Badge>
+                            ) : (
+                              <Badge bg="light" text="dark" className="border rounded-pill px-3">
+                                Submitted
+                              </Badge>
+                            )
+                          ) : (
+                            <span className="text-muted small">Not Submitted</span>
+                          )}
                         </td>
 
                         {/* 5. Actions */}

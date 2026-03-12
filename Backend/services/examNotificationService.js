@@ -4,6 +4,8 @@ const Student = require("../models/studentregister");
 const { sendEmail } = require("../utils/mailer");
 
 const MINUTE = 60 * 1000;
+const normalizeUpper = (value) => String(value || "").trim().toUpperCase();
+const isBothSection = (value) => normalizeUpper(value) === "BOTH";
 
 const formatDateTime = (value) =>
   value ? new Date(value).toLocaleString("en-IN") : "-";
@@ -38,7 +40,7 @@ const buildExamEmailHtml = ({ studentName, exam, headline, message }) => `
 
 const loadStudentsForExam = async (exam) => {
   const query = { studentClass: Number(exam.className) };
-  if (exam.section) query.section = String(exam.section).trim().toUpperCase();
+  if (exam.section && !isBothSection(exam.section)) query.section = normalizeUpper(exam.section);
   if (exam.stream) query.stream = String(exam.stream).trim();
 
   return Student.find(query).select("name email studentId").lean();

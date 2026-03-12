@@ -24,6 +24,7 @@ const examRoutes = require("./routes/examRoutes");
 
 const reportRoutes = require("./routes/reportRoutes");
 const performanceRoutes = require("./routes/performanceRoutes");
+const parentRoutes = require("./routes/parentRoutes");
 
 const teacherAttendanceRoutes = require("./routes/teacherAttendanceRoute");
 
@@ -79,6 +80,7 @@ app.use("/api/attendance", attendanceRoutes);
 
 app.use("/api/reports", reportRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/parent", parentRoutes);
 
 app.use("/api/teacher-attendance", teacherAttendanceRoutes);
 

@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const Student = require("../models/studentregister");
 const Teacher = require("../models/techerregister");
 const Admin = require("../models/admin");
+const Parent = require("../models/parent");
 const Class = require("../models/class");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
@@ -71,6 +72,20 @@ const pickAvailableSection = async ({ cls, classNumber, streamName, preferredSec
   return { section: best[0]?.name || null, reason: "AUTO_OK" };
 };
 
+const resolveStudentByAnyId = async (rawStudentId) => {
+  const studentId = String(rawStudentId || "").trim();
+  if (!studentId) return null;
+
+  let student = null;
+  if (/^[0-9a-fA-F]{24}$/.test(studentId)) {
+    student = await Student.findById(studentId);
+  }
+  if (!student) {
+    student = await Student.findOne({ studentId });
+  }
+  return student;
+};
+
 exports.registerUser = async (req, res) => {
   try {
     const {
@@ -93,8 +108,10 @@ exports.registerUser = async (req, res) => {
 
     const existingStudent = await Student.findOne({ email });
     const existingTeacher = await Teacher.findOne({ email });
+    const existingParent = await Parent.findOne({ email });
     if (existingStudent) return res.status(409).json({ error: "Email already exists as Student!" });
     if (existingTeacher) return res.status(409).json({ error: "Email already exists as Teacher!" });
+    if (existingParent) return res.status(409).json({ error: "Email already exists as Parent!" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -193,7 +210,27 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    return res.status(400).json({ error: "Invalid role! Use Student or Teacher." });
+    if (String(role).toLowerCase() === "parent") {
+      const newParent = new Parent({
+        name,
+        email,
+        password: hashedPassword,
+        role: "Parent",
+        phone: String(phone || "").trim(),
+        mobile: String(mobile || "").trim(),
+        contactNumber: String(contactNumber || "").trim(),
+        status: "Active",
+      });
+
+      await newParent.save();
+
+      return res.status(201).json({
+        message: "Parent registered successfully!",
+        parentId: newParent.parentId,
+      });
+    }
+
+    return res.status(400).json({ error: "Invalid role! Use Student, Teacher or Parent." });
   } catch (err) {
     console.error("Registration error:", err.message);
     if (err?.code === 11000) return res.status(409).json({ error: "Duplicate value (email/studentId/teacherId)" });
@@ -224,19 +261,35 @@ exports.loginUser = async (req, res) => {
       userType = "Admin";
     }
 
+    if (!user) {
+      user = await Parent.findOne({ email });
+      userType = "Parent";
+    }
+
     if (!user) return res.status(404).json({ error: "User not found!" });
+    if (userType === "Parent" && String(user.status || "Active") !== "Active") {
+      return res.status(403).json({ error: "Parent account is inactive" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials!" });
 
     // ✅ TOKEN PAYLOAD
-    const tokenPayload = 
-      {  id: user._id,
-    role: user.role,
-    email: user.email,
-    className: userType === "Student" ? user.studentClass : null,
-    teacherId: userType === "Teacher" ? user.teacherId : null,
-  };
+    const resolvedRole =
+      userType === "Student"
+        ? "Student"
+        : userType === "Teacher"
+        ? "Teacher"
+        : userType === "Admin"
+        ? "Admin"
+        : "Parent";
+    const tokenPayload = {
+      id: user._id,
+      role: resolvedRole,
+      email: user.email,
+      className: userType === "Student" ? user.studentClass : null,
+      teacherId: userType === "Teacher" ? user.teacherId : null,
+    };
 
     if (userType === "Student") {
       tokenPayload.className = user.studentClass;
@@ -252,7 +305,7 @@ exports.loginUser = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: resolvedRole,
     };
 
     if (userType === "Student") {
@@ -264,6 +317,9 @@ exports.loginUser = async (req, res) => {
 
     if (userType === "Teacher") {
       userInfo.teacherId = user.teacherId;
+    }
+    if (userType === "Parent") {
+      userInfo.parentId = user.parentId;
     }
 
     res.status(200).json({
@@ -287,7 +343,8 @@ const findUserByEmail = async (email) => {
   let user =
     (await Student.findOne({ email })) ||
     (await Teacher.findOne({ email })) ||
-    (await Admin.findOne({ email }));
+    (await Admin.findOne({ email })) ||
+    (await Parent.findOne({ email }));
   return user;
 };
 

@@ -17,6 +17,8 @@ export default function Register() {
     section: "",
     stream: "",
     subjectChoice: "",
+    linkedStudentId: "",
+    relation: "Parent",
   });
 
   const [classes, setClasses] = useState([]);
@@ -49,6 +51,7 @@ export default function Register() {
   }, []);
 
   const isStudent = formData.role === "Student";
+  const isParent = formData.role === "Parent";
   const selectedClassNum = useMemo(() => {
     const n = Number(formData.studentClass);
     return Number.isInteger(n) ? n : null;
@@ -184,10 +187,9 @@ export default function Register() {
         payload.subjectChoice = formData.subjectChoice || "";
         payload.previewSection = previewSection || "";
       }
-
       const res = await api.post("/api/register", payload);
 
-      setGeneratedId(res.data.studentId || res.data.teacherId);
+      setGeneratedId(res.data.studentId || res.data.teacherId || res.data.parentId);
       setAssignedSection(res.data.assignedSection || "");
       setShowSuccess(true);
       setTimeout(() => navigate("/login"), 3000);
@@ -426,6 +428,7 @@ export default function Register() {
                             <option value="">Select role</option>
                             <option value="Student">Student</option>
                             <option value="Teacher">Teacher</option>
+                            <option value="Parent">Parent</option>
                           </select>
                         </div>
                       </div>
@@ -570,6 +573,12 @@ export default function Register() {
                             </div>
                           )}
                         </>
+                      )}
+
+                      {isParent && (
+                        <div className="alert alert-info rounded-4">
+                          Parent registration creates the login account first. After that, admin will link the parent to the correct student.
+                        </div>
                       )}
 
                       <button

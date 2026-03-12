@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { Modal } from "react-bootstrap";
 
 export default function AllStudents() {
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [expandedClass, setExpandedClass] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -161,8 +163,15 @@ export default function AllStudents() {
                 <p className="text-muted">No matches found for "{searchTerm}"</p>
               </div>
             ) : (
-              filteredStudents.map((student) => (
-                <StudentCard key={student.id} student={student} onClick={handleStudentClick} showClass={true} />
+                filteredStudents.map((student) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  onClick={handleStudentClick}
+                  onViewReport={(id) => navigate(`/admin/reports/student/${id}`)}
+                  onViewPdf={(id) => navigate(`/admin/reports/student/${id}?pdf=1`)}
+                  showClass={true}
+                />
               ))
             )}
           </div>
@@ -201,7 +210,13 @@ export default function AllStudents() {
               <div className="pt-4 px-2 animate__animated animate__slideInDown">
                 <div className="row g-4">
                   {cls.students.map((student) => (
-                    <StudentCard key={student.id} student={student} onClick={handleStudentClick} />
+                    <StudentCard
+                      key={student.id}
+                      student={student}
+                      onClick={handleStudentClick}
+                      onViewReport={(id) => navigate(`/admin/reports/student/${id}`)}
+                      onViewPdf={(id) => navigate(`/admin/reports/student/${id}?pdf=1`)}
+                    />
                   ))}
                 </div>
               </div>
@@ -302,7 +317,7 @@ export default function AllStudents() {
   );
 }
 
-function StudentCard({ student, onClick, showClass = false }) {
+function StudentCard({ student, onClick, onViewReport, onViewPdf, showClass = false }) {
     return (
         <div className="col-12 col-md-6 col-lg-4 col-xl-3">
             <div className="student-card-modern p-3 bg-white shadow-sm h-100 position-relative" onClick={() => onClick(student.id)} style={{ cursor: "pointer" }}>
@@ -328,6 +343,28 @@ function StudentCard({ student, onClick, showClass = false }) {
                     <div className="mt-2 d-flex flex-wrap gap-1">
                         {student.stream && <span className="badge bg-secondary-subtle text-secondary rounded-pill" style={{fontSize: '0.65rem'}}>{student.stream}</span>}
                         {student.section && <span className="badge bg-info-subtle text-info rounded-pill" style={{fontSize: '0.65rem'}}>Sec {student.section}</span>}
+                    </div>
+                    <div className="mt-3">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary rounded-pill"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onViewReport?.(student.id);
+                            }}
+                        >
+                            Report
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-dark rounded-pill ms-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onViewPdf?.(student.id);
+                            }}
+                        >
+                            PDF
+                        </button>
                     </div>
                 </div>
             </div>

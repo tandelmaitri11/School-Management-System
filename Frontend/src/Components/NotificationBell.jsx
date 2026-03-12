@@ -6,6 +6,7 @@ const roleToAnnouncementPath = {
   Student: "/student/announcements",
   Teacher: "/teacher/announcements",
   Admin: "/admin/announcements",
+  Parent: "/parent/notifications",
 };
 
 const roleToAssignmentPath = {
@@ -56,8 +57,15 @@ export default function NotificationBell({ buttonClassName = "btn btn-light btn-
     if (n?.type === "RESULT" && n?.data?.examId && userRole === "Student") {
       return `/student/exam-result/${n.data.examId}`;
     }
+    if (n?.type === "RESULT" && userRole === "Parent") {
+      return "/parent/exams";
+    }
+    if (n?.type === "ATTENDANCE" && userRole === "Parent") {
+      return "/parent/notifications";
+    }
     if (n?.type === "ASSIGNMENT") return roleToAssignmentPath[userRole] || "/";
     if (n?.type === "ANNOUNCEMENT") return roleToAnnouncementPath[userRole] || "/";
+    if (userRole === "Parent") return "/parent/notifications";
     return "/";
   };
 

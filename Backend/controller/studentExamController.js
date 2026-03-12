@@ -6,6 +6,7 @@ const eventBus = require("../events/eventBus");
 const normalizeUpper = (v) => String(v || "").trim().toUpperCase();
 const normalize = (v) => String(v || "").trim();
 const normalizeAnswer = (v) => String(v || "").trim().toLowerCase();
+const isBothSection = (value) => normalizeUpper(value) === "BOTH";
 
 const getGradeByPercentage = (percentage) => {
   if (percentage >= 90) return "A+";
@@ -93,7 +94,7 @@ const canAccessExam = (exam, studentScope, classDoc) => {
 
   const examSection = normalizeUpper(exam.section);
   const studentSection = normalizeUpper(studentScope.section);
-  if (examSection && examSection !== studentSection) return false;
+  if (examSection && !isBothSection(examSection) && examSection !== studentSection) return false;
 
   const examStream = normalize(exam.stream);
   const studentStream = normalize(studentScope.stream);
@@ -142,7 +143,7 @@ exports.getStudentExams = async (req, res) => {
 
     const exams = await Exam.find({
       className,
-      $or: [{ section: { $exists: false } }, { section: "" }, { section }],
+      $or: [{ section: { $exists: false } }, { section: "" }, { section: "BOTH" }, { section }],
       $and: [{ $or: [{ stream: { $exists: false } }, { stream: "" }, { stream }] }],
     })
       .select("-questions.correctAnswer")

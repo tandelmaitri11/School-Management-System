@@ -4,6 +4,8 @@ const StudentRegister = require("../models/studentregister");
 const Class = require("../models/class");
 const TeacherRegister = require("../models/techerregister");
 const TeacherInfo = require("../models/teacherinfo");
+const ParentStudentMap = require("../models/parentStudentMap");
+const Notification = require("../models/Notification");
 const { validateStudentAttendanceDate } = require("../services/attendanceDatePolicyService");
 
 const normalize = (v) => String(v || "").trim();
@@ -77,6 +79,60 @@ const buildStudentAttendanceHistory = async (studentId) => {
       },
     ];
   });
+};
+
+const createParentAbsentNotifications = async ({
+  absentStudentIds,
+  normalizedDate,
+  className,
+  section,
+  stream,
+}) => {
+  if (!absentStudentIds.length) return;
+
+  const [students, mappings] = await Promise.all([
+    StudentRegister.find({ _id: { $in: absentStudentIds } })
+      .select("name studentId")
+      .lean(),
+    ParentStudentMap.find({
+      studentId: { $in: absentStudentIds },
+      isActive: true,
+    })
+      .select("parentId studentId")
+      .lean(),
+  ]);
+
+  if (!mappings.length) return;
+
+  const studentMap = new Map(students.map((student) => [String(student._id), student]));
+  const notifications = mappings
+    .map((mapping) => {
+      const student = studentMap.get(String(mapping.studentId));
+      if (!student) return null;
+
+      return {
+        type: "ATTENDANCE",
+        title: "Student Marked Absent",
+        message: `${student.name || "Student"} was marked absent on ${normalizedDate}.`,
+        recipientRole: "Parent",
+        targetUserId: String(mapping.parentId),
+        className,
+        section,
+        stream,
+        data: {
+          studentId: String(mapping.studentId),
+          studentName: student.name || "",
+          admissionId: student.studentId || "",
+          date: normalizedDate,
+          status: "Absent",
+        },
+      };
+    })
+    .filter(Boolean);
+
+  if (notifications.length) {
+    await Notification.insertMany(notifications, { ordered: false });
+  }
 };
 
 // Mark attendance
@@ -177,6 +233,18 @@ exports.markAttendance = async (req, res) => {
     });
 
     await newAttendance.save();
+    const absentStudentIds = cleanedAttendance
+      .filter((row) => row.status === "Absent")
+      .map((row) => row.studentId);
+
+    await createParentAbsentNotifications({
+      absentStudentIds,
+      normalizedDate,
+      className: Number(cls.className || 0) || null,
+      section: safeSection,
+      stream: safeStream,
+    });
+
     return res.status(201).json({ message: "Attendance saved successfully" });
   } catch (err) {
     console.error("Error marking attendance:", err);

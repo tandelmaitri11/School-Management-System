@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const Fees = require("../models/fees");
 const Student = require("../models/studentregister");
 const ClassFees = require("../models/ClassFees");
-const { enqueueBulkEmailJobs, enqueueBulkSmsJobs } = require("./messageQueueService");
+const { enqueueBulkEmailJobs } = require("./messageQueueService");
 const { calculateLateFeeState, resolveDueDate } = require("../utils/lateFee");
 
 const isSameDay = (a, b) =>
@@ -13,7 +13,24 @@ const isSameDay = (a, b) =>
   a.getDate() === b.getDate();
 
 const normalizeStream = (stream) => String(stream || "").trim();
-const isValidTenDigitPhone = (v) => /^\d{10}$/.test(String(v || "").trim());
+
+const startOfDay = (date) => {
+  if (!date) return null;
+  const normalized = new Date(date);
+  if (Number.isNaN(normalized.getTime())) return null;
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const shouldSendReminderForDueDate = (currentDate, dueDate) => {
+  const current = startOfDay(currentDate);
+  const due = startOfDay(dueDate);
+  if (!current || !due) return false;
+
+  const reminderStart = new Date(due);
+  reminderStart.setDate(reminderStart.getDate() - 1);
+  return current.getTime() >= reminderStart.getTime();
+};
 
 const getClassFeeForStudent = async (student) => {
   const className = Number(student?.studentClass);
@@ -66,11 +83,12 @@ const buildFeesReminderHtml = ({ student, fees, summary }) => `
     </div>
     <div style="padding: 18px 20px; color: #333;">
       <p style="margin: 0 0 10px;">Hello ${student.name || "Student"},</p>
-      <p style="margin: 0 0 12px;">This is an automatic reminder that your fee payment is still pending.</p>
+      <p style="margin: 0 0 12px;">This is an reminder that your fee payment is still pending.</p>
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <tr><td style="padding: 6px 0;">Student ID</td><td style="padding: 6px 0;">${student.studentId || "-"}</td></tr>
         <tr><td style="padding: 6px 0;">Class</td><td style="padding: 6px 0;">${student.studentClass ?? "-"}</td></tr>
         ${student.stream ? `<tr><td style="padding: 6px 0;">Stream</td><td style="padding: 6px 0;">${student.stream}</td></tr>` : ""}
+        ${summary?.dueDate ? `<tr><td style="padding: 6px 0;">Due Date</td><td style="padding: 6px 0;">${new Date(summary.dueDate).toLocaleDateString("en-IN")}</td></tr>` : ""}
         <tr><td style="padding: 6px 0;">Pending Amount</td><td style="padding: 6px 0;"><strong>Rs ${Number(summary?.baseRemaining || fees.remainingAmount || 0)}</strong></td></tr>
         ${Number(summary?.lateFeeAccrued || 0) > 0 ? `<tr><td style="padding: 6px 0;">Late Fee</td><td style="padding: 6px 0;"><strong>Rs ${Number(summary.lateFeeAccrued)}</strong></td></tr>` : ""}
         <tr><td style="padding: 6px 0;">Total Due</td><td style="padding: 6px 0;"><strong>Rs ${Number(summary?.totalDue || fees.remainingAmount || 0)}</strong></td></tr>
@@ -83,17 +101,10 @@ const buildFeesReminderHtml = ({ student, fees, summary }) => `
   </div>
 `;
 
-const buildFeesReminderSms = ({ student, fees, summary }) => {
-  const name = student?.name || "Student";
-  const sid = student?.studentId || "-";
-  const pending = Number(summary?.totalDue || fees?.remainingAmount || 0);
-  return `Dear ${name} (${sid}), your school fee of Rs ${pending} is pending. Please pay soon to avoid penalty.`;
-};
-
 const processFeesAutoReminders = async () => {
   const now = new Date();
   const students = await Student.find({})
-    .select("name email phone mobile contactNumber studentId studentClass stream")
+    .select("name email studentId studentClass stream")
     .lean();
   const existingFees = await Fees.find({
     studentId: { $in: students.map((student) => String(student._id)) },
@@ -101,7 +112,6 @@ const processFeesAutoReminders = async () => {
   const feesByStudentId = new Map(existingFees.map((fees) => [String(fees.studentId), fees]));
   const classFeeCache = new Map();
   const emailJobs = [];
-  const smsJobs = [];
   let skipped = 0;
   let queued = 0;
 
@@ -124,7 +134,7 @@ const processFeesAutoReminders = async () => {
     if (lastAuto && isSameDay(lastAuto, now)) continue;
     const summary = calculateLateFeeState({ fees, classFee: classFeeConfig, now });
     if (Number(summary.totalDue || 0) <= 0) continue;
-
+    if (!shouldSendReminderForDueDate(now, summary.dueDate || fees.dueDate)) continue;
     let queuedForStudent = false;
 
     if (student.email) {
@@ -132,15 +142,6 @@ const processFeesAutoReminders = async () => {
         to: student.email,
         subject: "Fee Payment Reminder",
         html: buildFeesReminderHtml({ student, fees, summary }),
-      });
-      queuedForStudent = true;
-    }
-
-    const phone = String(student.phone || student.mobile || student.contactNumber || "").trim();
-    if (process.env.FEES_REMINDER_SMS_ENABLED === "true" && isValidTenDigitPhone(phone)) {
-      smsJobs.push({
-        to: phone,
-        message: buildFeesReminderSms({ student, fees, summary }),
       });
       queuedForStudent = true;
     }
@@ -202,18 +203,7 @@ const processFeesAutoReminders = async () => {
         enqueueBulkEmailJobs([j.to], {
           subject: j.subject,
           html: j.html,
-          meta: { kind: "fees-auto-reminder" },
-        })
-      )
-    );
-  }
-
-  if (smsJobs.length) {
-    await Promise.all(
-      smsJobs.map((j) =>
-        enqueueBulkSmsJobs([j.to], {
-          message: j.message,
-          meta: { kind: "fees-auto-reminder" },
+          meta: { kind: "fees Reminder" },
         })
       )
     );
@@ -224,13 +214,12 @@ const processFeesAutoReminders = async () => {
     queuedStudents: queued,
     skipped,
     queuedEmails: emailJobs.length,
-    queuedSms: smsJobs.length,
   };
 };
 
 const startFeesAutoReminderCron = () => {
-  // Run daily at 22:40 server time.
-  cron.schedule("45 22 * * *", async () => {
+  // Run daily at 11:00 server time.
+  cron.schedule("00 11 * * *", async () => {
     try {
       const summary = await processFeesAutoReminders();
       console.log("[fees-reminder] queued:", summary);

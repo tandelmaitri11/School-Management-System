@@ -42,7 +42,7 @@ const registerCoreEventHandlers = () => {
   eventBus.on("announcement.posted", async (payload) => {
     try {
       const docs = [];
-      if (payload?.audience === "Students" || payload?.audience === "Both") {
+      if (payload?.audience === "Students" || payload?.audience === "All" || payload?.audience === "Both") {
         docs.push({
           type: "ANNOUNCEMENT",
           title: payload?.title || "Announcement",
@@ -56,12 +56,27 @@ const registerCoreEventHandlers = () => {
           },
         });
       }
-      if (payload?.audience === "Teachers" || payload?.audience === "Both") {
+      if (payload?.audience === "Teachers" || payload?.audience === "All" || payload?.audience === "Both") {
         docs.push({
           type: "ANNOUNCEMENT",
           title: payload?.title || "Announcement",
           message: payload?.message || "New announcement posted",
           recipientRole: "Teacher",
+          data: {
+            announcementId: payload?.announcementId,
+            mediaUrl: payload?.mediaUrl || "",
+            mediaType: payload?.mediaType || "",
+            publishedAt: payload?.publishedAt || null,
+          },
+        });
+      }
+      if (payload?.audience === "Parents" || payload?.audience === "All" || payload?.audience === "Both") {
+        docs.push({
+          type: "ANNOUNCEMENT",
+          title: payload?.title || "Announcement",
+          message: payload?.message || "New announcement posted",
+          recipientRole: "Parent",
+          targetUserId: "",
           data: {
             announcementId: payload?.announcementId,
             mediaUrl: payload?.mediaUrl || "",

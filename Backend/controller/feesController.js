@@ -7,7 +7,7 @@ const FeeOrder = require("../models/FeeOrder");
 const crypto = require("crypto");
 const PDFDocument = require("pdfkit");
 const nodemailer = require("nodemailer");
-const { enqueueBulkEmailJobs, enqueueBulkSmsJobs } = require("../services/messageQueueService");
+const { enqueueBulkEmailJobs } = require("../services/messageQueueService");
 const { processFeesAutoReminders } = require("../services/feesReminderService");
 const { calculateLateFeeState, resolveDueDate, toMoney } = require("../utils/lateFee");
 
@@ -144,8 +144,6 @@ const sendReceiptEmailSafe = async ({ fees, payment, student }) => {
     return { sent: false, reason: err?.message || "Email send failed" };
   }
 };
-
-const isValidTenDigitPhone = (v) => /^\d{10}$/.test(String(v || "").trim());
 
 const buildReceiptEmailHtml = ({ fees, payment, student }) => {
   const amount = Number(payment.amount || 0);
@@ -1312,22 +1310,6 @@ exports.sendFeesReminder = async (req, res) => {
       maxAttempts: 4,
     });
 
-    const smsPhone = String(student.phone || student.mobile || student.contactNumber || "").trim();
-    let smsQueued = 0;
-    if (process.env.FEES_REMINDER_SMS_ENABLED === "true" && isValidTenDigitPhone(smsPhone)) {
-      const smsText = `Fee reminder: ${student.name || "Student"} (${student.studentId || "-"}) pending Rs ${totalDue}.`;
-      const smsResult = await enqueueBulkSmsJobs([smsPhone], {
-        message: smsText,
-        meta: {
-          kind: "fees-manual-reminder",
-          studentId: String(student._id),
-          feesId: String(fees?._id || ""),
-        },
-        maxAttempts: 4,
-      });
-      smsQueued = Number(smsResult.queued || 0);
-    }
-
     if (fees?._id) {
       const currentManualCount = Number(fees?.reminderStatus?.manualReminderCount || 0);
       fees.reminderStatus = {
@@ -1340,8 +1322,8 @@ exports.sendFeesReminder = async (req, res) => {
 
     return res.json({
       message: "Reminder queued",
-      queued: { email: 1, sms: smsQueued },
-      to: { email: student.email, phone: smsPhone || "" },
+      queued: { email: 1, sms: 0 },
+      to: { email: student.email },
     });
   } catch (err) {
     console.error("Reminder email error:", err);

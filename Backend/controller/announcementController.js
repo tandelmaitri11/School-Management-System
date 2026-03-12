@@ -3,6 +3,10 @@ const eventBus = require("../events/eventBus");
 const Notification = require("../models/Notification");
 
 const normalizeAudience = (value) => String(value || "").trim();
+const normalizeStoredAudience = (value) => {
+  const audience = normalizeAudience(value);
+  return audience === "Both" ? "All" : audience;
+};
 
 exports.createAnnouncement = async (req, res) => {
   try {
@@ -98,6 +102,11 @@ exports.listAnnouncements = async (_req, res) => {
                 $cond: [{ $eq: ["$role", "Teacher"] }, "$viewCount", 0],
               },
             },
+            parentViews: {
+              $sum: {
+                $cond: [{ $eq: ["$role", "Parent"] }, "$viewCount", 0],
+              },
+            },
           },
         },
       ]);
@@ -109,6 +118,7 @@ exports.listAnnouncements = async (_req, res) => {
             totalViews: Number(s.totalViews || 0),
             studentViews: Number(s.studentViews || 0),
             teacherViews: Number(s.teacherViews || 0),
+            parentViews: Number(s.parentViews || 0),
           },
         ])
       );
@@ -116,10 +126,12 @@ exports.listAnnouncements = async (_req, res) => {
 
     const announcements = rows.map((row) => ({
       ...row,
+      audience: normalizeStoredAudience(row.audience),
       viewStats: statMap.get(String(row._id)) || {
         totalViews: 0,
         studentViews: 0,
         teacherViews: 0,
+        parentViews: 0,
       },
     }));
 
@@ -222,10 +234,11 @@ exports.togglePublishAnnouncement = async (req, res) => {
 exports.getPublishedAnnouncements = async (req, res) => {
   try {
     const audience = normalizeAudience(req.query.audience);
-    let audienceFilter = ["Both"];
+    let audienceFilter = ["All", "Both"];
 
-    if (audience === "Students") audienceFilter = ["Students", "Both"];
-    if (audience === "Teachers") audienceFilter = ["Teachers", "Both"];
+    if (audience === "Students") audienceFilter = ["Students", "All", "Both"];
+    if (audience === "Teachers") audienceFilter = ["Teachers", "All", "Both"];
+    if (audience === "Parents") audienceFilter = ["Parents", "All", "Both"];
 
     const rows = await Announcement.find({
       isPublished: true,

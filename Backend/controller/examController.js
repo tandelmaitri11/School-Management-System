@@ -19,6 +19,8 @@ const getGradeByPercentage = (percentage) => {
 
 const normalize = (v) => String(v || "").trim();
 const normalizeLower = (v) => normalize(v).toLowerCase();
+const normalizeUpper = (v) => normalize(v).toUpperCase();
+const isBothSection = (section) => normalizeUpper(section) === "BOTH";
 
 const isChoiceSubjectForStream = ({ examSubject, classDoc, streamName }) => {
   if (!classDoc || !examSubject || !streamName) return false;
@@ -30,6 +32,23 @@ const isChoiceSubjectForStream = ({ examSubject, classDoc, streamName }) => {
   return options.includes(normalizeLower(examSubject));
 };
 
+const getEligibleExamStudents = async (exam) => {
+  const classDoc = exam.classId ? await Class.findById(exam.classId).select("streams").lean() : null;
+  const query = { studentClass: Number(exam.className) };
+  if (exam.section && !isBothSection(exam.section)) query.section = normalizeUpper(exam.section);
+  if (exam.stream) query.stream = String(exam.stream).trim();
+
+  const students = await Student.find(query).select("_id name studentId subjectChoice stream").lean();
+  const examSubject = normalize(exam.subjectName);
+
+  return students.filter((student) => {
+    const streamName = normalize(student.stream || exam.stream);
+    const isChoice = isChoiceSubjectForStream({ examSubject, classDoc, streamName });
+    if (!isChoice) return true;
+    return normalizeLower(student.subjectChoice) === normalizeLower(examSubject);
+  });
+};
+
 const autoFailAbsentStudents = async (exam) => {
   if (!exam) return false;
 
@@ -38,22 +57,8 @@ const autoFailAbsentStudents = async (exam) => {
   const endTime = new Date(startTime.getTime() + Number(exam.duration || 0) * 60000);
   if (now <= endTime) return false;
 
-  const classDoc = exam.classId ? await Class.findById(exam.classId).select("streams").lean() : null;
-  const query = { studentClass: Number(exam.className) };
-  if (exam.section) query.section = String(exam.section).trim().toUpperCase();
-  if (exam.stream) query.stream = String(exam.stream).trim();
-
-  const students = await Student.find(query).select("_id subjectChoice stream").lean();
-  const examSubject = normalize(exam.subjectName);
-
-  const eligibleStudentIds = students
-    .filter((s) => {
-      const streamName = normalize(s.stream || exam.stream);
-      const isChoice = isChoiceSubjectForStream({ examSubject, classDoc, streamName });
-      if (!isChoice) return true;
-      return normalizeLower(s.subjectChoice) === normalizeLower(examSubject);
-    })
-    .map((s) => String(s._id));
+  const eligibleStudents = await getEligibleExamStudents(exam);
+  const eligibleStudentIds = eligibleStudents.map((s) => String(s._id));
 
   let changed = false;
 
@@ -70,7 +75,9 @@ const autoFailAbsentStudents = async (exam) => {
     }
   }
 
-  const existing = new Set(exam.submissions.map((s) => String(s.studentId)));
+  const existing = new Set(
+    exam.submissions.map((s) => String(s.studentId?._id || s.studentId || ""))
+  );
   for (const studentId of eligibleStudentIds) {
     if (existing.has(studentId)) continue;
     exam.submissions.push({
@@ -110,25 +117,44 @@ const canTeacherUseScope = async ({ teacherMongoId, classId, section, stream }) 
     .select("assignedSections")
     .lean();
 
-  const normalizedSection = String(section || "").trim().toUpperCase();
+  const normalizedSection = normalizeUpper(section);
   const normalizedStream = String(stream || "").trim().toLowerCase();
 
   const rows = Array.isArray(teacherInfo?.assignedSections) ? teacherInfo.assignedSections : [];
   const scoped = rows.filter(
     (s) =>
       String(s?.classId) === String(classId) &&
-      String(s?.section || "").trim().toUpperCase() === normalizedSection
+      (isBothSection(normalizedSection)
+        ? true
+        : String(s?.section || "").trim().toUpperCase() === normalizedSection)
   );
 
   if (scoped.length === 0) return false;
 
   // If assignment includes stream, it must match. Empty stream means general permission for that section.
-  const hasMatch = scoped.some((s) => {
+  const matchingRows = scoped.filter((s) => {
     const st = String(s?.stream || "").trim().toLowerCase();
     return !st || st === normalizedStream;
   });
 
-  return hasMatch;
+  if (isBothSection(normalizedSection)) {
+    const distinctSections = new Set(
+      matchingRows.map((s) => normalizeUpper(s?.section)).filter(Boolean)
+    );
+    return distinctSections.size > 1;
+  }
+
+  return matchingRows.length > 0;
+};
+
+const getValidSectionsForScope = ({ cls, stream }) => {
+  const normalizedStream = normalizeLower(stream);
+  return (cls?.sections || []).filter((s) => {
+    if (s?.isActive === false) return false;
+    const sectionStream = normalizeLower(s?.stream);
+    if (!sectionStream) return true;
+    return sectionStream === normalizedStream;
+  });
 };
 
 /* ================= TEACHER: ADD EXAM HEADER ================= */
@@ -178,19 +204,29 @@ const addExam = async (req, res) => {
       return res.status(400).json({ success: false, message: "Stream is required for this class" });
     }
 
-    const sectionDoc = (cls.sections || []).find(
-      (s) => s?.isActive !== false && String(s?.name || "").trim().toUpperCase() === normalizedSection
-    );
-    if (!sectionDoc) {
-      return res.status(400).json({ success: false, message: "Selected section is not available in this class" });
-    }
+    if (!isBothSection(normalizedSection)) {
+      const sectionDoc = (cls.sections || []).find(
+        (s) => s?.isActive !== false && String(s?.name || "").trim().toUpperCase() === normalizedSection
+      );
+      if (!sectionDoc) {
+        return res.status(400).json({ success: false, message: "Selected section is not available in this class" });
+      }
 
-    const sectionStream = String(sectionDoc.stream || "").trim();
-    if (sectionStream && sectionStream.toLowerCase() !== normalizedStream.toLowerCase()) {
-      return res.status(400).json({
-        success: false,
-        message: `Section ${normalizedSection} belongs to stream ${sectionStream}`,
-      });
+      const sectionStream = String(sectionDoc.stream || "").trim();
+      if (sectionStream && sectionStream.toLowerCase() !== normalizedStream.toLowerCase()) {
+        return res.status(400).json({
+          success: false,
+          message: `Section ${normalizedSection} belongs to stream ${sectionStream}`,
+        });
+      }
+    } else {
+      const validSections = getValidSectionsForScope({ cls, stream: normalizedStream });
+      if (validSections.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "Both section option requires at least two active sections in the selected scope",
+        });
+      }
     }
 
     const scopeAllowed = await canTeacherUseScope({
@@ -307,19 +343,29 @@ const updateExam = async (req, res) => {
       return res.status(400).json({ success: false, message: "Stream is required for this class" });
     }
 
-    const sectionDoc = (cls.sections || []).find(
-      (s) => s?.isActive !== false && String(s?.name || "").trim().toUpperCase() === normalizedSection
-    );
-    if (!sectionDoc) {
-      return res.status(400).json({ success: false, message: "Selected section is not available in this class" });
-    }
+    if (!isBothSection(normalizedSection)) {
+      const sectionDoc = (cls.sections || []).find(
+        (s) => s?.isActive !== false && String(s?.name || "").trim().toUpperCase() === normalizedSection
+      );
+      if (!sectionDoc) {
+        return res.status(400).json({ success: false, message: "Selected section is not available in this class" });
+      }
 
-    const sectionStream = String(sectionDoc.stream || "").trim();
-    if (sectionStream && sectionStream.toLowerCase() !== normalizedStream.toLowerCase()) {
-      return res.status(400).json({
-        success: false,
-        message: `Section ${normalizedSection} belongs to stream ${sectionStream}`,
-      });
+      const sectionStream = String(sectionDoc.stream || "").trim();
+      if (sectionStream && sectionStream.toLowerCase() !== normalizedStream.toLowerCase()) {
+        return res.status(400).json({
+          success: false,
+          message: `Section ${normalizedSection} belongs to stream ${sectionStream}`,
+        });
+      }
+    } else {
+      const validSections = getValidSectionsForScope({ cls, stream: normalizedStream });
+      if (validSections.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "Both section option requires at least two active sections in the selected scope",
+        });
+      }
     }
 
     const scopeAllowed = await canTeacherUseScope({
@@ -422,8 +468,7 @@ const getExamResultsForTeacher = async (req, res) => {
     const { examId } = req.params;
     const teacherId = req.user.id;
 
-    const exam = await Exam.findById(examId)
-      .populate("submissions.studentId", "name studentId");
+    const exam = await Exam.findById(examId);
 
     if (!exam) {
       return res.status(404).json({ success: false, message: "Exam not found" });
@@ -437,19 +482,59 @@ const getExamResultsForTeacher = async (req, res) => {
     await autoFailAbsentStudents(exam);
     await exam.populate("submissions.studentId", "name studentId");
 
-    const results = exam.submissions
-      .filter((s) => s.status === "SUBMITTED" || s.status === "ABSENT")
-      .map((s) => ({
-        studentId: s.studentId?._id,
-        studentName: s.studentId?.name || "Unknown",
-        obtainedMarks: s.obtainedMarks,
-        percentage: s.percentage,
-        grade: s.grade || getGradeByPercentage(Number(s.percentage || 0)),
-        resultStatus: s.resultStatus || (Number(s.percentage || 0) >= 40 ? "PASS" : "FAIL"),
-        submittedAt: s.submittedAt,
-        attendanceStatus: s.status,
-      }))
-      .sort((a, b) => b.obtainedMarks - a.obtainedMarks); // rank wise
+    const eligibleStudents = await getEligibleExamStudents(exam);
+    const submissionMap = new Map(
+      exam.submissions.map((submission) => [
+        String(submission.studentId?._id || submission.studentId || ""),
+        submission,
+      ])
+    );
+
+    const results = eligibleStudents
+      .map((student) => {
+        const submission = submissionMap.get(String(student._id));
+        if (!submission) {
+          return {
+            studentId: student._id,
+            studentName: student.name || "Unknown",
+            studentCode: student.studentId || "",
+            obtainedMarks: 0,
+            percentage: 0,
+            grade: "-",
+            resultStatus: "NOT_SUBMITTED",
+            submittedAt: null,
+            attendanceStatus: "NOT_SUBMITTED",
+          };
+        }
+
+        const isSubmitted = submission.status === "SUBMITTED";
+        const isAbsent = submission.status === "ABSENT";
+        return {
+          studentId: submission.studentId?._id || student._id,
+          studentName: submission.studentId?.name || student.name || "Unknown",
+          studentCode: submission.studentId?.studentId || student.studentId || "",
+          obtainedMarks: Number(submission.obtainedMarks || 0),
+          percentage: Number(submission.percentage || 0),
+          grade: isSubmitted || isAbsent
+            ? submission.grade || getGradeByPercentage(Number(submission.percentage || 0))
+            : "-",
+          resultStatus:
+            isSubmitted || isAbsent
+              ? submission.resultStatus || (Number(submission.percentage || 0) >= 40 ? "PASS" : "FAIL")
+              : "NOT_SUBMITTED",
+          submittedAt: submission.submittedAt,
+          attendanceStatus: submission.status || "NOT_SUBMITTED",
+        };
+      })
+      .sort((a, b) => {
+        const rankA = a.attendanceStatus === "SUBMITTED" ? 3 : a.attendanceStatus === "ABSENT" ? 2 : 1;
+        const rankB = b.attendanceStatus === "SUBMITTED" ? 3 : b.attendanceStatus === "ABSENT" ? 2 : 1;
+        if (rankB !== rankA) return rankB - rankA;
+        if (rankA > 1 && Number(b.obtainedMarks || 0) !== Number(a.obtainedMarks || 0)) {
+          return Number(b.obtainedMarks || 0) - Number(a.obtainedMarks || 0);
+        }
+        return String(a.studentName || "").localeCompare(String(b.studentName || ""));
+      });
 
     res.status(200).json({
       success: true,

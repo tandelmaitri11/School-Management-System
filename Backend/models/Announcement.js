@@ -6,9 +6,9 @@ const announcementSchema = new mongoose.Schema(
     message: { type: String, required: true, trim: true },
     audience: {
       type: String,
-      enum: ["Students", "Teachers", "Both"],
+      enum: ["Students", "Teachers", "Parents", "All", "Both"],
       required: true,
-      default: "Both",
+      default: "All",
     },
     isPublished: { type: Boolean, default: false },
     publishedAt: { type: Date, default: null },
