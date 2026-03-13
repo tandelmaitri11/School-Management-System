@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express=require('express');
+const http = require("http");
 const connDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -36,17 +37,20 @@ const contactRoutes = require("./routes/contactRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const announcementRoutes = require("./routes/announcementRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+
 const { startAssignmentReminderCron } = require("./services/assignmentEmailService");
 const { startExamReminderJob } = require("./services/examNotificationService");
 const { startFeesAutoReminderCron } = require("./services/feesReminderService");
 const { startMessageQueueWorker } = require("./services/messageQueueService");
 const { registerCoreEventHandlers } = require("./events/registerCoreEventHandlers");
+const { initSocketServer } = require("./socket/socketServer");
 
 const path = require("path");
 const cors = require("cors");
 const teacherAttendance = require("./models/teacherAttendance");
 
 const app = express();
+const server = http.createServer(app);
 app.use(express.json());
 
 app.use(cors({
@@ -97,7 +101,8 @@ startAssignmentReminderCron();
 startExamReminderJob();
 startFeesAutoReminderCron();
 startMessageQueueWorker();
+initSocketServer(server);
 
-app.listen(3000, () => {
+server.listen(3000, () => {
     console.log("Server is running on port 3000");
 }); 

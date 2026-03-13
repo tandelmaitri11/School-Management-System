@@ -91,6 +91,8 @@ import StudentExamResult from "./Pages/Student/Exam/StudentExamResult";
 import StudentLms from "./Pages/Student/LMS/StudentLms";
 import StudentAnnouncements from "./Pages/Student/Announcement/StudentAnnouncements";
 import TeacherAnnouncements from "./Pages/Teacher/Announcement/TeacherAnnouncements";
+import ParentLeaveRequests from "./Pages/Teacher/Parent/ParentLeaveRequests";
+import ParentMessages from "./Pages/Teacher/Parent/ParentMessages";
 import ParentNavbar from "./Pages/Parent/parent_navbar";
 import ParentDashboard from "./Pages/Parent/Dashboard";
 import ParentProfile from "./Pages/Parent/Profile";
@@ -99,6 +101,8 @@ import ParentPerformance from "./Pages/Parent/Performance";
 import ParentExams from "./Pages/Parent/Exams";
 import ParentFees from "./Pages/Parent/Fees";
 import ParentNotifications from "./Pages/Parent/Notifications";
+import ParentLeaveRequest from "./Pages/Parent/LeaveRequest";
+import ParentTeacherCommunication from "./Pages/Parent/TeacherCommunication";
 
 // ==========================================
 // 5. SHARED SETTINGS
@@ -170,6 +174,8 @@ function App() {
         <Route path="/teacher/timetable" element={<TeacherNavbar><TeacherTimeTable /></TeacherNavbar>} />
         <Route path="/teacher/student/attendance" element={<TeacherNavbar><StudentAttendance /></TeacherNavbar>} />
         <Route path="/teacher/attendance-history" element={<TeacherNavbar><StudentAttendanceHistory /></TeacherNavbar>} />
+        <Route path="/teacher/parent/leave-requests" element={<TeacherNavbar><ParentLeaveRequests /></TeacherNavbar>} />
+        <Route path="/teacher/parent/messages" element={<TeacherNavbar><ParentMessages /></TeacherNavbar>} />
         <Route path="/teacher/my-attendance" element={<TeacherNavbar><MyAttendance /></TeacherNavbar>} />
         <Route path="/teacher/my-salary" element={<TeacherNavbar><TeacherSalaryHistory /></TeacherNavbar>} />
         <Route path="/teacher/reports/attendance" element={<TeacherNavbar><AttendanceReport /></TeacherNavbar>} />
@@ -207,6 +213,8 @@ function App() {
         <Route path="/parent/exams" element={<ParentNavbar><ParentExams /></ParentNavbar>} />
         <Route path="/parent/fees" element={<ParentNavbar><ParentFees /></ParentNavbar>} />
         <Route path="/parent/notifications" element={<ParentNavbar><ParentNotifications /></ParentNavbar>} />
+        <Route path="/parent/leave-request" element={<ParentNavbar><ParentLeaveRequest /></ParentNavbar>} />
+        <Route path="/parent/teacher-communication" element={<ParentNavbar><ParentTeacherCommunication /></ParentNavbar>} />
         <Route path="/parent/settings" element={<ParentNavbar><DashboardSettings /></ParentNavbar>} />
       </Routes>
 

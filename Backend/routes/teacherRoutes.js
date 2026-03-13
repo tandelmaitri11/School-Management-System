@@ -1,5 +1,7 @@
 const express = require("express");
 const multer = require("multer");
+const { verifyToken } = require("../middleware/authMiddleware");
+const requireTeacher = require("../middleware/requireTeacher");
 const {
   addTeacher,
   getAllTeachers,
@@ -14,6 +16,13 @@ const {
   getMyExams,
   deleteExam
 } = require("../controller/teacherController");
+const {
+  getMyParentLeaveRequests,
+  updateParentLeaveRequestStatus,
+  getMyParentMessageThreads,
+  replyToParentMessageThread,
+  deleteParentMessageThread,
+} = require("../controller/teacherParentInteractionController");
 
 const router = express.Router();
 
@@ -39,5 +48,11 @@ router.get("/timetable/:teacherId", getTeacherTimetable);
 
 router.get("/my-exams/:teacherId", getMyExams);
 router.delete("/delete-exam/:id", deleteExam);
+
+router.get("/parent/leave-requests", verifyToken, requireTeacher, getMyParentLeaveRequests);
+router.patch("/parent/leave-requests/:requestId", verifyToken, requireTeacher, updateParentLeaveRequestStatus);
+router.get("/parent/messages", verifyToken, requireTeacher, getMyParentMessageThreads);
+router.post("/parent/messages/:threadId/reply", verifyToken, requireTeacher, replyToParentMessageThread);
+router.delete("/parent/messages/:threadId", verifyToken, requireTeacher, deleteParentMessageThread);
 
 module.exports = router;

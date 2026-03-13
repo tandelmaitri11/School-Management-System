@@ -15,6 +15,12 @@ const {
   getStudentReportForParent,
   getStudentFeesForParent,
   getMyNotifications,
+  getAvailableTeachersForParent,
+  getStudentLeaveRequestsForParent,
+  createStudentLeaveRequestForParent,
+  getStudentMessagesForParent,
+  createStudentMessageForParent,
+  deleteStudentMessageThreadForParent,
 } = require("../controller/parentController");
 
 const router = express.Router();
@@ -31,6 +37,17 @@ router.get("/student/:studentId/exam-result/:examId", verifyToken, requireParent
 router.get("/student/:studentId/attendance", verifyToken, requireParent, getStudentAttendanceForParent);
 router.get("/student/:studentId/report", verifyToken, requireParent, getStudentReportForParent);
 router.get("/student/:studentId/fees", verifyToken, requireParent, getStudentFeesForParent);
+router.get("/student/:studentId/teachers", verifyToken, requireParent, getAvailableTeachersForParent);
+router.get("/student/:studentId/leave-requests", verifyToken, requireParent, getStudentLeaveRequestsForParent);
+router.post("/student/:studentId/leave-requests", verifyToken, requireParent, createStudentLeaveRequestForParent);
+router.get("/student/:studentId/messages", verifyToken, requireParent, getStudentMessagesForParent);
+router.post("/student/:studentId/messages", verifyToken, requireParent, createStudentMessageForParent);
+router.delete(
+  "/student/:studentId/messages/:threadId",
+  verifyToken,
+  requireParent,
+  deleteStudentMessageThreadForParent
+);
 router.get("/notifications", verifyToken, requireParent, getMyNotifications);
 
 module.exports = router;

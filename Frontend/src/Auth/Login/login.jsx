@@ -54,7 +54,10 @@ export default function LoginPage() {
 
       if (user.role === "Admin") localStorage.setItem("adminId", user.id);
       if (user.role === "Teacher") localStorage.setItem("teacherId", user.id);
-      if (user.role === "Parent") localStorage.setItem("parentId", user.parentId || user.id);
+      if (user.role === "Parent") {
+        localStorage.setItem("parentId", user.parentId || user.id);
+        localStorage.setItem("parentObjectId", user.id);
+      }
       if (user.role === "Student") {
         localStorage.setItem("studentId", user.id);
         localStorage.setItem("studentClass", user.studentClass);

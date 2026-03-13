@@ -16,6 +16,7 @@ export default function ParentNavbar({ children }) {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userName");
     localStorage.removeItem("parentId");
+    localStorage.removeItem("parentObjectId");
     setShowLogoutConfirm(false);
     navigate("/login");
   };
@@ -111,6 +112,22 @@ export default function ParentNavbar({ children }) {
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
+            </NavLink>
+
+            <NavLink to="/parent/leave-request" className={navLinkClass} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--dash-text)" })}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zM9.5 1v3a1 1 0 0 0 1 1h3" />
+                <path d="M8 7a.5.5 0 0 1 .5.5v2.793l1.146 1.147a.5.5 0 0 1-.708.707l-1.292-1.293A.5.5 0 0 1 7.5 10.5v-3A.5.5 0 0 1 8 7z" />
+              </svg>
+              Leave Request
+            </NavLink>
+
+            <NavLink to="/parent/teacher-communication" className={navLinkClass} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--dash-text)" })}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4.414a1 1 0 0 0-.707.293L1.5 14.5v-2.086A1.5 1.5 0 0 0 0 10.914V4z" />
+                <path d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z" />
+              </svg>
+              Teacher Communication
             </NavLink>
 
             <NavLink to="/parent/settings" className={navLinkClass} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--dash-text)" })}>

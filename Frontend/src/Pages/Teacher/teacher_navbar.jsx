@@ -136,6 +136,14 @@ export default function TeacherNavbar({ children }) {
       ],
     },
     {
+      label: "Parents",
+      icon: "bi-chat-dots",
+      submenu: [
+        { label: "Leave Requests", path: "/teacher/parent/leave-requests" },
+        { label: "Messages", path: "/teacher/parent/messages" },
+      ],
+    },
+    {
       label: "Teacher",
       icon: "bi-person-badge",
       submenu: [

@@ -6,8 +6,12 @@ const StudentInfo = require("../models/studentinfo");
 const Exam = require("../models/Exam");
 const Class = require("../models/class");
 const Teacher = require("../models/techerregister");
+const TeacherInfo = require("../models/teacherinfo");
 const Admin = require("../models/admin");
 const Notification = require("../models/Notification");
+const ParentLeaveRequest = require("../models/parentLeaveRequest");
+const ParentTeacherMessage = require("../models/parentTeacherMessage");
+const { emitChatUpdate } = require("../socket/socketServer");
 const attendanceController = require("./attendanceController");
 const reportController = require("./reportController");
 const feesController = require("./feesController");
@@ -115,6 +119,83 @@ const buildStudentScopeFromStudent = (student) => ({
   stream: normalize(student?.stream),
   subjectChoice: normalize(student?.subjectChoice),
 });
+
+const startOfDay = (value) => {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const endOfDay = (value) => {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+const buildTeacherContact = (teacher, info, roleLabel = "Teacher") => ({
+  id: String(teacher?._id || ""),
+  teacherId: teacher?.teacherId || info?.regNumber || "",
+  name: teacher?.name || info?.teacherName || "Teacher",
+  email: teacher?.email || info?.email || "",
+  phone: teacher?.phone || teacher?.mobile || teacher?.contactNumber || info?.mobile || "",
+  roleLabel,
+  subjects: Array.isArray(info?.subjects) ? info.subjects.filter(Boolean) : [],
+});
+
+const getAvailableTeachersForStudent = async (student) => {
+  const className = Number(student?.studentClass || 0);
+  if (!className) return [];
+
+  const section = normalizeUpper(student?.section);
+  const stream = normalize(student?.stream);
+  const classDoc = await Class.findOne({ className })
+    .populate("classTeacher", "teacherId name email phone mobile contactNumber")
+    .lean();
+
+  const contacts = [];
+  const seen = new Set();
+
+  const pushTeacher = (teacher, info, roleLabel) => {
+    if (!teacher?._id) return;
+    const key = String(teacher._id);
+    if (seen.has(key)) return;
+    seen.add(key);
+    contacts.push(buildTeacherContact(teacher, info, roleLabel));
+  };
+
+  if (classDoc?.classTeacher) {
+    pushTeacher(classDoc.classTeacher, null, "Class Teacher");
+  }
+
+  if (!classDoc?._id) return contacts;
+
+  const infoRows = await TeacherInfo.find({ classes: classDoc._id })
+    .select("regNumber teacherName email mobile subjects assignedSections")
+    .lean();
+
+  const teacherRegNumbers = [...new Set(infoRows.map((row) => normalize(row?.regNumber)).filter(Boolean))];
+  const teachers = await Teacher.find({ teacherId: { $in: teacherRegNumbers } })
+    .select("_id teacherId name email phone mobile contactNumber")
+    .lean();
+  const teacherMap = new Map(teachers.map((row) => [normalize(row.teacherId), row]));
+
+  for (const info of infoRows) {
+    const assignedRows = Array.isArray(info?.assignedSections) ? info.assignedSections : [];
+    const matchesSection =
+      assignedRows.length === 0 ||
+      assignedRows.some((row) => {
+        if (String(row?.classId || "") !== String(classDoc._id)) return false;
+        if (normalizeUpper(row?.section) !== section) return false;
+        const rowStream = normalize(row?.stream);
+        return !rowStream || normalizeLower(rowStream) === normalizeLower(stream);
+      });
+
+    if (!matchesSection) continue;
+    pushTeacher(teacherMap.get(normalize(info.regNumber)), info, "Subject Teacher");
+  }
+
+  return contacts.sort((a, b) => a.name.localeCompare(b.name));
+};
 
 const isChoiceSubjectForStudentStream = (examSubject, classDoc, studentStream) => {
   if (!classDoc || !examSubject || !studentStream) return false;
@@ -557,6 +638,335 @@ exports.getStudentExamResultForParent = async (req, res) => {
   } catch (err) {
     console.error("getStudentExamResultForParent error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch exam result" });
+  }
+};
+
+exports.getAvailableTeachersForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to access this student's teachers" });
+    }
+
+    const teachers = await getAvailableTeachersForStudent(student);
+    return res.json({
+      success: true,
+      student: {
+        id: String(student._id),
+        name: student.name || "",
+        studentId: student.studentId || "",
+      },
+      teachers,
+    });
+  } catch (err) {
+    console.error("getAvailableTeachersForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch teachers" });
+  }
+};
+
+exports.getStudentLeaveRequestsForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to access this student's leave requests" });
+    }
+
+    const rows = await ParentLeaveRequest.find({
+      parentId: req.user.id,
+      studentId: student._id,
+    })
+      .populate("teacherId", "teacherId name email phone mobile contactNumber")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      requests: rows.map((row) => ({
+        id: String(row._id),
+        leaveType: row.leaveType,
+        fromDate: row.fromDate,
+        toDate: row.toDate,
+        reason: row.reason,
+        status: row.status,
+        adminNote: row.adminNote || "",
+        createdAt: row.createdAt,
+        teacher: row.teacherId
+          ? {
+              id: String(row.teacherId._id),
+              teacherId: row.teacherId.teacherId || "",
+              name: row.teacherId.name || "",
+              email: row.teacherId.email || "",
+            }
+          : null,
+      })),
+    });
+  } catch (err) {
+    console.error("getStudentLeaveRequestsForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch leave requests" });
+  }
+};
+
+exports.createStudentLeaveRequestForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to create leave request for this student" });
+    }
+
+    const { teacherId, leaveType, fromDate, toDate, reason } = req.body;
+    if (!fromDate || !toDate || !normalize(reason)) {
+      return res.status(400).json({ message: "fromDate, toDate and reason are required" });
+    }
+
+    const start = startOfDay(fromDate);
+    const end = endOfDay(toDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ message: "Invalid leave dates" });
+    }
+    if (start > end) {
+      return res.status(400).json({ message: "fromDate cannot be later than toDate" });
+    }
+
+    let targetTeacher = null;
+    if (teacherId) {
+      targetTeacher = await Teacher.findById(teacherId).select("_id teacherId name").lean();
+      if (!targetTeacher) {
+        return res.status(404).json({ message: "Teacher not found" });
+      }
+    }
+
+    const leaveRequest = await ParentLeaveRequest.create({
+      parentId: req.user.id,
+      studentId: student._id,
+      teacherId: targetTeacher?._id || null,
+      leaveType: normalize(leaveType) || "Casual Leave",
+      fromDate: start,
+      toDate: end,
+      reason: normalize(reason),
+    });
+
+    if (targetTeacher?._id) {
+      await Notification.create({
+        type: "LEAVE_REQUEST",
+        title: `Leave request for ${student.name || "student"}`,
+        message: `${req.user.name || "A parent"} submitted a leave request from ${start.toLocaleDateString("en-IN")} to ${end.toLocaleDateString("en-IN")}.`,
+        recipientRole: "Teacher",
+        targetUserId: String(targetTeacher._id),
+        className: Number(student.studentClass || 0) || null,
+        section: normalizeUpper(student.section),
+        stream: normalize(student.stream),
+        data: {
+          studentId: String(student._id),
+          leaveRequestId: String(leaveRequest._id),
+          parentId: String(req.user.id),
+        },
+      });
+
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Leave request submitted successfully",
+      request: {
+        id: String(leaveRequest._id),
+        status: leaveRequest.status,
+      },
+    });
+  } catch (err) {
+    console.error("createStudentLeaveRequestForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to submit leave request" });
+  }
+};
+
+exports.getStudentMessagesForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to access this student's communication" });
+    }
+
+    const rows = await ParentTeacherMessage.find({
+      parentId: req.user.id,
+      studentId: student._id,
+    })
+      .populate("teacherId", "teacherId name email phone mobile contactNumber")
+      .sort({ lastMessageAt: -1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      threads: rows.map((row) => {
+        const clearedAt = row.parentClearedAt ? new Date(row.parentClearedAt) : null;
+        const filteredMessages = (row.messages || []).filter((message) => {
+          if (!clearedAt) return true;
+          const sentAt = new Date(message.sentAt);
+          return sentAt > clearedAt;
+        });
+
+        return ({
+          id: String(row._id),
+          subject: row.subject,
+          status: row.status,
+          lastMessageAt: row.lastMessageAt,
+          lastSeenByParentAt: row.lastSeenByParentAt || null,
+          lastSeenByTeacherAt: row.lastSeenByTeacherAt || null,
+          createdAt: row.createdAt,
+          teacher: row.teacherId
+          ? {
+              id: String(row.teacherId._id),
+              teacherId: row.teacherId.teacherId || "",
+              name: row.teacherId.name || "",
+              email: row.teacherId.email || "",
+              phone: row.teacherId.phone || row.teacherId.mobile || row.teacherId.contactNumber || "",
+            }
+          : null,
+          messages: filteredMessages.map((message) => ({
+            senderRole: message.senderRole,
+            senderId: message.senderId,
+            text: message.text,
+            sentAt: message.sentAt,
+          })),
+        });
+      }),
+    });
+  } catch (err) {
+    console.error("getStudentMessagesForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch messages" });
+  }
+};
+
+exports.createStudentMessageForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to message for this student" });
+    }
+
+    const { teacherId, message } = req.body;
+    if (!teacherId || !normalize(message)) {
+      return res.status(400).json({ message: "teacherId and message are required" });
+    }
+
+    const targetTeacher = await Teacher.findById(teacherId).select("_id teacherId name").lean();
+    if (!targetTeacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const sentAt = new Date();
+    const thread = await ParentTeacherMessage.findOneAndUpdate(
+      {
+        parentId: req.user.id,
+        studentId: student._id,
+        teacherId: targetTeacher._id,
+      },
+      {
+        $set: {
+          status: "Open",
+          lastMessageAt: sentAt,
+        },
+        $setOnInsert: {
+          subject: "",
+        },
+        $push: {
+          messages: {
+            senderRole: "Parent",
+            senderId: String(req.user.id),
+            text: normalize(message),
+            sentAt,
+          },
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    ).lean();
+
+    const messagePreview =
+      normalize(message).length > 120 ? `${normalize(message).slice(0, 120)}...` : normalize(message);
+
+    await Notification.create({
+      type: "MESSAGE",
+      title: `New parent message from ${student.name || "parent chat"}`,
+      message: `${req.user.name || "A parent"}: ${messagePreview}`,
+      recipientRole: "Teacher",
+      targetUserId: String(targetTeacher._id),
+      className: Number(student.studentClass || 0) || null,
+      section: normalizeUpper(student.section),
+      stream: normalize(student.stream),
+      data: {
+        threadId: String(thread._id),
+        studentId: String(student._id),
+        parentId: String(req.user.id),
+      },
+    });
+
+    emitChatUpdate({
+      parentId: req.user.id,
+      teacherId: targetTeacher._id,
+      studentId: student._id,
+      threadId: thread._id,
+      senderRole: "Parent",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      threadId: String(thread._id),
+    });
+  } catch (err) {
+    console.error("createStudentMessageForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to send message" });
+  }
+};
+
+exports.deleteStudentMessageThreadForParent = async (req, res) => {
+  try {
+    const { student, mapping } = await getActiveMappingForParent({
+      parentMongoId: req.user.id,
+      rawStudentId: req.params.studentId,
+    });
+    if (!student || !mapping) {
+      return res.status(403).json({ message: "Not allowed to delete this student's communication" });
+    }
+
+    const { threadId } = req.params;
+    const thread = await ParentTeacherMessage.findOne({
+      _id: threadId,
+      parentId: req.user.id,
+      studentId: student._id,
+    })
+      .select("_id teacherId")
+      .lean();
+
+    if (!thread) {
+      return res.status(404).json({ message: "Message thread not found" });
+    }
+
+    await ParentTeacherMessage.updateOne(
+      { _id: threadId, parentId: req.user.id, studentId: student._id },
+      { $set: { parentClearedAt: new Date() } }
+    );
+
+    return res.json({ success: true, message: "Chat deleted successfully" });
+  } catch (err) {
+    console.error("deleteStudentMessageThreadForParent error:", err);
+    return res.status(500).json({ success: false, message: "Failed to delete chat" });
   }
 };
 
