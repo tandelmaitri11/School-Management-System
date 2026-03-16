@@ -218,7 +218,6 @@ function App() {
         <Route path="/parent/settings" element={<ParentNavbar><DashboardSettings /></ParentNavbar>} />
       </Routes>
 
-      <Footer />
       <ToastContainer position="top-right" autoClose={3000} />
     </>
   );

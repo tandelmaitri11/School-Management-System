@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { validateRegister } from "../validation";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -211,415 +212,397 @@ export default function Register() {
     }
   };
 
-  const inputBase = "form-control form-control-lg border-0 shadow-sm rounded-4 bg-light";
-  const labelStyle = { fontSize: 13, color: "#6c757d", fontWeight: 600 };
-
   return (
     <div
-      className="min-vh-100 d-flex align-items-stretch"
+      className="min-vh-100 d-flex align-items-center justify-content-center"
       style={{
-        background: "linear-gradient(135deg, rgba(13,110,253,0.10) 0%, rgba(111,66,193,0.10) 100%)",
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        backgroundColor: "#f3f4f6", // Matches new login background
+        fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div className="container py-4 py-md-5 d-flex align-items-center">
-        <div className="row g-4 w-100 align-items-stretch">
-          {/* Left Branding Panel */}
-          <div className="col-lg-6 d-none d-lg-block">
-            <div
-              className="h-100 rounded-5 shadow-sm overflow-hidden position-relative"
-              style={{
-                backgroundImage:
-                  "linear-gradient(135deg, rgba(13,110,253,0.92) 0%, rgba(111,66,193,0.92) 100%), url('https://lh3.googleusercontent.com/aida-public/AB6AXuDGu6mJWwhFrxlDRaqQc6xwCOO8L_0uXhxIOjyE0sMcI7eja927MYYFrFRm0g-bZV4xI6PUeUWgM0HxEg5159b_s2N31pR2R4aYt3foDeqT6ZqP3W9NhGuktcR6e46bRv-7qnyPzjAFLPnhvTfgugRPb0ZvyvQiVWaPKO5_LquN6nShrteoecMhdSb0DEy2ULwS3NpTnF8FwwFy6TfVmzh6rT3oIZq9wT7uqVpgU9FweOdIo89NK4odoMpTpbQzsrAnT7kx3TlO-98')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                minHeight: 560,
-              }}
-            >
-              <div className="p-5 text-white">
-                <div className="d-flex align-items-center gap-2 mb-4">
-                  <div
-                    className="rounded-4 d-flex align-items-center justify-content-center"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      background: "rgba(255,255,255,0.18)",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                    }}
-                  >
-                    <i className="bi bi-mortarboard-fill fs-4" />
-                  </div>
-                  <div>
-                    <div className="fw-bold fs-4" style={{ lineHeight: 1.1 }}>
-                      SchoolY
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-12 col-xl-10">
+            <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="row g-0 align-items-stretch">
+                
+                {/* Left Side: Form Panel */}
+                <div className="col-lg-6 p-4 p-md-5 bg-white">
+                  <div className="text-center mb-5">
+                    {/* Mobile Brand Header */}
+                    <div className="d-lg-none mb-4 d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle" style={{ width: '60px', height: '60px' }}>
+                      <i className="bi bi-person-plus-fill fs-2"></i>
                     </div>
-                    <div className="opacity-75" style={{ lineHeight: 1.1 }}>
-                      Smart Education System
-                    </div>
+                    
+                    <h2 className="fw-bold text-dark mb-2">Create Account</h2>
+                    <p className="text-muted">Fill in the details to get started.</p>
                   </div>
-                </div>
 
-                <h2 className="fw-bold mb-3">Create your account</h2>
-                <p className="opacity-75 mb-0" style={{ maxWidth: 420 }}>
-                  Register as a <b>Student</b> or <b>Teacher</b>. You’ll receive your unique ID after successful
-                  registration.
-                </p>
-              </div>
-
-              <div
-                className="position-absolute bottom-0 start-0 end-0 p-4"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.55) 100%)",
-                }}
-              >
-                <div className="d-flex gap-2 flex-wrap">
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Secure</span>
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Fast Signup</span>
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Role Based Access</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Form Panel */}
-          <div className="col-12 col-lg-6">
-            <div className="h-100 d-flex align-items-center">
-              <div className="w-100">
-                <div className="card border-0 shadow-sm rounded-5 overflow-hidden">
-                  <div className="p-4 p-md-5 border-bottom" style={{ background: "#ffffff" }}>
-                    <div className="d-flex align-items-center justify-content-between gap-3">
+                  {/* Alerts */}
+                  {showSuccess && (
+                    <div className="alert alert-success d-flex align-items-center rounded-3 mb-4" role="alert">
+                      <i className="bi bi-check-circle-fill me-3 fs-4"></i>
                       <div>
-                        <div className="fw-bold fs-3 mb-1">Register</div>
-                        <div className="text-muted">Fill details to create your account</div>
-                      </div>
-                      <span className="badge rounded-pill bg-light text-dark border px-3 py-2">New Account</span>
-                    </div>
-
-                    {showSuccess && (
-                      <div className="alert alert-success mt-4 mb-0 rounded-4">
                         Registered ID: <strong>{generatedId}</strong>
                         {assignedSection && (
-                          <>
-                            {" "}
-                            | Assigned Section: <strong>{assignedSection}</strong>
-                          </>
+                          <> | Assigned Section: <strong>{assignedSection}</strong></>
                         )}
-                        . Redirecting to login...
+                        <br/><small>Redirecting to login...</small>
                       </div>
-                    )}
-                    {errors.server && <div className="alert alert-danger mt-3 mb-0 rounded-4">{errors.server}</div>}
-                  </div>
+                    </div>
+                  )}
 
-                  <div className="p-4 p-md-5">
-                    <form onSubmit={handleSubmit}>
-                      {/* Name */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Full Name</label>
-                          {errors.name && <small className="text-danger fw-semibold">{errors.name}</small>}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-person" />
-                          </span>
-                          <input
-                            type="text"
-                            name="name"
-                            placeholder="Enter full name"
-                            className={`${inputBase} ${errors.name ? "is-invalid" : ""}`}
-                            value={formData.name}
-                            onChange={handleChange}
-                          />
-                        </div>
+                  {errors.server && (
+                    <div className="alert alert-danger d-flex align-items-center rounded-3 mb-4" role="alert">
+                      <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                      <div>{errors.server}</div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSubmit}>
+                    {/* Full Name */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="name">
+                        Full Name
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-person"></i>
+                        </span>
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.name ? "is-invalid" : ""}`}
+                          placeholder="John Doe"
+                          value={formData.name}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
+                      {errors.name && <div className="text-danger small mt-1 fw-medium">{errors.name}</div>}
+                    </div>
 
-                      {/* Email */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Email</label>
-                          {errors.email && <small className="text-danger fw-semibold">{errors.email}</small>}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-envelope" />
-                          </span>
-                          <input
-                            type="email"
-                            name="email"
-                            placeholder="Enter email address"
-                            className={`${inputBase} ${errors.email ? "is-invalid" : ""}`}
-                            value={formData.email}
-                            onChange={handleChange}
-                          />
-                        </div>
+                    {/* Email */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="email">
+                        Email Address
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-envelope"></i>
+                        </span>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.email ? "is-invalid" : ""}`}
+                          placeholder="name@schooly.edu"
+                          value={formData.email}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
+                      {errors.email && <div className="text-danger small mt-1 fw-medium">{errors.email}</div>}
+                    </div>
 
-                      {/* Password */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Mobile Number (Optional)</label>
-                          {errors.mobile && <small className="text-danger fw-semibold">{errors.mobile}</small>}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-telephone" />
-                          </span>
-                          <input
-                            type="text"
-                            name="mobile"
-                            placeholder="e.g., 9876543210"
-                            className={`${inputBase} ${errors.mobile ? "is-invalid" : ""}`}
-                            value={formData.mobile}
-                            inputMode="numeric"
-                            maxLength={10}
-                            onChange={handleChange}
-                          />
-                        </div>
+                    {/* Mobile */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="mobile">
+                        Mobile Number (Optional)
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-telephone"></i>
+                        </span>
+                        <input
+                          type="text"
+                          id="mobile"
+                          name="mobile"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.mobile ? "is-invalid" : ""}`}
+                          placeholder="e.g., 9876543210"
+                          value={formData.mobile}
+                          inputMode="numeric"
+                          maxLength={10}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
+                      {errors.mobile && <div className="text-danger small mt-1 fw-medium">{errors.mobile}</div>}
+                    </div>
 
-                      {/* Password */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Password</label>
-                          {errors.password && <small className="text-danger fw-semibold">{errors.password}</small>}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-lock" />
-                          </span>
-                          <input
-                            type="password"
-                            name="password"
-                            placeholder="Create a strong password"
-                            className={`${inputBase} ${errors.password ? "is-invalid" : ""}`}
-                            value={formData.password}
-                            onChange={handleChange}
-                          />
-                        </div>
+                    {/* Password */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="password">
+                        Password
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-lock"></i>
+                        </span>
+                        <input
+                          type="password"
+                          id="password"
+                          name="password"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.password ? "is-invalid" : ""}`}
+                          placeholder="Create a strong password"
+                          value={formData.password}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
+                      {errors.password && <div className="text-danger small mt-1 fw-medium">{errors.password}</div>}
+                    </div>
 
-                      {/* Role */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Role</label>
-                          {errors.role && <small className="text-danger fw-semibold">{errors.role}</small>}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-person-badge" />
-                          </span>
-                          <select
-                            name="role"
-                            className={`${inputBase} ${errors.role ? "is-invalid" : ""}`}
-                            value={formData.role}
-                            onChange={(e) => {
-                              handleChange(e);
-                              setFormData((p) => ({
-                                ...p,
-                                studentClass: "",
-                                section: "",
-                                stream: "",
-                                subjectChoice: "",
-                              }));
-                              setClassOptions(null);
-                            }}
-                          >
-                            <option value="">Select role</option>
-                            <option value="Student">Student</option>
-                            <option value="Teacher">Teacher</option>
-                            <option value="Parent">Parent</option>
-                          </select>
-                        </div>
+                    {/* Role Selection */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="role">
+                        Select Role
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-person-badge"></i>
+                        </span>
+                        <select
+                          id="role"
+                          name="role"
+                          className={`form-select bg-light border-start-0 ps-0 ${errors.role ? "is-invalid" : ""}`}
+                          value={formData.role}
+                          onChange={(e) => {
+                            handleChange(e);
+                            setFormData((p) => ({
+                              ...p,
+                              studentClass: "",
+                              section: "",
+                              stream: "",
+                              subjectChoice: "",
+                            }));
+                            setClassOptions(null);
+                          }}
+                          style={{ boxShadow: 'none' }}
+                        >
+                          <option value="">Choose your role</option>
+                          <option value="Student">Student</option>
+                          <option value="Teacher">Teacher</option>
+                          <option value="Parent">Parent</option>
+                        </select>
                       </div>
+                      {errors.role && <div className="text-danger small mt-1 fw-medium">{errors.role}</div>}
+                    </div>
 
-                      {/* Student Fields */}
-                      {isStudent && (
-                        <>
-                          {/* Class */}
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between">
-                              <label style={labelStyle}>Student Class</label>
-                              {errors.studentClass && (
-                                <small className="text-danger fw-semibold">{errors.studentClass}</small>
-                              )}
+                    {/* Student Specific Fields */}
+                    {isStudent && (
+                      <div className="p-3 bg-light rounded-4 mb-4 border">
+                        <h6 className="fw-bold text-dark mb-3">Student Details</h6>
+                        
+                        {/* Class */}
+                        <div className="mb-3">
+                          <label className="form-label fw-semibold text-secondary small" htmlFor="studentClass">
+                            Student Class
+                          </label>
+                          <div className="input-group">
+                            <span className="input-group-text bg-white text-muted">
+                              <i className="bi bi-diagram-3"></i>
+                            </span>
+                            <select
+                              id="studentClass"
+                              name="studentClass"
+                              className={`form-select bg-white ${errors.studentClass ? "is-invalid" : ""}`}
+                              value={formData.studentClass}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select Class</option>
+                              {classes.map((cls) => (
+                                <option key={cls._id} value={Number(cls.className)}>
+                                  {cls.className}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {errors.studentClass && <div className="text-danger small mt-1 fw-medium">{errors.studentClass}</div>}
+                          {optionsLoading && (
+                            <div className="small text-muted mt-2">
+                              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                              Loading class options...
                             </div>
-                            <div className="input-group input-group-lg mt-1">
-                              <span className="input-group-text border-0 bg-light rounded-start-4">
-                                <i className="bi bi-diagram-3" />
+                          )}
+                        </div>
+
+                        {/* Stream */}
+                        {shouldShowStream && (
+                          <div className="mb-3">
+                            <label className="form-label fw-semibold text-secondary small" htmlFor="stream">
+                              Stream
+                            </label>
+                            <div className="input-group">
+                              <span className="input-group-text bg-white text-muted">
+                                <i className="bi bi-diagram-2"></i>
                               </span>
                               <select
-                                name="studentClass"
-                                className={`${inputBase} ${errors.studentClass ? "is-invalid" : ""}`}
-                                value={formData.studentClass}
+                                id="stream"
+                                name="stream"
+                                className={`form-select bg-white ${errors.stream ? "is-invalid" : ""}`}
+                                value={formData.stream}
                                 onChange={handleChange}
+                                disabled={optionsLoading}
                               >
-                                <option value="">Select Class</option>
-                                {classes.map((cls) => (
-                                  <option key={cls._id} value={Number(cls.className)}>
-                                    {cls.className}
+                                <option value="">Select Stream</option>
+                                {streamsToShow.map((st) => (
+                                  <option key={st.name} value={st.name}>
+                                    {st.name}
                                   </option>
                                 ))}
                               </select>
                             </div>
-                            {optionsLoading && (
-                              <div className="small text-muted mt-2">
-                                <i className="bi bi-arrow-repeat me-1"></i>Loading class options...
+                            {errors.stream && <div className="text-danger small mt-1 fw-medium">{errors.stream}</div>}
+                          </div>
+                        )}
+
+                        {/* Subject Choice */}
+                        {shouldShowSubjectChoice && (
+                          <div className="mb-3">
+                            <label className="form-label fw-semibold text-secondary small" htmlFor="subjectChoice">
+                              Subject Choice (Optional)
+                            </label>
+                            <div className="input-group">
+                              <span className="input-group-text bg-white text-muted">
+                                <i className="bi bi-journal-bookmark"></i>
+                              </span>
+                              <select
+                                id="subjectChoice"
+                                name="subjectChoice"
+                                className={`form-select bg-white ${errors.subjectChoice ? "is-invalid" : ""}`}
+                                value={formData.subjectChoice}
+                                onChange={handleChange}
+                                disabled={optionsLoading}
+                              >
+                                <option value="">Select</option>
+                                {subjectOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            {errors.subjectChoice && <div className="text-danger small mt-1 fw-medium">{errors.subjectChoice}</div>}
+                          </div>
+                        )}
+
+                        {/* Auto Section Assignment Note */}
+                        {selectedClassNum && (
+                          <div className="mt-3">
+                            <div className="alert alert-secondary border-0 small mb-0 d-flex align-items-center rounded-3">
+                              <i className="bi bi-info-circle-fill text-primary me-2 fs-5"></i>
+                              <div>
+                                {previewStatus === "loading" && "Checking available sections..."}
+                                {previewStatus !== "loading" && previewSection && (
+                                  <>Assigned Section Preview: <strong className="text-dark">{previewSection}</strong></>
+                                )}
+                                {previewStatus === "ready" && !previewSection && previewReason === "STREAM_REQUIRED" && (
+                                  "Select a stream to preview assigned section."
+                                )}
+                                {previewStatus === "ready" && !previewSection && previewReason === "INVALID_STREAM" && (
+                                  <span className="text-danger">Selected stream is invalid for this class.</span>
+                                )}
+                                {previewStatus === "ready" && !previewSection && previewReason === "NO_ACTIVE_SECTIONS" && (
+                                  <span className="text-danger">No active sections available for this class/stream.</span>
+                                )}
+                                {previewStatus === "ready" && !previewSection && previewReason === "SECTIONS_FULL" && (
+                                  <span className="text-danger">All sections are full for this class/stream.</span>
+                                )}
+                                {previewStatus === "error" && "Unable to preview section right now."}
+                              </div>
+                            </div>
+                            
+                            {showLockedWarning && (
+                              <div className="alert alert-warning small mt-2 mb-0 rounded-3">
+                                All sections are locked or inactive for the selected class/stream.
+                              </div>
+                            )}
+                            {showFullWarning && (
+                              <div className="alert alert-warning small mt-2 mb-0 rounded-3">
+                                All sections are full for the selected class/stream.
                               </div>
                             )}
                           </div>
-
-                          {/* Stream */}
-                          {shouldShowStream && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between">
-                                <label style={labelStyle}>Stream</label>
-                                {errors.stream && <small className="text-danger fw-semibold">{errors.stream}</small>}
-                              </div>
-                              <div className="input-group input-group-lg mt-1">
-                                <span className="input-group-text border-0 bg-light rounded-start-4">
-                                  <i className="bi bi-diagram-2" />
-                                </span>
-                                <select
-                                  name="stream"
-                                  className={`${inputBase} ${errors.stream ? "is-invalid" : ""}`}
-                                  value={formData.stream}
-                                  onChange={handleChange}
-                                  disabled={optionsLoading}
-                                >
-                                  <option value="">Select Stream</option>
-                                  {streamsToShow.map((st) => (
-                                    <option key={st.name} value={st.name}>
-                                      {st.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Subject Choice */}
-                          {shouldShowSubjectChoice && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between">
-                                <label style={labelStyle}>Subject Choice (Optional)</label>
-                                {errors.subjectChoice && (
-                                  <small className="text-danger fw-semibold">{errors.subjectChoice}</small>
-                                )}
-                              </div>
-                              <div className="input-group input-group-lg mt-1">
-                                <span className="input-group-text border-0 bg-light rounded-start-4">
-                                  <i className="bi bi-journal-bookmark" />
-                                </span>
-                                <select
-                                  name="subjectChoice"
-                                  className={`${inputBase} ${errors.subjectChoice ? "is-invalid" : ""}`}
-                                  value={formData.subjectChoice}
-                                  onChange={handleChange}
-                                  disabled={optionsLoading}
-                                >
-                                  <option value="">Select</option>
-                                  {subjectOptions.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                      {opt}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Auto Section Note */}
-                          {selectedClassNum && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between">
-                                <label style={labelStyle}>Section</label>
-                              </div>
-                              <div className="alert alert-light border rounded-4 mb-0">
-                                {previewStatus === "loading" && (
-                                  <>
-                                    <i className="bi bi-arrow-repeat me-1"></i>Checking available sections...
-                                  </>
-                                )}
-                                {previewStatus !== "loading" && previewSection && (
-                                  <>
-                                    Assigned Section Preview: <strong>{previewSection}</strong>
-                                  </>
-                                )}
-                                {previewStatus === "ready" && !previewSection && previewReason === "STREAM_REQUIRED" && (
-                                  <>Select a stream to preview assigned section.</>
-                                )}
-                                {previewStatus === "ready" && !previewSection && previewReason === "INVALID_STREAM" && (
-                                  <>Selected stream is invalid for this class.</>
-                                )}
-                                {previewStatus === "ready" && !previewSection && previewReason === "NO_ACTIVE_SECTIONS" && (
-                                  <>No active sections available for this class/stream.</>
-                                )}
-                                {previewStatus === "ready" && !previewSection && previewReason === "SECTIONS_FULL" && (
-                                  <>All sections are full for this class/stream.</>
-                                )}
-                                {previewStatus === "error" && <>Unable to preview section right now.</>}
-                              </div>
-                            </div>
-                          )}
-                          {showLockedWarning && (
-                            <div className="alert alert-warning rounded-4">
-                              All sections are locked or inactive for the selected class/stream.
-                            </div>
-                          )}
-                          {showFullWarning && (
-                            <div className="alert alert-warning rounded-4">
-                              All sections are full for the selected class/stream.
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {isParent && (
-                        <div className="alert alert-info rounded-4">
-                          Parent registration creates the login account first. After that, admin will link the parent to the correct student.
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        className="btn btn-primary btn-lg w-100 rounded-pill fw-bold"
-                        disabled={isStudent && previewUnavailable}
-                        style={{
-                          background: "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)",
-                          border: "none",
-                          boxShadow: "0 12px 26px rgba(13,110,253,0.25)",
-                        }}
-                      >
-                        Create Account
-                      </button>
-
-                      <div className="text-center mt-3">
-                        <span className="text-muted">Already have an account? </span>
-                        <Link to="/login" className="fw-semibold text-decoration-none">
-                          Sign in
-                        </Link>
+                        )}
                       </div>
-                    </form>
-                  </div>
+                    )}
 
-                  <div className="px-4 px-md-5 pb-4">
-                    <div className="small text-muted text-center">By registering, you agree to the school’s usage policy.</div>
+                    {/* Parent Specific Alert */}
+                    {isParent && (
+                      <div className="alert alert-info rounded-3 small d-flex mb-4">
+                        <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+                        <div>
+                          Parent registration creates the login account first. After that, the admin will link the parent to the correct student.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm mt-2"
+                      disabled={isStudent && previewUnavailable}
+                    >
+                      Create Account
+                    </button>
+                  </form>
+
+                  <div className="text-center mt-4">
+                    <p className="text-muted small mb-0">
+                      Already have an account?{" "}
+                      <Link to="/login" className="text-primary fw-bold text-decoration-none ms-1">
+                        Sign in here
+                      </Link>
+                    </p>
+                    <div className="mt-3 small text-muted opacity-75">
+                      By registering, you agree to the school’s usage policy.
+                    </div>
                   </div>
                 </div>
 
-                {/* Mobile brand card */}
-                <div className="d-lg-none mt-3">
-                  <div className="card border-0 shadow-sm rounded-5 overflow-hidden">
-                    <div
-                      className="p-4 text-white"
-                      style={{ background: "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)" }}
-                    >
-                      <div className="d-flex align-items-center gap-2">
-                        <i className="bi bi-mortarboard-fill fs-4" />
-                        <div className="fw-bold fs-5">SchoolY</div>
+                {/* Right Side: Branding Panel */}
+                <div
+                  className="col-lg-6 d-none d-lg-flex flex-column position-relative overflow-hidden"
+                  style={{
+                    background: "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)",
+                  }}
+                >
+                  {/* Decorative Elements */}
+                  <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '300px', height: '300px', top: '-100px', right: '-100px', zIndex: 1 }}></div>
+                  <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '300px', height: '300px', bottom: '-100px', left: '-100px', zIndex: 1 }}></div>
+
+                  <div className="d-flex flex-column justify-content-center p-5 text-white flex-grow-1 position-relative" style={{ zIndex: 2 }}>
+                    <div className="mb-auto">
+                      <div className="d-flex align-items-center gap-3 mb-4">
+                        <div className="bg-white text-primary rounded-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: "50px", height: "50px" }}>
+                          <i className="bi bi-mortarboard-fill fs-3"></i>
+                        </div>
+                        <h3 className="fw-bolder mb-0 tracking-tight">SchoolY</h3>
                       </div>
-                      <div className="opacity-75 mt-2">Smart Education Management System</div>
+                    </div>
+
+                    <div className="my-5">
+                      <h1 className="fw-bold display-5 mb-4 leading-tight">
+                        Start your <br/>
+                        Educational <br/>
+                        Journey.
+                      </h1>
+                      <p className="lead opacity-75 fs-6 w-75">
+                        Register as a Student, Teacher, or Parent. You’ll receive your unique ID securely right after successful registration.
+                      </p>
+                    </div>
+
+                    <div className="mt-auto d-flex gap-4">
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="bi bi-shield-check text-info fs-5"></i>
+                        <span className="small opacity-75">Secure Platform</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                         <i className="bi bi-lightning-charge text-info fs-5"></i>
+                        <span className="small opacity-75">Fast Setup</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -627,7 +610,6 @@ export default function Register() {
               </div>
             </div>
           </div>
-          {/* end right */}
         </div>
       </div>
     </div>

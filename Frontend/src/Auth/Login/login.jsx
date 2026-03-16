@@ -83,221 +83,194 @@ export default function LoginPage() {
     }
   };
 
-  const inputBase = "form-control form-control-lg border-0 bg-light shadow-sm rounded-4";
-
-  const labelStyle = { fontSize: 13, color: "#6c757d", fontWeight: 600 };
-
   return (
     <div
-      className="min-vh-100 d-flex align-items-stretch"
+      className="min-vh-100 d-flex align-items-center justify-content-center"
       style={{
-        background: "linear-gradient(135deg, rgba(13,110,253,0.10) 0%, rgba(111,66,193,0.10) 100%)",
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        backgroundColor: "#f3f4f6", 
+        fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div className="container py-4 py-md-5 d-flex align-items-center">
-        <div className="row g-4 w-100 align-items-stretch">
-          {/* Left Branding Panel */}
-          <div className="col-lg-6 d-none d-lg-block">
-            <div
-              className="h-100 rounded-5 shadow-sm overflow-hidden position-relative"
-              style={{
-                backgroundImage:
-                  "linear-gradient(135deg, rgba(13,110,253,0.92) 0%, rgba(111,66,193,0.92) 100%), url('https://lh3.googleusercontent.com/aida-public/AB6AXuCin_ezq1I7Ik4zO6OpuOUIAjiMnw9hJ8Q0f4tNULDrq0Nv_-w5HA3NTX4a9LOTR7cgde0M-KNUGJOkK4HCYTbyKAx8lBfUWpI02n40KUgSEyxJ4G1ULVzgagPLu49lYiGBNZY5ICAwQBoDERNjpD8J3iA93nByb9md3CPVzVoWAFEixKcHuPes692WdeL2jdaLhnqMZo2vMaXrgUHxP2j1YBloujPj7YsH7yhBK2J0R82Y6vzOnGj90gEGJBHAxlxmTSIBL5UH5h8')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                minHeight: 560,
-              }}
-            >
-              <div className="p-5 text-white">
-                <div className="d-flex align-items-center gap-2 mb-4">
-                  <div
-                    className="rounded-4 d-flex align-items-center justify-content-center"
-                    style={{
-                      width: 46,
-                      height: 46,
-                      background: "rgba(255,255,255,0.18)",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                    }}
-                  >
-                    <i className="bi bi-mortarboard-fill fs-4" />
-                  </div>
-                  <div>
-                    <div className="fw-bold fs-4" style={{ lineHeight: 1.1 }}>
-                      SchoolY
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-12 col-xl-10">
+            <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="row g-0 align-items-center">
+                
+                {/* Left Side: Form Panel */}
+                <div className="col-lg-6 p-4 p-md-5 bg-white">
+                  <div className="text-center mb-5">
+                    {/* Mobile Brand Header */}
+                    <div className="d-lg-none mb-4 d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle" style={{ width: '60px', height: '60px' }}>
+                      <i className="bi bi-mortarboard-fill fs-2"></i>
                     </div>
-                    <div className="opacity-75" style={{ lineHeight: 1.1 }}>
-                      Smart Education System
-                    </div>
+                    
+                    <h2 className="fw-bold text-dark mb-2">Welcome Back</h2>
+                    <p className="text-muted">Enter your details to access your account.</p>
                   </div>
-                </div>
 
-                <h2 className="fw-bold mb-3">Welcome Back</h2>
-                <p className="opacity-75 mb-0" style={{ maxWidth: 440 }}>
-                  Log in to access your dashboard. Admins manage school operations, teachers manage classes,
-                  and students can view learning & fees.
-                </p>
-              </div>
+                  {/* Alerts */}
+                  {errors.server && (
+                    <div className="alert alert-danger d-flex align-items-center rounded-3 mb-4" role="alert">
+                      <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                      <div>{errors.server}</div>
+                    </div>
+                  )}
 
-              <div
-                className="position-absolute bottom-0 start-0 end-0 p-4"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.55) 100%)",
-                }}
-              >
-                <div className="d-flex gap-2 flex-wrap">
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Secure Login</span>
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Role Based Access</span>
-                  <span className="badge rounded-pill text-bg-light border px-3 py-2">Fast</span>
-                </div>
-              </div>
-            </div>
-          </div>
+                  {successMsg && (
+                    <div className="alert alert-success d-flex align-items-center rounded-3 mb-4" role="alert">
+                      <i className="bi bi-check-circle-fill me-2 fs-5"></i>
+                      <div>{successMsg}</div>
+                    </div>
+                  )}
 
-          {/* Right Form Panel */}
-          <div className="col-12 col-lg-6">
-            <div className="h-100 d-flex align-items-center">
-              <div className="w-100">
-                <div className="card border-0 shadow-sm rounded-5 overflow-hidden">
-                  {/* Card Header */}
-                  <div className="p-4 p-md-5 border-bottom bg-white">
-                    <div className="d-flex align-items-center justify-content-between gap-3">
-                      <div>
-                        <div className="fw-bold fs-3 mb-1">Login</div>
-                        <div className="text-muted">Enter your credentials to continue</div>
+                  <form onSubmit={handleSubmit}>
+                    {/* Email Input */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="email">
+                        Email Address
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-envelope"></i>
+                        </span>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.email ? "is-invalid" : ""}`}
+                          placeholder="name@schooly.edu"
+                          value={formData.email}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
-                      <span className="badge rounded-pill bg-light text-dark border px-3 py-2">
-                        Sign In
-                      </span>
+                      {errors.email && <div className="text-danger small mt-1 fw-medium">{errors.email}</div>}
                     </div>
 
-                    {errors.server && (
-                      <div className="alert alert-danger mt-4 mb-0 rounded-4">
-                        {errors.server}
+                    {/* Password Input */}
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold text-secondary small text-uppercase" htmlFor="password">
+                        Password
+                      </label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-light border-end-0 text-muted">
+                          <i className="bi bi-lock"></i>
+                        </span>
+                        <input
+                          type="password"
+                          id="password"
+                          name="password"
+                          className={`form-control bg-light border-start-0 ps-0 ${errors.password ? "is-invalid" : ""}`}
+                          placeholder="••••••••"
+                          value={formData.password}
+                          onChange={handleChange}
+                          style={{ boxShadow: 'none' }}
+                        />
                       </div>
-                    )}
-
-                    {successMsg && (
-                      <div className="alert alert-success mt-3 mb-0 rounded-4">
-                        {successMsg}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="p-4 p-md-5">
-                    <form onSubmit={handleSubmit}>
-                      {/* Email */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Email</label>
-                          {errors.email && (
-                            <small className="text-danger fw-semibold">{errors.email}</small>
-                          )}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-envelope" />
-                          </span>
-                          <input
-                            type="email"
-                            name="email"
-                            placeholder="Enter email address"
-                            className={`${inputBase} ${errors.email ? "is-invalid" : ""}`}
-                            value={formData.email}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Password */}
-                      <div className="mb-2">
-                        <div className="d-flex justify-content-between">
-                          <label style={labelStyle}>Password</label>
-                          {errors.password && (
-                            <small className="text-danger fw-semibold">{errors.password}</small>
-                          )}
-                        </div>
-                        <div className="input-group input-group-lg mt-1">
-                          <span className="input-group-text border-0 bg-light rounded-start-4">
-                            <i className="bi bi-lock" />
-                          </span>
-                          <input
-                            type="password"
-                            name="password"
-                            placeholder="Enter password"
-                            className={`${inputBase} ${errors.password ? "is-invalid" : ""}`}
-                            value={formData.password}
-                            onChange={handleChange}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Remember + Forgot */}
-                      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mt-3">
-                      
-
-                        <a href="/forgot-password" className="text-decoration-none fw-semibold">
-                          Forgot password?
-                        </a>
-                      </div>
-
-                      {/* Submit */}
-                      <button
-                        type="submit"
-                        className="btn btn-lg w-100 rounded-pill fw-bold mt-4"
-                        disabled={loading}
-                        style={{
-                          background:
-                            "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)",
-                          border: "none",
-                          color: "#fff",
-                          boxShadow: "0 12px 26px rgba(13,110,253,0.25)",
-                        }}
-                      >
-                        {loading ? "Logging in..." : "Log In"}
-                      </button>
-
-                      {/* Bottom */}
-                      <div className="text-center mt-3">
-                        <span className="text-muted">Don&apos;t have an account? </span>
-                        <Link to="/register" className="fw-semibold text-decoration-none">
-                          Sign up
-                        </Link>
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="px-4 px-md-5 pb-4">
-                    <div className="small text-muted text-center">
-                      Protected by secure authentication • SchoolY
+                      {errors.password && <div className="text-danger small mt-1 fw-medium">{errors.password}</div>}
                     </div>
-                  </div>
-                </div>
 
-                {/* Mobile brand card */}
-                <div className="d-lg-none mt-3">
-                  <div className="card border-0 shadow-sm rounded-5 overflow-hidden">
-                    <div
-                      className="p-4 text-white"
-                      style={{
-                        background: "linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%)",
-                      }}
+                    {/* Options Row */}
+                    <div className="d-flex justify-content-between align-items-center mb-5">
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          name="rememberMe"
+                          id="rememberMe"
+                          checked={formData.rememberMe}
+                          onChange={handleChange}
+                        />                  
+                      </div>
+                      <Link to="/forgot-password" className="text-primary text-decoration-none small fw-semibold">
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm"
+                      disabled={loading}
                     >
-                      <div className="d-flex align-items-center gap-2">
-                        <i className="bi bi-mortarboard-fill fs-4" />
-                        <div className="fw-bold fs-5">SchoolY</div>
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Signing in...
+                        </>
+                      ) : (
+                        "Sign In"
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="text-center mt-4">
+                    <p className="text-muted small mb-0">
+                      Don't have an account?{" "}
+                      <Link to="/register" className="text-primary fw-bold text-decoration-none ms-1">
+                        Create account
+                      </Link>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Side: Branding Panel */}
+                <div
+                  className="col-lg-6 d-none d-lg-block p-0 position-relative h-100"
+                  style={{ minHeight: "600px" }}
+                >
+                  <div 
+                    className="position-absolute top-0 start-0 w-100 h-100"
+                    style={{
+                      background: "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)",
+                      opacity: 0.9
+                    }}
+                  ></div>
+                  
+                  {/* Decorative Elements */}
+                  <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 1 }}>
+                     <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '300px', height: '300px', top: '-100px', right: '-100px' }}></div>
+                     <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '200px', height: '200px', bottom: '-50px', left: '-50px' }}></div>
+                  </div>
+
+                  <div className="position-relative h-100 d-flex flex-column justify-content-center p-5 text-white" style={{ zIndex: 2 }}>
+                    <div className="mb-auto">
+                      <div className="d-flex align-items-center gap-3 mb-4">
+                        <div className="bg-white text-primary rounded-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: "50px", height: "50px" }}>
+                          <i className="bi bi-mortarboard-fill fs-3"></i>
+                        </div>
+                        <h3 className="fw-bolder mb-0 tracking-tight">SchoolY</h3>
                       </div>
-                      <div className="opacity-75 mt-2">Smart Education Management System</div>
+                    </div>
+
+                    <div className="mb-5">
+                      <h1 className="fw-bold display-5 mb-4 leading-tight">
+                        Empowering <br/>
+                        Education <br/>
+                        Management.
+                      </h1>
+                      <p className="lead opacity-75 fs-6 w-75">
+                        The all-in-one platform connecting administrators, teachers, parents, and students seamlessly.
+                      </p>
+                    </div>
+
+                    <div className="mt-auto d-flex gap-4">
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="bi bi-check2-circle text-info fs-5"></i>
+                        <span className="small opacity-75">Secure Platform</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                         <i className="bi bi-check2-circle text-info fs-5"></i>
+                        <span className="small opacity-75">Role-Based Access</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
-          {/* end right */}
         </div>
       </div>
     </div>

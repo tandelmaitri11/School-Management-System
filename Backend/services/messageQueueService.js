@@ -1,6 +1,5 @@
 const MessageQueue = require("../models/MessageQueue");
 const { sendEmail } = require("../utils/mailer");
-const { sendSms } = require("../utils/smsSender");
 
 let workerTimer = null;
 let workerBusy = false;
