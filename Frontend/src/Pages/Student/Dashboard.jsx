@@ -289,15 +289,7 @@ export default function StudentDashboard() {
                 {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
              </span>
 
-             {/* Notification Bell */}
-             <div className="position-relative notification-bell cursor-pointer p-2 bg-white rounded-circle shadow-sm border text-secondary">
-                <i className="bi bi-bell-fill fs-5"></i>
-                {notificationCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
-                    {notificationCount}
-                  </span>
-                )}
-             </div>
+             
           </div>
         </div>
 

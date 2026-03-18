@@ -381,19 +381,34 @@ export default function AddAssignment() {
                 </Form.Select>
               </Form.Group>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold small">Subject</Form.Label>
-                {subjectsLoading ? (
-                  <div className="text-center p-2"><Spinner animation="border" size="sm" variant="primary" /></div>
-                ) : (
-                  <Form.Select name="subject" value={formData.subject} onChange={handleChange} required>
-                    <option value="">{subjectsError || "Select Subject"}</option>
-                    {subjects.map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
-                  </Form.Select>
-                )}
-              </Form.Group>
+             <Form.Group className="mb-4">
+  <Form.Label className="fw-semibold small">Subject</Form.Label>
+
+  {subjectsLoading ? (
+    <div className="text-center p-2">
+      <Spinner animation="border" size="sm" variant="primary" />
+    </div>
+  ) : subjects.length === 0 ? (
+    <div className="p-2 border rounded bg-light text-danger small">
+      ⚠ No subject assigned by admin for this class
+      {classHasStreams && !formData.streamAssigned ? " / stream." : "."}
+    </div>
+  ) : (
+    <Form.Select
+      name="subject"
+      value={formData.subject}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select Subject</option>
+      {subjects.map((sub) => (
+        <option key={sub} value={sub}>
+          {sub}
+        </option>
+      ))}
+    </Form.Select>
+  )}
+</Form.Group>
 
               <h5 className="mb-3 text-secondary border-bottom pb-2 pt-2">Timeline & Attachment</h5>
               
@@ -423,7 +438,13 @@ export default function AddAssignment() {
                 type="submit" 
                 className="w-100 py-3 fw-bold" 
                 variant="primary"
-                disabled={submitting || loading || subjectsLoading}
+                disabled={
+  submitting || 
+  loading || 
+  subjectsLoading || 
+  subjects.length === 0 || 
+  !formData.subject
+}
               >
                 {submitting ? (
                   <>

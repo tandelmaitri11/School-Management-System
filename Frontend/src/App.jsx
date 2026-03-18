@@ -1,24 +1,21 @@
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
+import ProtectedRoute from "./Components/ProtectedRoute";
 
-// ==========================================
-// 1. PUBLIC & AUTH IMPORTS
-// ==========================================
+// ================= PUBLIC =================
 import HomePage from "./Pages/Home/home";
 import Register from "./Auth/Register/register";
 import LoginPage from "./Auth/Login/login";
 import ForgotPassword from "./Auth/ForgotPassword";
-import Footer from "./Components/Footer";
 import FeaturesPage from "./Components/FeaturesPage";
 import ContactPage from "./Components/ContactPage";
 import AboutSection from "./Components/AboutSection";
 import PrivacyPolicyPage from "./Components/PrivacyPolicyPage";
 import TermsPage from "./Components/TermsPage";
 
-// ==========================================
-// 2. ADMIN IMPORTS
-// ==========================================
+// ================= ADMIN =================
 import Navbar from "./Pages/Admin/navbar";
 import AdminDashboard from "./Pages/Admin/AdminDashboard";
 import Dashboard from "./Pages/Admin/Dashboard";
@@ -50,9 +47,7 @@ import ContactMessages from "./Pages/Admin/Contact/ContactMessages";
 import AnnouncementPage from "./Pages/Admin/Announcement/AnnouncementPage";
 import ViewParents from "./Pages/Admin/Parent/ViewParents";
 
-// ==========================================
-// 3. TEACHER IMPORTS
-// ==========================================
+// ================= TEACHER =================
 import TeacherNavbar from "./Pages/Teacher/teacher_navbar";
 import TeacherDashboard from "./Pages/Teacher/Dashboard";
 import TeacherProfile from "./Pages/Teacher/TeacherProfile";
@@ -72,10 +67,11 @@ import AddExam from "./Pages/Teacher/Exam/AddExam";
 import ManageExams from "./Pages/Teacher/Exam/ManageExams";
 import TeacherExamResults from "./Pages/Teacher/Exam/TeacherExamResults";
 import TeacherLms from "./Pages/Teacher/LMS/TeacherLms";
+import TeacherAnnouncements from "./Pages/Teacher/Announcement/TeacherAnnouncements";
+import ParentLeaveRequests from "./Pages/Teacher/Parent/ParentLeaveRequests";
+import ParentMessages from "./Pages/Teacher/Parent/ParentMessages";
 
-// ==========================================
-// 4. STUDENT IMPORTS
-// ==========================================
+// ================= STUDENT =================
 import StudentNavbar from "./Pages/Student/student_navbar";
 import SDashboard from "./Pages/Student/Dashboard";
 import StudentProfile from "./Pages/Student/student_profile";
@@ -90,9 +86,8 @@ import StudentStartExam from "./Pages/Student/Exam/StudentStartExam";
 import StudentExamResult from "./Pages/Student/Exam/StudentExamResult";
 import StudentLms from "./Pages/Student/LMS/StudentLms";
 import StudentAnnouncements from "./Pages/Student/Announcement/StudentAnnouncements";
-import TeacherAnnouncements from "./Pages/Teacher/Announcement/TeacherAnnouncements";
-import ParentLeaveRequests from "./Pages/Teacher/Parent/ParentLeaveRequests";
-import ParentMessages from "./Pages/Teacher/Parent/ParentMessages";
+
+// ================= PARENT =================
 import ParentNavbar from "./Pages/Parent/parent_navbar";
 import ParentDashboard from "./Pages/Parent/Dashboard";
 import ParentProfile from "./Pages/Parent/Profile";
@@ -104,16 +99,15 @@ import ParentNotifications from "./Pages/Parent/Notifications";
 import ParentLeaveRequest from "./Pages/Parent/LeaveRequest";
 import ParentTeacherCommunication from "./Pages/Parent/TeacherCommunication";
 
-// ==========================================
-// 5. SHARED SETTINGS
-// ==========================================
+// ================= SETTINGS =================
 import DashboardSettings from "./Pages/Settings/DashboardSettings";
 
 function App() {
   return (
     <>
       <Routes>
-        {/* --- Public & Auth --- */}
+
+        {/* ========= PUBLIC ========= */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Register />} />
@@ -123,13 +117,15 @@ function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/unauthorized" element={<h1>Access Denied 🚫</h1>} />
 
-        {/* --- Admin Section --- */}
-        <Route path="/dashboard" element={<Navbar><Dashboard /></Navbar>} />
-        <Route path="/adminDashboard" element={<Navbar><AdminDashboard /></Navbar>} />
-        <Route path="/profile" element={<Navbar><AdminProfile /></Navbar>} />
-        
-        <Route path="/Settings/fees" element={<Navbar><Fees /></Navbar>} />
+        {/* ========= ADMIN ========= */}
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route path="/adminDashboard" element={<Navbar><AdminDashboard /></Navbar>} />
+          <Route path="/dashboard" element={<Navbar><Dashboard /></Navbar>} />
+          <Route path="/profile" element={<Navbar><AdminProfile /></Navbar>} />
+          
+            <Route path="/Settings/fees" element={<Navbar><Fees /></Navbar>} />
         <Route path="/approve-salary" element={<Navbar><ApproveSalary /></Navbar>} />
         <Route path="/teacher-salary-record" element={<Navbar><TeacherSalaryRecord /></Navbar>} />
         <Route path="/salarylist" element={<Navbar><SalaryHistory /></Navbar>} />
@@ -163,8 +159,11 @@ function App() {
         <Route path="/teacher/attendance" element={<Navbar><TeacherAttendance /></Navbar>} />
         <Route path="/teacher/assignments" element={<Navbar><TeacherAssignmentList /></Navbar>} />
 
-        {/* --- Teacher Section --- */}
-        <Route path="/teacherDashboard" element={<TeacherNavbar><TeacherDashboard /></TeacherNavbar>} />
+        </Route>
+
+        {/* ========= TEACHER ========= */}
+        <Route element={<ProtectedRoute allowedRoles={["teacher"]} />}>
+          <Route path="/teacherDashboard" element={<TeacherNavbar><TeacherDashboard /></TeacherNavbar>} />
         <Route path="/teacher/dashboard" element={<TeacherNavbar><TeacherDashboard /></TeacherNavbar>} />
         <Route path="/teacher/profile" element={<TeacherNavbar><TeacherProfile /></TeacherNavbar>} />
         <Route path="/teacher/assignment" element={<TeacherNavbar><AddAssignment /></TeacherNavbar>} />
@@ -189,8 +188,11 @@ function App() {
         <Route path="/teacher/announcements" element={<TeacherNavbar><TeacherAnnouncements /></TeacherNavbar>} />
         <Route path="/teacher/settings" element={<TeacherNavbar><DashboardSettings /></TeacherNavbar>} />
 
-        {/* --- Student Section --- */}
-        <Route path="/student/dashboard" element={<StudentNavbar><SDashboard /></StudentNavbar>} />
+        </Route>
+
+        {/* ========= STUDENT ========= */}
+        <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
+          <Route path="/student/dashboard" element={<StudentNavbar><SDashboard /></StudentNavbar>} />
         <Route path="/studentprofile" element={<StudentNavbar><StudentProfile /></StudentNavbar>} />
         <Route path="/student/assignments" element={<StudentNavbar><AssignmentsList /></StudentNavbar>} />
         <Route path="/student/submitassignments" element={<StudentNavbar><SubmitAssignmentPage /></StudentNavbar>} />
@@ -205,8 +207,11 @@ function App() {
         <Route path="/student/announcements" element={<StudentNavbar><StudentAnnouncements /></StudentNavbar>} />
         <Route path="/student/settings" element={<StudentNavbar><DashboardSettings /></StudentNavbar>} />
 
-        {/* --- Parent Section --- */}
-        <Route path="/parent/dashboard" element={<ParentNavbar><ParentDashboard /></ParentNavbar>} />
+        </Route>
+
+        {/* ========= PARENT ========= */}
+        <Route element={<ProtectedRoute allowedRoles={["parent"]} />}>
+           <Route path="/parent/dashboard" element={<ParentNavbar><ParentDashboard /></ParentNavbar>} />
         <Route path="/parent/profile" element={<ParentNavbar><ParentProfile /></ParentNavbar>} />
         <Route path="/parent/attendance" element={<ParentNavbar><ParentAttendance /></ParentNavbar>} />
         <Route path="/parent/performance" element={<ParentNavbar><ParentPerformance /></ParentNavbar>} />
@@ -216,6 +221,8 @@ function App() {
         <Route path="/parent/leave-request" element={<ParentNavbar><ParentLeaveRequest /></ParentNavbar>} />
         <Route path="/parent/teacher-communication" element={<ParentNavbar><ParentTeacherCommunication /></ParentNavbar>} />
         <Route path="/parent/settings" element={<ParentNavbar><DashboardSettings /></ParentNavbar>} />
+        </Route>
+
       </Routes>
 
       <ToastContainer position="top-right" autoClose={3000} />

@@ -11,6 +11,15 @@ export default function TeacherLmsRightPanel({
   filteredCourses,
   selectedCourse,
   handleDeleteCourse,
+
+  // ✅ NEW PROPS
+  editingCourseId,
+  setEditingCourseId,
+  courseEdits,
+  setCourseEdits,
+  startEditCourse,
+  saveEditCourse,
+
   contentQuery,
   setContentQuery,
   content,
@@ -40,10 +49,13 @@ export default function TeacherLmsRightPanel({
 }) {
   return (
     <div className="d-flex flex-column gap-4">
+
       {/* ---------------- YOUR COURSES CARD ---------------- */}
       <Card className="shadow-sm border-0 rounded-4 border-top border-4 border-info overflow-hidden">
         <Card.Header className="bg-white border-bottom-0 pt-4 pb-0 px-4">
+
           <div className="d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between mb-2">
+
             <div className="d-flex align-items-center gap-3">
               <div className="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
                 <i className="bi bi-collection-play-fill fs-5" />
@@ -59,18 +71,18 @@ export default function TeacherLmsRightPanel({
                 <InputGroup.Text className="bg-light border-end-0 text-muted">
                   <i className="bi bi-search" />
                 </InputGroup.Text>
-                <Form.Control 
-                  className="bg-light border-start-0 ps-0 shadow-none" 
-                  value={courseQuery} 
-                  onChange={(e) => setCourseQuery(e.target.value)} 
-                  placeholder="Search courses..." 
+                <Form.Control
+                  className="bg-light border-start-0 ps-0 shadow-none"
+                  value={courseQuery}
+                  onChange={(e) => setCourseQuery(e.target.value)}
+                  placeholder="Search courses..."
                 />
               </InputGroup>
 
-              <Form.Select 
-                className="shadow-sm border-secondary border-opacity-25" 
-                value={selectedCourseId} 
-                onChange={(e) => setSelectedCourseId(e.target.value)} 
+              <Form.Select
+                className="shadow-sm border-secondary border-opacity-25"
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
                 style={{ maxWidth: 260 }}
               >
                 <option value="">Select course to manage</option>
@@ -86,88 +98,196 @@ export default function TeacherLmsRightPanel({
         </Card.Header>
 
         <Card.Body className="p-4 pt-3">
+
+          {/* ACTIVE COURSE */}
           {selectedCourseId && (
-            <div className="bg-light p-3 rounded-4 mb-4 border border-secondary border-opacity-10 d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between transition">
-              <div className="d-flex flex-wrap gap-2 align-items-center">
-                <span className="text-muted small fw-medium text-uppercase tracking-wide" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>Active Course:</span>
-                <span className="fw-bold text-primary ms-1 me-2">{selectedCourse?.title}</span>
-                <Badge bg="white" text="dark" className="border shadow-sm px-2 py-1 fw-medium">
-                  Class {selectedCourse?.classAssigned}
-                </Badge>
-                <Badge bg="white" text="dark" className="border shadow-sm px-2 py-1 fw-medium">
-                  Sec {selectedCourse?.section || "N/A"}
-                </Badge>
-                <Badge bg="white" text="dark" className="border shadow-sm px-2 py-1 fw-medium">
-                  {selectedCourse?.stream || "General"}
-                </Badge>
-                <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm px-2 py-1 fw-medium">
-                  {selectedCourse?.subject || "Subject"}
-                </Badge>
+            <>
+              <div className="bg-light p-3 rounded-4 mb-3 border d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+
+                <div className="d-flex flex-wrap gap-2 align-items-center">
+                  <span className="fw-bold text-primary">{selectedCourse?.title}</span>
+                  <Badge bg="light" text="dark" className="border">Class {selectedCourse?.classAssigned}</Badge>
+                  <Badge bg="light" text="dark" className="border">Sec {selectedCourse?.section || "N/A"}</Badge>
+                  <Badge bg="light" text="dark" className="border">{selectedCourse?.stream || "General"}</Badge>
+                  <Badge bg="primary" className="bg-opacity-10 text-primary border">{selectedCourse?.subject}</Badge>
+                </div>
+
+                {/* ✅ EDIT + DELETE */}
+                <div className="d-flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline-primary"
+                    onClick={() => startEditCourse(selectedCourse)}
+                  >
+                    <i className="bi bi-pencil me-1"></i> Edit
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    onClick={() => handleDeleteCourse(selectedCourseId)}
+                  >
+                    <i className="bi bi-trash3 me-1"></i> Delete
+                  </Button>
+                </div>
               </div>
 
-              <Button
-                variant="outline-danger"
-                size="sm"
-                className="d-flex align-items-center gap-2 rounded-pill px-3 shadow-sm fw-semibold"
-                onClick={() => handleDeleteCourse(selectedCourseId)}
-              >
-                <i className="bi bi-trash3" />
-                Delete
-              </Button>
-            </div>
+              {editingCourseId === selectedCourseId && (
+                <Card className="border-0 shadow-sm rounded-4 mb-4">
+                  <Card.Body className="p-4 bg-light">
+
+                    <div className="d-flex align-items-center gap-2 mb-3">
+                      <i className="bi bi-pencil-square text-primary"></i>
+                      <h6 className="fw-bold mb-0">Edit Course Details</h6>
+                    </div>
+
+                    <Row className="g-3">
+
+                      {/* TITLE */}
+                      <Col md={6}>
+                        <Form.Label className="fw-semibold">Course Title</Form.Label>
+                        <Form.Control
+                          placeholder="Enter course title"
+                          value={courseEdits.title || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, title: e.target.value })
+                          }
+                          isInvalid={!!errors?.title}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {errors?.title}
+                        </Form.Control.Feedback>
+                      </Col>
+
+                      {/* SUBJECT */}
+                      <Col md={6}>
+                        <Form.Label className="fw-semibold">Subject</Form.Label>
+                        <Form.Control
+                          placeholder="Enter subject"
+                          value={courseEdits.subject || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, subject: e.target.value })
+                          }
+                        />
+                      </Col>
+
+                      {/* CLASS */}
+                      <Col md={3}>
+                        <Form.Label className="fw-semibold">Class</Form.Label>
+                        <Form.Control
+                          placeholder="Class"
+                          value={courseEdits.classAssigned || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, classAssigned: e.target.value })
+                          }
+                          isInvalid={!!errors?.classAssigned}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {errors?.classAssigned}
+                        </Form.Control.Feedback>
+                      </Col>
+
+                      {/* SECTION */}
+                      <Col md={3}>
+                        <Form.Label className="fw-semibold">Section</Form.Label>
+                        <Form.Control
+                          placeholder="Section"
+                          value={courseEdits.section || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, section: e.target.value })
+                          }
+                          isInvalid={!!errors?.section}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {errors?.section}
+                        </Form.Control.Feedback>
+                      </Col>
+
+                      {/* STREAM */}
+                      <Col md={3}>
+                        <Form.Label className="fw-semibold">Stream</Form.Label>
+                        <Form.Select
+                          value={courseEdits.stream || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, stream: e.target.value })
+                          }
+                        >
+                          <option value="">Select</option>
+                          <option value="Science">Science</option>
+                          <option value="Commerce">Commerce</option>
+                          <option value="Arts">Arts</option>
+                        </Form.Select>
+                      </Col>
+
+                      {/* DESCRIPTION */}
+                      <Col md={12}>
+                        <Form.Label className="fw-semibold">Description</Form.Label>
+                        <Form.Control
+                          as="textarea"
+                          rows={3}
+                          placeholder="Enter course description..."
+                          value={courseEdits.description || ""}
+                          onChange={(e) =>
+                            setCourseEdits({ ...courseEdits, description: e.target.value })
+                          }
+                        />
+                      </Col>
+
+                    </Row>
+
+                    {/* ACTION BUTTONS */}
+                    <div className="d-flex justify-content-end gap-2 mt-4">
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => setEditingCourseId(null)}
+                      >
+                        Cancel
+                      </Button>
+
+                      <Button
+                        variant="primary"
+                        onClick={() => saveEditCourse(selectedCourseId)}
+                      >
+                        <i className="bi bi-check2 me-1"></i>
+                        Update Course
+                      </Button>
+                    </div>
+
+                  </Card.Body>
+                </Card>
+              )}
+            </>
           )}
 
+          {/* COURSE TABLE */}
           <div className="table-responsive rounded-3 border border-secondary border-opacity-10">
             <Table hover borderless className="align-middle mb-0">
-              <thead className="table-light text-muted" style={{ fontSize: "0.85rem", textTransform: "uppercase" }}>
+              <thead className="table-light">
                 <tr>
-                  <th className="fw-semibold px-3 py-3" style={{ width: "30%" }}>Course Title</th>
-                  <th className="fw-semibold py-3">Subject</th>
-                  <th className="fw-semibold py-3" style={{ width: 90 }}>Class</th>
-                  <th className="fw-semibold py-3" style={{ width: 90 }}>Section</th>
-                  <th className="fw-semibold py-3" style={{ width: 140 }}>Stream</th>
+                  <th>Course Title</th>
+                  <th>Subject</th>
+                  <th>Class</th>
+                  <th>Section</th>
+                  <th>Stream</th>
                 </tr>
               </thead>
+
               <tbody>
-                {filteredCourses.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="text-center text-muted py-5">
-                      <div className="d-flex flex-column align-items-center">
-                        <i className="bi bi-journal-x fs-2 mb-2 opacity-50"></i>
-                        No courses found matching your search.
-                      </div>
-                    </td>
+                {filteredCourses.map((course) => (
+                  <tr key={course._id} onClick={() => setSelectedCourseId(course._id)} style={{ cursor: "pointer" }}>
+                    <td className="fw-bold">{course.title}</td>
+                    <td>{course.subject}</td>
+                    <td>{course.classAssigned}</td>
+                    <td>{course.section || "-"}</td>
+                    <td>{course.stream || "General"}</td>
                   </tr>
-                ) : (
-                  filteredCourses.map((course) => (
-                    <tr 
-                      key={course._id} 
-                      onClick={() => setSelectedCourseId(course._id)} 
-                      style={{ cursor: "pointer", transition: "background-color 0.2s" }}
-                      className={`border-bottom ${selectedCourseId === course._id ? 'bg-primary bg-opacity-10' : ''}`}
-                    >
-                      <td className="fw-bold text-dark px-3 py-3">{course.title}</td>
-                      <td className="text-secondary">{course.subject}</td>
-                      <td>
-                        <div className="bg-light text-center rounded px-2 py-1 border d-inline-block fw-medium">
-                          {course.classAssigned}
-                        </div>
-                      </td>
-                      <td className="text-secondary">{course.section || "-"}</td>
-                      <td>
-                        <Badge bg="light" text="secondary" className="border fw-normal px-2 py-1">
-                          {course.stream || "General"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </Table>
           </div>
+
         </Card.Body>
       </Card>
-
       {/* ---------------- COURSE CONTENT CARD ---------------- */}
       <Card className="shadow-sm border-0 rounded-4 border-top border-4 border-secondary overflow-hidden mb-4">
         <Card.Header className="bg-white border-bottom-0 pt-4 pb-0 px-4">
@@ -371,10 +491,10 @@ export default function TeacherLmsRightPanel({
                             })
                           }
                           onKeyDown={(e) => {
-                            if(e.key === 'Enter') {
+                            if (e.key === 'Enter') {
                               e.preventDefault();
                               const btn = document.getElementById(`add-topic-${chapter._id}`);
-                              if(btn) btn.click();
+                              if (btn) btn.click();
                             }
                           }}
                         />

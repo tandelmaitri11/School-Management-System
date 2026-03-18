@@ -7,10 +7,10 @@ import TeacherLmsRightPanel from "./components/TeacherLmsRightPanel";
 const normalize = (v) => String(v || "").trim();
 const normalizeUpper = (v) => normalize(v).toUpperCase();
 
-// ---------- Validation helpers (UI only; does not change API/data model) ----------
+// ---------- Validation helpers ---------
 const isHttpUrl = (url) => {
   const u = normalize(url);
-  if (!u) return true; // optional field
+  if (!u) return true; 
   try {
     const parsed = new URL(u);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -96,6 +96,10 @@ export default function TeacherLms() {
   const [editingMaterialId, setEditingMaterialId] = useState(null);
   const [materialEdits, setMaterialEdits] = useState({});
 
+  
+  const [editingCourseId, setEditingCourseId] = useState(null);
+  const [courseEdits, setCourseEdits] = useState({});
+
   // validation state (UI only)
   const [errors, setErrors] = useState({
     course: {},
@@ -155,9 +159,9 @@ export default function TeacherLms() {
     const streamAwareRows =
       classHasStreams && streamKey
         ? rows.filter((r) => {
-            const rowStream = normalize(r.stream).toLowerCase();
-            return !rowStream || rowStream === streamKey;
-          })
+          const rowStream = normalize(r.stream).toLowerCase();
+          return !rowStream || rowStream === streamKey;
+        })
         : rows;
 
     const uniqueSections = [...new Set(streamAwareRows.map((r) => r.section))].filter((sec) => sec !== "ALL");
@@ -324,6 +328,21 @@ export default function TeacherLms() {
     if (!normalize(draft.subject)) e.subject = subjectsError || "Subject is required";
 
     const desc = normalize(draft.description);
+    if (desc.length > MAX_DESC) e.description = `Max ${MAX_DESC} characters`;
+
+    return e;
+  };
+  const validateCourseEdit = (payload) => {
+    const e = {};
+
+    const title = normalize(payload.title);
+    if (!title) e.title = "Title is required";
+    else if (title.length > MAX_TITLE) e.title = `Max ${MAX_TITLE} characters`;
+
+    if (!payload.classAssigned) e.classAssigned = "Class is required";
+    if (!payload.section) e.section = "Section is required";
+
+    const desc = normalize(payload.description);
     if (desc.length > MAX_DESC) e.description = `Max ${MAX_DESC} characters`;
 
     return e;
@@ -643,6 +662,45 @@ export default function TeacherLms() {
     }
   };
 
+  // ---------------- EDIT COURSE ----------------
+  const startEditCourse = (course) => {
+    setEditingCourseId(course._id);
+    setCourseEdits({
+      title: course.title || "",
+      subject: course.subject || "",
+      classAssigned: course.classAssigned || "",
+      section: course.section || "",
+      stream: course.stream || "",
+      description: course.description || "",
+    });
+  };
+
+  const saveEditCourse = async (courseId) => {
+    const cleaned = {
+      title: normalize(courseEdits.title),
+      subject: normalize(courseEdits.subject),
+      classAssigned: normalize(courseEdits.classAssigned),
+      section: normalize(courseEdits.section),
+      stream: normalize(courseEdits.stream),
+      description: normalize(courseEdits.description),
+    };
+
+    const e = validateCourseEdit(cleaned);
+    if (Object.keys(e).length) {
+      showMessage("warning", "Fix course validation errors");
+      return;
+    }
+
+    try {
+      await api.put(`/api/lms/courses/${courseId}`, cleaned);
+      setEditingCourseId(null);
+      fetchCourses();
+      showToast("Course updated successfully");
+    } catch {
+      showMessage("danger", "Failed to update course");
+    }
+  };
+
   const startEditChapter = (chapter) => {
     setEditingChapterId(chapter._id);
     setChapterEdits({
@@ -832,6 +890,14 @@ export default function TeacherLms() {
             filteredCourses={filteredCourses}
             selectedCourse={selectedCourse}
             handleDeleteCourse={handleDeleteCourse}
+
+            editingCourseId={editingCourseId}
+            setEditingCourseId={setEditingCourseId}
+            courseEdits={courseEdits}
+            setCourseEdits={setCourseEdits}
+            startEditCourse={startEditCourse}
+            saveEditCourse={saveEditCourse}
+
             contentQuery={contentQuery}
             setContentQuery={setContentQuery}
             content={content}

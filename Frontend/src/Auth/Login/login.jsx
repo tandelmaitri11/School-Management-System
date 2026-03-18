@@ -10,7 +10,6 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    rememberMe: false,
   });
 
   const [errors, setErrors] = useState({});
@@ -49,16 +48,20 @@ export default function LoginPage() {
       const { token, user } = res.data;
 
       localStorage.setItem("token", token);
-      localStorage.setItem("userRole", user.role);
-      localStorage.setItem("userName", user.name);
+      localStorage.setItem("user", JSON.stringify({
+        id: user.id,
+        role: (user.role || "").toLowerCase(), // VERY IMPORTANT
+        name: user.name
+      }));
+
 
       if (user.role === "Admin") localStorage.setItem("adminId", user.id);
-      if (user.role === "Teacher") localStorage.setItem("teacherId", user.id);
-      if (user.role === "Parent") {
+      else if (user.role === "Teacher") localStorage.setItem("teacherId", user.id);
+      else if (user.role === "Parent") {
         localStorage.setItem("parentId", user.parentId || user.id);
         localStorage.setItem("parentObjectId", user.id);
       }
-      if (user.role === "Student") {
+      else if (user.role === "Student") {
         localStorage.setItem("studentId", user.id);
         localStorage.setItem("studentClass", user.studentClass);
         localStorage.setItem("studentSection", user.section || "");
@@ -67,12 +70,17 @@ export default function LoginPage() {
       }
 
       setSuccessMsg("Login successful! Redirecting...");
+      const role = (user.role || "").toLowerCase();
+
+      const routeMap = {
+        admin: "/adminDashboard",
+        teacher: "/teacher/dashboard",
+        parent: "/parent/dashboard",
+        student: "/student/dashboard"
+      };
 
       setTimeout(() => {
-        if (user.role === "Admin") navigate("/Dashboard");
-        else if (user.role === "Teacher") navigate("/teacher/dashboard");
-        else if (user.role === "Parent") navigate("/parent/dashboard");
-        else navigate("/student/dashboard");
+       navigate(routeMap[role] || "/");
       }, 1000);
     } catch (err) {
       setErrors({
@@ -87,7 +95,7 @@ export default function LoginPage() {
     <div
       className="min-vh-100 d-flex align-items-center justify-content-center"
       style={{
-        backgroundColor: "#f3f4f6", 
+        backgroundColor: "#f3f4f6",
         fontFamily: "'Inter', sans-serif",
       }}
     >
@@ -96,7 +104,7 @@ export default function LoginPage() {
           <div className="col-12 col-xl-10">
             <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
               <div className="row g-0 align-items-center">
-                
+
                 {/* Left Side: Form Panel */}
                 <div className="col-lg-6 p-4 p-md-5 bg-white">
                   <div className="text-center mb-5">
@@ -104,7 +112,7 @@ export default function LoginPage() {
                     <div className="d-lg-none mb-4 d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle" style={{ width: '60px', height: '60px' }}>
                       <i className="bi bi-mortarboard-fill fs-2"></i>
                     </div>
-                    
+
                     <h2 className="fw-bold text-dark mb-2">Welcome Back</h2>
                     <p className="text-muted">Enter your details to access your account.</p>
                   </div>
@@ -173,16 +181,7 @@ export default function LoginPage() {
 
                     {/* Options Row */}
                     <div className="d-flex justify-content-between align-items-center mb-5">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          name="rememberMe"
-                          id="rememberMe"
-                          checked={formData.rememberMe}
-                          onChange={handleChange}
-                        />                  
-                      </div>
+
                       <Link to="/forgot-password" className="text-primary text-decoration-none small fw-semibold">
                         Forgot password?
                       </Link>
@@ -220,18 +219,18 @@ export default function LoginPage() {
                   className="col-lg-6 d-none d-lg-block p-0 position-relative h-100"
                   style={{ minHeight: "600px" }}
                 >
-                  <div 
+                  <div
                     className="position-absolute top-0 start-0 w-100 h-100"
                     style={{
                       background: "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)",
                       opacity: 0.9
                     }}
                   ></div>
-                  
+
                   {/* Decorative Elements */}
                   <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 1 }}>
-                     <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '300px', height: '300px', top: '-100px', right: '-100px' }}></div>
-                     <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '200px', height: '200px', bottom: '-50px', left: '-50px' }}></div>
+                    <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '300px', height: '300px', top: '-100px', right: '-100px' }}></div>
+                    <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '200px', height: '200px', bottom: '-50px', left: '-50px' }}></div>
                   </div>
 
                   <div className="position-relative h-100 d-flex flex-column justify-content-center p-5 text-white" style={{ zIndex: 2 }}>
@@ -246,8 +245,8 @@ export default function LoginPage() {
 
                     <div className="mb-5">
                       <h1 className="fw-bold display-5 mb-4 leading-tight">
-                        Empowering <br/>
-                        Education <br/>
+                        Empowering <br />
+                        Education <br />
                         Management.
                       </h1>
                       <p className="lead opacity-75 fs-6 w-75">
@@ -261,7 +260,7 @@ export default function LoginPage() {
                         <span className="small opacity-75">Secure Platform</span>
                       </div>
                       <div className="d-flex align-items-center gap-2">
-                         <i className="bi bi-check2-circle text-info fs-5"></i>
+                        <i className="bi bi-check2-circle text-info fs-5"></i>
                         <span className="small opacity-75">Role-Based Access</span>
                       </div>
                     </div>
