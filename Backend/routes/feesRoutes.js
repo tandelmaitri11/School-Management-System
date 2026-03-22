@@ -25,4 +25,7 @@ router.post("/receipt-email/:feesId/:paymentId", feesController.emailReceiptToSt
 router.post("/reminder/:studentId", feesController.sendFeesReminder);
 router.post("/reminder/queue-all", feesController.queueAllFeeReminders);
 
+// Add this line with your other report routes
+router.get("/reports/student-wise", feesController.getStudentWiseFeeReport);
+
 module.exports = router;

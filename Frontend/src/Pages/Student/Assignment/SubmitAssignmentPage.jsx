@@ -12,64 +12,7 @@ import {
   Form
 } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-// --- CUSTOM STYLES ---
-const styles = {
-  page: { backgroundColor: "#f3f4f6", minHeight: "100vh", paddingBottom: "3rem" },
-  card: { 
-    border: "1px solid #e5e7eb", 
-    borderRadius: "12px", 
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)", 
-    height: "100%",
-    backgroundColor: "#fff",
-    transition: "all 0.2s ease-in-out",
-    position: "relative",
-    overflow: "hidden"
-  },
-  subjectPill: {
-    position: "absolute",
-    top: "12px",
-    right: "12px",
-    fontSize: "0.7rem",
-    fontWeight: "600",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    backgroundColor: "#f3f4f6",
-    color: "#4b5563",
-    border: "1px solid #e5e7eb",
-    padding: "4px 10px",
-    borderRadius: "20px"
-  },
-  cardTitle: {
-    fontSize: "1rem",
-    fontWeight: "700",
-    color: "#111827",
-    paddingRight: "60px", // space for badge
-    marginBottom: "0.5rem"
-  },
-  timerText: {
-    fontSize: "0.8rem",
-    fontWeight: "600",
-    display: "flex",
-    alignItems: "center",
-    gap: "5px"
-  },
-  footer: {
-    backgroundColor: "#fff",
-    padding: "1rem",
-    borderTop: "1px solid #f3f4f6"
-  },
-  successBox: {
-    backgroundColor: "#ecfdf5",
-    color: "#059669",
-    borderRadius: "8px",
-    padding: "0.75rem",
-    fontSize: "0.85rem",
-    textAlign: "center",
-    fontWeight: "600",
-    border: "1px dashed #6ee7b7"
-  }
-};
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function SubmitAssignmentPage() {
   const studentId = localStorage.getItem("studentId");
@@ -142,7 +85,7 @@ export default function SubmitAssignmentPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSubmissions([...submissions, res.data.submission]);
-      setToast({ show: true, message: "Submitted!", bg: "success" });
+      setToast({ show: true, message: "Submitted successfully!", bg: "success" });
       e.target.reset();
     } catch (error) {
       setToast({ show: true, message: "Failed to submit.", bg: "danger" });
@@ -151,19 +94,54 @@ export default function SubmitAssignmentPage() {
 
   const getSubmission = (id) => submissions.find(s => (s.assignmentId?._id || s.assignmentId) === id);
 
-  if (loading) return <div className="text-center pt-5"><Spinner animation="border" variant="primary"/></div>;
+  // Calculate stats for the header
+  const completedCount = submissions.length;
+  const pendingCount = assignments.length - completedCount;
+
+  if (loading) {
+    return (
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
+        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+        <p className="mt-3 fw-semibold text-muted">Loading your tasks...</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.page}>
-      <div className="container-fluid px-4 pt-4">
+    <div className="bg-light min-vh-100 py-4 py-md-5">
+      <div className="container-fluid px-3 px-md-5">
         
-        <div className="mb-4">
-          <h3 className="fw-bold text-dark mb-1">Assignment Tasks</h3>
-          <p className="text-muted small">Manage your submissions and deadlines.</p>
+        {/* ---------- HEADER SECTION ---------- */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-3 border-bottom border-light-subtle gap-3">
+          <div>
+            <Badge bg="primary" className="bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill border border-primary border-opacity-25">
+              <i className="bi bi-mortarboard me-2"></i>Student Portal
+            </Badge>
+            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>My Assignments</h2>
+            <p className="text-secondary mb-0">Manage your coursework, track deadlines, and submit your tasks.</p>
+          </div>
+          
+          <div className="d-flex gap-3">
+            <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
+              <span className="d-block text-muted small fw-bold text-uppercase tracking-wider">Pending</span>
+              <span className="fs-4 fw-bolder text-warning">{pendingCount}</span>
+            </div>
+            <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
+              <span className="d-block text-muted small fw-bold text-uppercase tracking-wider">Completed</span>
+              <span className="fs-4 fw-bolder text-success">{completedCount}</span>
+            </div>
+          </div>
         </div>
 
+        {/* ---------- ASSIGNMENTS GRID ---------- */}
         {assignments.length === 0 ? (
-          <div className="text-center py-5 text-muted">No assignments found.</div>
+          <div className="text-center py-5 my-5 bg-white border shadow-sm rounded-4">
+            <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center p-4 mb-3">
+              <i className="bi bi-journal-x fs-1 text-secondary opacity-50"></i>
+            </div>
+            <h5 className="fw-bold text-dark mb-1">No assignments pending</h5>
+            <p className="text-muted">You're all caught up! Enjoy your free time.</p>
+          </div>
         ) : (
           <Row className="g-4">
             {assignments.map((a) => {
@@ -171,89 +149,122 @@ export default function SubmitAssignmentPage() {
               const submitted = !!submission;
               const dueDate = new Date(a.dueDate);
               const isLate = new Date() > dueDate; 
+              
+              // Determine card styling based on status
+              const cardStatusClass = submitted 
+                ? "border-success border-opacity-25" 
+                : isLate 
+                  ? "border-danger border-opacity-25" 
+                  : "border-primary border-opacity-10";
 
               return (
-                // CHANGED: xl={3} ensures 4 cards per row on large screens
                 <Col xs={12} md={6} lg={4} xl={3} key={a._id}>
-                  <Card style={styles.card} className="h-100">
+                  <Card className={`border shadow-sm rounded-4 h-100 hover-lift ${cardStatusClass}`}>
                     
-                    {/* Floating Subject Badge */}
-                    <div style={styles.subjectPill}>
-                      {a.subject}
+                    {/* Card Header area (Subject & Timer) */}
+                    <div className="p-4 pb-0 d-flex justify-content-between align-items-start gap-2">
+                      <Badge bg="light" text="dark" className="border shadow-sm px-3 py-2 rounded-pill text-truncate" style={{ maxWidth: '60%' }}>
+                        <i className="bi bi-book text-primary me-2"></i>
+                        {a.subject}
+                      </Badge>
+                      
+                      {!submitted ? (
+                        <Badge 
+                          bg={isLate ? "danger" : "warning"} 
+                          className={`bg-opacity-10 text-${isLate ? "danger" : "warning-dark"} border border-${isLate ? "danger" : "warning"} border-opacity-50 px-2 py-1 rounded d-flex align-items-center`}
+                        >
+                          <i className={`bi ${isLate ? "bi-x-circle" : "bi-stopwatch"} me-1`}></i>
+                          {isLate ? "Expired" : timeLeft[a._id] || "..."}
+                        </Badge>
+                      ) : (
+                        <Badge bg="success" className="bg-opacity-10 text-success border border-success border-opacity-50 px-2 py-1 rounded d-flex align-items-center">
+                          <i className="bi bi-check-all me-1"></i> Turned In
+                        </Badge>
+                      )}
                     </div>
 
-                    <div className="p-3 pt-4 flex-grow-1">
-                      {/* Title */}
-                      <div style={styles.cardTitle} className="text-truncate">
-                        {a.title}
-                      </div>
-
-                      {/* Timer & Due Date */}
+                    <Card.Body className="p-4 d-flex flex-column">
+                      {/* Title & Due Date */}
                       <div className="mb-3">
-                        {!submitted && (
-                          <div style={styles.timerText} className={`mb-1 ${isLate ? 'text-danger' : 'text-primary'}`}>
-                             <i className="bi bi-stopwatch"></i>
-                             {isLate ? "Closed" : timeLeft[a._id] || "..."}
-                          </div>
-                        )}
-                        <small className="text-muted d-block" style={{fontSize: '0.75rem'}}>
-                           Due: {dueDate.toLocaleDateString()}
-                        </small>
+                        <h5 className="fw-bolder text-dark mb-2 text-truncate-2" title={a.title}>
+                          {a.title}
+                        </h5>
+                        <div className="d-flex align-items-center text-muted small fw-medium">
+                          <i className="bi bi-calendar-event me-2 opacity-75"></i>
+                          Due: {dueDate.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </div>
                       </div>
 
                       {/* Description */}
-                      <p className="text-muted small mb-3 text-truncate">
-                         {a.description || "No description."}
+                      <p className="text-secondary small mb-4 text-truncate-3" style={{ lineHeight: '1.6' }}>
+                        {a.description || "No specific instructions provided."}
                       </p>
+
+                      {/* Spacer to push footer down */}
+                      <div className="mt-auto"></div>
 
                       {/* Reference File Button */}
                       {a.file && (
-                         <a href={`http://localhost:3000/${a.file}`} target="_blank" rel="noreferrer" 
-                            className="btn btn-sm btn-light border w-100 text-start text-truncate text-muted"
-                            style={{fontSize: '0.75rem'}}>
-                            <i className="bi bi-paperclip me-2"></i>Download Reference
-                         </a>
-                      )}
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div style={styles.footer}>
-                      {submitted ? (
-                        <div style={styles.successBox}>
-                           <i className="bi bi-check-circle-fill me-2"></i> Submitted
-                           {submission.file && (
-                             <a href={`http://localhost:3000/${submission.file}`} target="_blank" rel="noreferrer" 
-                                className="d-block mt-1 text-decoration-none text-success small" style={{textDecoration: 'underline'}}>
-                                (View File)
-                             </a>
-                           )}
-                        </div>
-                      ) : (
-                        <Form onSubmit={(e) => handleSubmit(e, a._id)}>
-                          <div className="d-flex gap-2">
-                             <Form.Control 
-                               type="file" 
-                               name="file" 
-                               size="sm" 
-                               disabled={isLate} 
-                               required 
-                               className="shadow-none"
-                               style={{fontSize: '0.75rem'}}
-                             />
-                             <Button 
-                               type="submit" 
-                               variant={isLate ? "secondary" : "dark"} 
-                               disabled={isLate} 
-                               size="sm"
-                               className="px-3 fw-bold"
-                             >
-                               {isLate ? <i className="bi bi-lock-fill"></i> : <i className="bi bi-upload"></i>}
-                             </Button>
+                        <a 
+                          href={`http://localhost:3000/${a.file}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="btn btn-light border bg-gradient w-100 text-start text-dark fw-medium mb-3 rounded-3 d-flex align-items-center transition-hover group"
+                          style={{ fontSize: '0.85rem' }}
+                        >
+                          <div className="bg-white border rounded p-1 me-2 shadow-sm">
+                            <i className="bi bi-file-earmark-arrow-down text-primary"></i>
                           </div>
-                        </Form>
+                          Reference Material
+                        </a>
                       )}
-                    </div>
 
+                      {/* Footer Actions (Forms / Success State) */}
+                      <div className="pt-3 border-top border-light-subtle">
+                        {submitted ? (
+                          <div className="bg-success bg-opacity-10 text-success p-3 rounded-3 border border-success border-opacity-25 text-center">
+                            <i className="bi bi-check-circle-fill fs-3 d-block mb-1"></i>
+                            <span className="fw-bold small d-block mb-1">Assignment Completed</span>
+                            {submission.file && (
+                              <a href={`http://localhost:3000/${submission.file}`} target="_blank" rel="noreferrer" 
+                                className="badge bg-success text-white text-decoration-none mt-2 px-3 py-2 rounded-pill shadow-sm">
+                                <i className="bi bi-eye me-1"></i> View My Submission
+                              </a>
+                            )}
+                          </div>
+                        ) : isLate ? (
+                          <div className="bg-danger bg-opacity-10 text-danger p-3 rounded-3 border border-danger border-opacity-25 text-center">
+                            <i className="bi bi-lock-fill fs-3 d-block mb-1 opacity-75"></i>
+                            <span className="fw-bold small">Submission Closed</span>
+                            <small className="d-block mt-1 opacity-75">The deadline has passed.</small>
+                          </div>
+                        ) : (
+                          <Form onSubmit={(e) => handleSubmit(e, a._id)}>
+                            <Form.Group className="mb-2">
+                              <Form.Control 
+                                type="file" 
+                                name="file" 
+                                size="sm" 
+                                disabled={isLate} 
+                                required 
+                                className="bg-light border-0 shadow-none text-muted rounded-3"
+                                style={{ fontSize: '0.8rem' }}
+                              />
+                            </Form.Group>
+                            <Button 
+                              type="submit" 
+                              variant="primary" 
+                              disabled={isLate} 
+                              size="sm"
+                              className="w-100 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center py-2"
+                            >
+                              <i className="bi bi-cloud-arrow-up-fill me-2"></i> Submit Work
+                            </Button>
+                          </Form>
+                        )}
+                      </div>
+
+                    </Card.Body>
                   </Card>
                 </Col>
               );
@@ -261,12 +272,53 @@ export default function SubmitAssignmentPage() {
           </Row>
         )}
 
-        <ToastContainer position="bottom-end" className="p-3">
-          <Toast onClose={() => setToast({ ...toast, show: false })} show={toast.show} delay={3000} autohide bg={toast.bg}>
-            <Toast.Body className="text-white">{toast.message}</Toast.Body>
+        {/* ---------- TOAST NOTIFICATIONS ---------- */}
+        <ToastContainer position="bottom-end" className="p-4" style={{ zIndex: 1060 }}>
+          <Toast onClose={() => setToast({ ...toast, show: false })} show={toast.show} delay={3500} autohide bg={toast.bg} className="border-0 text-white shadow-lg rounded-3">
+            <Toast.Body className="fw-medium d-flex align-items-center">
+              <i className={`bi bi-${toast.bg === 'success' ? 'check-circle' : toast.bg === 'danger' ? 'x-octagon' : 'info-circle'} fs-5 me-2`}></i>
+              {toast.message}
+            </Toast.Body>
           </Toast>
         </ToastContainer>
       </div>
+
+      {/* ---------- CUSTOM CSS ---------- */}
+      <style>{`
+        .hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-lift:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+        .text-truncate-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .text-truncate-3 {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .tracking-wider {
+          letter-spacing: 1px;
+        }
+        .transition-hover {
+          transition: all 0.2s ease;
+        }
+        .transition-hover:hover {
+          background-color: #f8f9fa !important;
+          border-color: #dee2e6 !important;
+        }
+        /* Custom darker warning color for text contrast */
+        .text-warning-dark {
+          color: #b07d00 !important;
+        }
+      `}</style>
     </div>
   );
 }

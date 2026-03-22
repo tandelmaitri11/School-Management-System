@@ -9,31 +9,10 @@ import {
   Badge,
   Row,
   Col,
+  Card
 } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-// --- STYLES ---
-const styles = {
-  container: { backgroundColor: "#f8fafc", minHeight: "100vh", padding: "2rem" },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: "12px",
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    border: "none",
-    overflow: "hidden", // Ensures table header rounded corners work
-  },
-  tableHead: {
-    backgroundColor: "#f8fafc",
-    color: "#64748b",
-    fontSize: "0.75rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    fontWeight: "600",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  title: { fontWeight: "600", color: "#1e293b", fontSize: "0.95rem" },
-  description: { color: "#64748b", fontSize: "0.8rem", maxWidth: "300px" },
-};
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function StudentAssignments({ studentClasses }) {
   const studentId = localStorage.getItem("studentId");
@@ -47,7 +26,7 @@ export default function StudentAssignments({ studentClasses }) {
   const [subjects, setSubjects] = useState([]);
   const [lastViewed] = useState(localStorage.getItem("lastAssignmentViewTime"));
 
-  // --- FETCH DATA ---
+  // --- FETCH DATA (UNCHANGED) ---
   useEffect(() => {
     const fetchAssignments = async () => {
       let classes = studentClasses;
@@ -87,12 +66,12 @@ export default function StudentAssignments({ studentClasses }) {
     fetchAssignments();
   }, [studentClasses, studentId]);
 
-  // --- UPDATE VIEW TIME ---
+  // --- UPDATE VIEW TIME (UNCHANGED) ---
   useEffect(() => {
     localStorage.setItem("lastAssignmentViewTime", new Date().toISOString());
   }, []);
 
-  // --- FILTERS ---
+  // --- FILTERS (UNCHANGED) ---
   useEffect(() => {
     let filtered = assignments;
     if (selectedSubject) {
@@ -111,65 +90,93 @@ export default function StudentAssignments({ studentClasses }) {
     setFilteredAssignments(filtered);
   }, [assignments, selectedSubject, searchTerm]);
 
-  // --- HELPERS ---
+  // --- HELPERS (UNCHANGED) ---
   const getStatus = (dueDate) => {
-    if (!dueDate) return { label: "No Date", bg: "secondary" };
+    if (!dueDate) return { label: "No Date", bg: "secondary", text: "white" };
     const due = new Date(dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     due.setHours(0, 0, 0, 0);
 
-    if (due < today) return { label: "Overdue", bg: "danger", text: "white" };
-    if (due.getTime() === today.getTime()) return { label: "Due Today", bg: "warning", text: "dark" };
-    return { label: "Upcoming", bg: "success", text: "white" };
+    if (due < today) return { label: "Overdue", bg: "danger", text: "danger" };
+    if (due.getTime() === today.getTime()) return { label: "Due Today", bg: "warning", text: "warning-dark" };
+    return { label: "Upcoming", bg: "primary", text: "primary" };
   };
 
   const isNew = (date) => lastViewed && new Date(date) > new Date(lastViewed);
   const getSubmission = (assignmentId) =>
     submissions.find((s) => String(s.assignmentId?._id || s.assignmentId) === String(assignmentId));
 
+  // --- DERIVED STATS FOR DASHBOARD UI ---
+  const totalCount = filteredAssignments.length;
+  const submittedCount = filteredAssignments.filter(a => getSubmission(a._id)).length;
+  const pendingCount = totalCount - submittedCount;
+
   if (loading) return (
-    <div className="d-flex justify-content-center align-items-center vh-100">
-      <Spinner animation="border" variant="primary" />
+    <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
+      <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+      <p className="mt-3 fw-semibold text-muted tracking-wide">Loading Coursework...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="d-flex justify-content-center align-items-center min-vh-100 bg-light text-danger fw-bold">
+      <i className="bi bi-exclamation-triangle me-2"></i> {error}
     </div>
   );
 
   return (
-    <div style={styles.container}>
-      <div className="container-xl">
+    <div className="bg-light min-vh-100 py-4 py-md-5">
+      <div className="container-fluid px-3 px-md-5">
         
-        {/* --- PAGE HEADER --- */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        {/* ---------- PAGE HEADER & STATS ---------- */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3 border-bottom border-light-subtle pb-4">
           <div>
-            <h3 className="fw-bold text-dark mb-1">Assignments</h3>
-            <p className="text-muted mb-0 small">
-              Manage your coursework, check due dates, and download materials.
+            <Badge bg="primary" className="bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill border border-primary border-opacity-25">
+              <i className="bi bi-backpack me-2"></i>Study Hub
+            </Badge>
+            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>
+              Course Materials
+            </h2>
+            <p className="text-secondary mb-0 small">
+              Access your resources, check upcoming deadlines, and track your progress.
             </p>
+          </div>
+
+          <div className="d-flex gap-3">
+            <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
+              <span className="d-block text-muted small fw-bold text-uppercase tracking-wider">Pending</span>
+              <span className="fs-4 fw-bolder text-warning">{pendingCount}</span>
+            </div>
+            <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
+              <span className="d-block text-muted small fw-bold text-uppercase tracking-wider">Completed</span>
+              <span className="fs-4 fw-bolder text-success">{submittedCount}</span>
+            </div>
           </div>
         </div>
 
-        {/* --- TABLE CARD --- */}
-        <div style={styles.card}>
+        {/* ---------- MAIN CARD ---------- */}
+        <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
           
           {/* Toolbar */}
-          <div className="p-3 p-md-4 border-bottom bg-white">
-            <Row className="g-3">
-              <Col xs={12} md={5}>
-                <InputGroup>
-                  <InputGroup.Text className="bg-light border-end-0 text-muted">
+          <div className="bg-white p-3 p-md-4 border-bottom border-light-subtle">
+            <Row className="g-3 align-items-center">
+              <Col xs={12} md={6} lg={4}>
+                <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
+                  <InputGroup.Text className="bg-white border-0 text-muted ps-3">
                     <i className="bi bi-search"></i>
                   </InputGroup.Text>
                   <Form.Control
-                    placeholder="Search assignments..."
-                    className="bg-light border-start-0 shadow-none"
+                    placeholder="Search by title or subject..."
+                    className="border-0 shadow-none bg-white py-2"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </InputGroup>
               </Col>
-              <Col xs={12} md={3}>
+              <Col xs={12} md={4} lg={3}>
                 <Form.Select 
-                  className="bg-light border-0 shadow-none" 
+                  className="shadow-sm rounded-pill border py-2 text-secondary fw-medium" 
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value)}
                 >
@@ -182,21 +189,24 @@ export default function StudentAssignments({ studentClasses }) {
 
           {/* Table */}
           {filteredAssignments.length === 0 ? (
-            <div className="text-center py-5">
-              <div className="text-muted mb-2"><i className="bi bi-folder-x fs-1"></i></div>
-              <h6 className="text-muted">No assignments found</h6>
+            <div className="text-center py-5 my-4">
+              <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center p-4 mb-3">
+                <i className="bi bi-folder2-open fs-1 text-secondary opacity-50"></i>
+              </div>
+              <h5 className="fw-bold text-dark mb-1">No materials found</h5>
+              <p className="text-muted small">Try adjusting your search or filter criteria.</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <Table hover className="align-middle mb-0">
-                <thead style={styles.tableHead}>
+            <div className="table-responsive" style={{ minHeight: "400px" }}>
+              <Table hover className="align-middle mb-0 custom-hover-table">
+                <thead className="bg-light border-bottom border-light">
                   <tr>
-                    <th className="py-3 ps-4">Assignment Details</th>
-                    <th className="py-3">Subject</th>
-                    <th className="py-3">Status</th>
-                    <th className="py-3">Due Date</th>
-                    <th className="py-3">Grade</th>
-                    <th className="py-3 text-end pe-4">Actions</th>
+                    <th className="py-3 ps-4 text-uppercase small fw-bold text-secondary tracking-wide">Resource Info</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary tracking-wide">Subject</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary tracking-wide text-center">Status</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary tracking-wide text-center">Timeline</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary tracking-wide text-center">Progress</th>
+                    <th className="py-3 text-end pe-4 text-uppercase small fw-bold text-secondary tracking-wide">Download</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -207,85 +217,89 @@ export default function StudentAssignments({ studentClasses }) {
                     const grade = submission?.grade || "";
 
                     return (
-                      <tr key={a._id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <tr key={a._id} className="border-bottom border-light">
                         
                         {/* 1. Title & Description */}
                         <td className="ps-4 py-3">
                           <div className="d-flex align-items-start">
-                             <div className="me-3 mt-1 text-primary bg-primary-subtle rounded p-2">
-                                <i className="bi bi-journal-text fs-5"></i>
-                             </div>
-                             <div>
-                                <div style={styles.title}>
-                                  {a.title}
-                                  {isNewItem && (
-                                    <Badge bg="primary" className="ms-2 rounded-pill" style={{ fontSize: "0.6rem" }}>
-                                      NEW
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="text-truncate" style={styles.description}>
-                                  {a.description || "No description provided."}
-                                </div>
-                             </div>
+                            <div className="me-3 mt-1 bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                              <i className="bi bi-journal-richtext fs-5"></i>
+                            </div>
+                            <div>
+                              <div className="fw-bolder text-dark mb-1 d-flex align-items-center flex-wrap gap-2 text-truncate-2" style={{ fontSize: "0.95rem" }}>
+                                {a.title}
+                                {isNewItem && (
+                                  <Badge bg="danger" className="rounded-pill animate-pulse" style={{ fontSize: "0.6rem", letterSpacing: "0.5px" }}>
+                                    NEW
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-secondary small text-truncate-2" style={{ maxWidth: "350px", lineHeight: '1.4' }}>
+                                {a.description || "No additional instructions provided."}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
                         {/* 2. Subject */}
                         <td>
-                          <Badge bg="light" text="dark" className="border fw-normal px-2 py-1">
+                          <Badge bg="light" text="dark" className="border shadow-sm px-3 py-2 rounded-pill fw-medium">
                             {a.subject}
                           </Badge>
                         </td>
 
-                        {/* 3. Status Badge */}
-                        <td>
-                          <Badge bg={status.bg} text={status.text} className="rounded-pill fw-normal px-3">
+                        {/* 3. Timeline / Due Status */}
+                        <td className="text-center">
+                          <Badge 
+                            bg={status.bg} 
+                            className={`bg-opacity-10 text-${status.text} border border-${status.bg} border-opacity-50 px-3 py-2 rounded-pill fw-semibold`}
+                          >
                             {status.label}
                           </Badge>
                         </td>
 
                         {/* 4. Due Date */}
-                        <td className="text-muted small">
+                        <td className="text-center text-muted small fw-medium">
                           {a.dueDate ? (
-                             <>
-                                <i className="bi bi-calendar3 me-2"></i>
-                                {new Date(a.dueDate).toLocaleDateString()}
-                             </>
+                             <div className="d-flex align-items-center justify-content-center gap-1">
+                               <i className={`bi bi-calendar2-event ${status.label === 'Overdue' ? 'text-danger' : 'opacity-75'}`}></i>
+                               {new Date(a.dueDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric'})}
+                             </div>
                           ) : "No Date"}
                         </td>
 
-                        <td>
+                        {/* 5. Submission / Grade Status */}
+                        <td className="text-center">
                           {submission ? (
                             grade ? (
-                              <Badge bg="success" className="rounded-pill px-3">
-                                {grade}
+                              <Badge bg="success" className="rounded-pill px-3 py-2 shadow-sm fs-6">
+                                Grade: {grade}
                               </Badge>
                             ) : (
-                              <Badge bg="light" text="dark" className="border rounded-pill px-3">
-                                Submitted
-                              </Badge>
+                              <div className="d-inline-flex align-items-center text-success bg-success bg-opacity-10 px-3 py-1 rounded-pill border border-success border-opacity-25 small fw-bold">
+                                <i className="bi bi-check2-circle me-1 fs-6"></i> Submitted
+                              </div>
                             )
                           ) : (
-                            <span className="text-muted small">Not Submitted</span>
+                            <span className="text-muted small opacity-75 fw-medium"><i className="bi bi-dash"></i> Pending</span>
                           )}
                         </td>
 
-                        {/* 5. Actions */}
+                        {/* 6. Actions */}
                         <td className="text-end pe-4">
                           {a.file ? (
                             <Button
                               variant="outline-primary"
                               size="sm"
-                              className="rounded-pill px-3"
+                              className="rounded-pill px-3 py-1 fw-bold btn-hover-lift"
                               href={`http://localhost:3000/${a.file}`}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <i className="bi bi-download me-2"></i> Download
+                              <i className="bi bi-cloud-arrow-down-fill me-1"></i> Get File
                             </Button>
                           ) : (
-                            <span className="text-muted small fst-italic me-2">No File</span>
+                            <span className="text-muted small fst-italic me-3 opacity-50">No Attached File</span>
                           )}
                         </td>
                       </tr>
@@ -295,8 +309,49 @@ export default function StudentAssignments({ studentClasses }) {
               </Table>
             </div>
           )}
-        </div>
+        </Card>
       </div>
+
+      {/* ---------- CUSTOM STYLES ---------- */}
+      <style>{`
+        .custom-hover-table tbody tr {
+          transition: background-color 0.2s ease;
+        }
+        .custom-hover-table tbody tr:hover {
+          background-color: #f8f9fa;
+        }
+        .tracking-wide {
+          letter-spacing: 0.5px;
+        }
+        .tracking-wider {
+          letter-spacing: 1px;
+        }
+        .btn-hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px rgba(13, 110, 253, 0.15);
+        }
+        .text-truncate-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .animate-pulse {
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+          70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        /* Fix for Bootstrap warning text color contrast */
+        .text-warning-dark {
+          color: #b07d00 !important;
+        }
+      `}</style>
     </div>
   );
 }

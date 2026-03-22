@@ -1340,3 +1340,98 @@ exports.queueAllFeeReminders = async (_req, res) => {
     return res.status(500).json({ message: "Error queueing fee reminders" });
   }
 };
+
+/* =========================
+   STUDENT-WISE REPORT
+========================= */
+
+exports.getStudentWiseFeeReport = async (req, res) => {
+  try {
+    const { className } = req.query;
+
+    // 1. Build the student filter
+    const studentQuery = {};
+    if (className !== undefined && className !== null && className !== "") {
+      studentQuery.studentClass = Number(className);
+    }
+
+    // 2. Fetch all students matching the filter
+    const students = await Student.find(studentQuery)
+      .select("name studentClass stream studentId")
+      .lean();
+
+    // 3. Fetch all fee records for these specific students
+    const studentMongoIds = students.map((s) => String(s._id));
+    const feesRecords = await Fees.find({ studentId: { $in: studentMongoIds } }).lean();
+
+    // Create a map for fast lookup: { "studentMongoId": feeRecord }
+    const feesMap = feesRecords.reduce((acc, fee) => {
+      acc[fee.studentId] = fee;
+      return acc;
+    }, {});
+
+    // 4. Fetch class fees (to calculate expected dues for students missing a Fees document)
+    const allClassFees = await ClassFees.find().lean();
+    
+    // Helper function mirroring your existing logic
+    const getClassFee = (cName, stream) => {
+      const c = Number(cName);
+      const s = String(stream || "").trim();
+      if (s) {
+        const match = allClassFees.find((cf) => cf.className === c && cf.stream === s);
+        if (match) return match;
+      }
+      return allClassFees.find(
+        (cf) => cf.className === c && (!cf.stream || cf.stream.trim() === "")
+      );
+    };
+
+    // 5. Merge the data together
+    const studentWise = students.map((student) => {
+      const feeDoc = feesMap[String(student._id)];
+      let totalFees = 0;
+      let paidAmount = 0;
+      let basePending = 0;
+      let lateFee = 0;
+
+      if (feeDoc) {
+        totalFees = Number(feeDoc.totalFees || 0);
+        paidAmount = Number(feeDoc.paidAmount || 0);
+        basePending = Number(feeDoc.remainingAmount || 0);
+        lateFee = Number(feeDoc.lateFeeAccrued || 0);
+      } else {
+        // If they don't have a fee record yet, calculate based on class defaults
+        const cf = getClassFee(student.studentClass, student.stream);
+        totalFees = cf ? Number(cf.totalFees || 0) : 0;
+        paidAmount = 0;
+        basePending = totalFees;
+        lateFee = 0; 
+      }
+
+      return {
+        studentId: student.studentId || String(student._id),
+        studentName: student.name || "Unknown",
+        className: student.studentClass || "-",
+        totalFees,
+        paidAmount,
+        totalDue: basePending + lateFee,
+      };
+    });
+
+    // 6. Sort alphabetically by class, then by student name
+    studentWise.sort((a, b) => {
+      if (a.className === b.className) {
+        return String(a.studentName).localeCompare(String(b.studentName));
+      }
+      return Number(a.className) - Number(b.className);
+    });
+
+    return res.json({
+      success: true,
+      studentWise,
+    });
+  } catch (err) {
+    console.error("getStudentWiseFeeReport error:", err);
+    return res.status(500).json({ message: "Error fetching student-wise fee report" });
+  }
+};

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function StudentFees() {
   const [fees, setFees] = useState(null);
@@ -38,11 +40,11 @@ export default function StudentFees() {
   const total = useMemo(() => Number(fees?.totalFees || 0), [fees]);
   const paid = useMemo(() => Number(fees?.paidAmount || 0), [fees]);
 
+  // --- API LOGIC (UNCHANGED) ---
   const loadFees = async () => {
     try {
       setLoading(true);
       setMessage("");
-      // ✅ change endpoint if yours different
       const res = await api.get(`/api/fees/student/${studentMongoId}`);
       setFees(res.data.fees);
       setStudentMeta(res.data.studentMeta || null);
@@ -61,7 +63,6 @@ export default function StudentFees() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentMongoId]);
 
-  // ---------- Razorpay script ----------
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) return resolve(true);
@@ -90,7 +91,6 @@ export default function StudentFees() {
     });
   };
 
-  // ---------- Receipt download ----------
   const downloadReceipt = async (paymentId) => {
     try {
       if (!fees?._id) return setMessage("Fees record not found.");
@@ -125,13 +125,14 @@ export default function StudentFees() {
 
   const formatDateTime = (d) => {
     try {
-      return new Date(d).toLocaleString("en-IN");
+      return new Date(d).toLocaleString("en-IN", {
+         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
     } catch {
       return "-";
     }
   };
 
-  // ---------- Calculate pay amount ----------
   const calculatedPayAmount = useMemo(() => {
     if (!fees) return 0;
     if (payMode === "full") return totalDue;
@@ -146,22 +147,17 @@ export default function StudentFees() {
     setPayAmount(String(amt));
   };
 
-  // ---------- Pay Online ----------
   const payOnline = async () => {
     if (!fees) return;
-
     if (totalDue <= 0) {
       setMessage("Fees already paid.");
       return;
     }
-
     const entered = calculatedPayAmount;
-
     if (!entered || entered <= 0) {
       setMessage("Enter a valid amount.");
       return;
     }
-
     if (entered > totalDue) {
       setMessage(`Amount cannot be more than total due (${formatMoney(totalDue)}).`);
       return;
@@ -178,7 +174,6 @@ export default function StudentFees() {
         return;
       }
 
-      // create order
       const createRes = await api.post("/api/fees/razorpay/create-order", {
         studentId: studentMongoId,
         payAmount: entered,
@@ -194,21 +189,18 @@ export default function StudentFees() {
 
       const options = {
         key,
-        amount: order.amount, // paise
+        amount: order.amount,
         currency: order.currency,
         name: "MySchoolY",
         description: "School Fees Payment",
         order_id: order.id,
-
         prefill: {
           name: fees.studentName || "",
           email: student?.email || "",
           contact: student?.phone || "",
         },
-
         handler: async (response) => {
           try {
-            // IMPORTANT: backend expects these 3 keys
             const verifyPayload = {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -238,15 +230,13 @@ export default function StudentFees() {
             setPaying(false);
           }
         },
-
         modal: {
           ondismiss: () => {
             setMessage("Payment popup closed.");
             setPaying(false);
           },
         },
-
-        theme: { color: "#0d6efd" },
+        theme: { color: "#000000" }, // Updated to sleek black
       };
 
       const rzp = new window.Razorpay(options);
@@ -263,301 +253,394 @@ export default function StudentFees() {
       setPaying(false);
     }
   };
+  // --- END API LOGIC ---
 
-  // ---------- UI States ----------
-  if (message && !fees && !loading)
+  if (message && !fees && !loading) {
     return (
-      <div className="container-fluid container-lg mt-4">
-        <div className="alert alert-info text-center">{message}</div>
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
+        <i className="bi bi-wallet2 text-muted mb-3 opacity-50" style={{ fontSize: "4rem" }}></i>
+        <h5 className="fw-semibold text-muted">{message}</h5>
       </div>
     );
+  }
 
-  if (loading || !fees)
+  if (loading || !fees) {
     return (
-      <div className="text-center mt-5">
-        <div className="spinner-border text-primary"></div>
-        <p className="mt-2 text-muted">Loading fees...</p>
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
+        <div className="spinner-border text-dark mb-3" style={{ width: "2.5rem", height: "2.5rem", borderWidth: "3px" }}></div>
+        <div className="text-muted fw-medium text-uppercase tracking-wider small">Fetching Financial Data...</div>
       </div>
     );
+  }
 
   return (
-    <div className="container-xxl my-4">
-      {/* Header */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4">
-        <div className="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+    <div className="bg-light min-vh-100 py-4 py-md-5" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div className="container-fluid px-3 px-md-5">
+        
+        {/* ---------- PAGE HEADER ---------- */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-4 border-bottom border-light-subtle gap-3">
           <div>
-            <h3 className="fw-bold mb-1">Fees & Payments</h3>
-            <div className="text-muted small">
-              Check your fee status, pay online, and download receipts.
-            </div>
+            <span className="badge bg-dark bg-opacity-10 text-dark mb-2 px-3 py-2 rounded-pill fw-bold border border-dark border-opacity-25" style={{ letterSpacing: "0.5px" }}>
+              <i className="bi bi-bank me-2"></i>Financial Center
+            </span>
+            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: "-0.5px" }}>
+              Tuition & Fees
+            </h2>
+            <p className="text-secondary mb-0 small">
+              Manage your academic payments, view transaction history, and download official receipts.
+            </p>
           </div>
-          <span className={`badge ${isPaid ? "bg-success" : "bg-warning text-dark"} px-3 py-2`}>
-            {isPaid ? "Paid" : "Pending"}
-          </span>
-        </div>
-      </div>
-
-      {/* Message */}
-      {message && (
-        <div className="alert alert-info text-center" role="alert">
-          {message}
-        </div>
-      )}
-
-      <div className="row g-4">
-        {/* LEFT: Summary + History */}
-        <div className="col-12 col-lg-8">
-          {/* Summary Cards */}
-          <div className="row g-3 mb-4">
-            <div className="col-12 col-sm-6">
-              <div className="card border-0 shadow-sm rounded-4 h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Total Fees</div>
-                  <div className="fs-3 fw-bold">{formatMoney(total)}</div>
-                  <div className="text-muted small">
-                    Class: {studentMeta?.studentClass ?? fees.studentClass}
-                    {studentMeta?.section ? ` | Section: ${studentMeta.section}` : ""}
-                  </div>
-                  <div className="text-muted small">Stream: {studentMeta?.stream || "General"}</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-12 col-sm-6">
-              <div className="card border-0 shadow-sm rounded-4 h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Paid</div>
-                  <div className="fs-3 fw-bold text-success">{formatMoney(paid)}</div>
-                  <div className="text-muted small">Updated from payment history</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-12 col-sm-6">
-              <div className="card border-0 shadow-sm rounded-4 h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Base Pending</div>
-                  <div className={`fs-3 fw-bold ${isPaid ? "text-success" : "text-danger"}`}>
-                    {formatMoney(baseRemaining)}
-                  </div>
-                  <div className="text-muted small">{isPaid ? "Nothing due" : "Pay before due date"}</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-12 col-sm-6">
-              <div className="card border-0 shadow-sm rounded-4 h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Late Fee / Total Due</div>
-                  <div className="fw-semibold">
-                    {formatMoney(lateFee)} / <span className="text-danger">{formatMoney(totalDue)}</span>
-                  </div>
-                  <div className="text-muted small">
-                    Due Date:{" "}
-                    {feeSummary?.dueDate ? new Date(feeSummary.dueDate).toLocaleDateString("en-IN") : "N/A"}
-                  </div>
-                  <div className="text-muted small mt-1">
-                    Fee Plan: {feeConfig?.stream ? `${feeConfig.stream} stream` : "General class fee"}
-                  </div>
-                  <button
-                    className="btn btn-sm btn-outline-primary mt-2"
-                    disabled={!lastPayment?._id}
-                    onClick={() => downloadReceipt(lastPayment._id)}
-                  >
-                    Generate Full Receipt
-                  </button>
-                </div>
-              </div>
-            </div>
+          
+          <div>
+            {isPaid ? (
+               <div className="d-flex align-items-center gap-2 bg-success bg-opacity-10 text-success px-4 py-2 rounded-pill fw-bold border border-success border-opacity-25 shadow-sm">
+                  <i className="bi bi-check-circle-fill fs-5"></i>
+                  Account Up to Date
+               </div>
+            ) : (
+               <div className="d-flex align-items-center gap-2 bg-danger bg-opacity-10 text-danger px-4 py-2 rounded-pill fw-bold border border-danger border-opacity-25 shadow-sm">
+                  <i className="bi bi-exclamation-circle-fill fs-5"></i>
+                  Payment Due
+               </div>
+            )}
           </div>
+        </div>
 
-          {/* Payment History */}
-          <div className="card border-0 shadow-sm rounded-4">
-            <div className="card-body">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <h5 className="mb-0">Payment History</h5>
-                <span className="text-muted small">{(fees.paymentHistory || []).length} payments</span>
+        {/* Global Message Alert */}
+        {message && (
+          <div className="alert alert-dark bg-white border border-dark shadow-sm d-flex align-items-center mb-4 rounded-4" role="alert">
+            <i className="bi bi-info-circle-fill fs-5 me-3 text-dark"></i>
+            <span className="fw-medium">{message}</span>
+            <button type="button" className="btn-close ms-auto" aria-label="Close" onClick={() => setMessage("")}></button>
+          </div>
+        )}
+
+        <div className="row g-4">
+          
+          {/* ---------- LEFT COLUMN: STATS & HISTORY ---------- */}
+          <div className="col-12 col-xl-8 d-flex flex-column gap-4">
+            
+            {/* High-Level Overview Grid */}
+            <div className="row g-4">
+               {/* Total Assessment */}
+               <div className="col-md-4">
+                  <div className="card h-100 border-0 shadow-sm rounded-4 bg-white transition-hover">
+                     <div className="card-body p-4">
+                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider" style={{ fontSize: "0.7rem" }}>Annual Assessment</div>
+                        <h3 className="fw-bolder text-dark mb-1">{formatMoney(total)}</h3>
+                        <div className="text-muted small mt-2 d-flex flex-column gap-1 border-top pt-3">
+                           <span className="d-flex align-items-center gap-2"><i className="bi bi-building"></i> Class {studentMeta?.studentClass ?? fees.studentClass} {studentMeta?.section ? `(Sec ${studentMeta.section})` : ""}</span>
+                           <span className="d-flex align-items-center gap-2"><i className="bi bi-book"></i> {studentMeta?.stream || "General"} Plan</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Amount Paid */}
+               <div className="col-md-4">
+                  <div className="card h-100 border-0 shadow-sm rounded-4 bg-white transition-hover">
+                     <div className="card-body p-4 d-flex flex-column">
+                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider" style={{ fontSize: "0.7rem" }}>Total Remitted</div>
+                        <h3 className="fw-bolder text-success mb-1">{formatMoney(paid)}</h3>
+                        <div className="text-success small fw-medium mt-auto bg-success bg-opacity-10 px-2 py-1 rounded d-inline-block w-auto align-self-start border border-success border-opacity-25">
+                           <i className="bi bi-arrow-up-right me-1"></i> Recorded to date
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Outstanding Balance */}
+               <div className="col-md-4">
+                  <div className={`card h-100 shadow-sm rounded-4 transition-hover ${isPaid ? 'border-0 bg-white' : 'border border-dark bg-white'}`}>
+                     <div className="card-body p-4 d-flex flex-column">
+                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider d-flex justify-content-between" style={{ fontSize: "0.7rem" }}>
+                           Outstanding Balance
+                           {!isPaid && <i className="bi bi-exclamation-triangle text-danger fs-6 lh-1"></i>}
+                        </div>
+                        <h3 className={`fw-bolder mb-1 ${isPaid ? "text-success" : "text-dark"}`}>
+                           {formatMoney(totalDue)}
+                        </h3>
+                        {/* Breakout pills */}
+                        <div className="d-flex gap-2 mt-auto">
+                           <span className="badge bg-light text-dark border px-2 py-1 fw-medium" title="Base Pending">
+                              Base: {formatMoney(baseRemaining)}
+                           </span>
+                           {lateFee > 0 && (
+                              <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 fw-medium" title="Late Fee Penalty">
+                                 Late: {formatMoney(lateFee)}
+                              </span>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Payment History Table */}
+            <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden flex-grow-1">
+              <div className="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                 <div>
+                    <h5 className="fw-bold mb-1">Transaction Ledger</h5>
+                    <span className="text-muted small fw-medium">{(fees.paymentHistory || []).length} recorded payments</span>
+                 </div>
+                 {lastPayment?._id && (
+                    <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm d-none d-sm-block" onClick={() => downloadReceipt(lastPayment._id)}>
+                       <i className="bi bi-printer me-2"></i>Latest Receipt
+                    </button>
+                 )}
               </div>
 
               <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="table-light">
+                <table className="table table-hover align-middle mb-0 custom-table">
+                  <thead className="bg-light">
                     <tr>
-                      <th>#</th>
-                      <th>Amount</th>
-                      <th>Mode</th>
-                      <th>Date</th>
-                      <th>Txn</th>
-                      <th>Order</th>
-                      <th>Receipt</th>
+                      <th className="py-3 ps-4 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Ref #</th>
+                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Date & Time</th>
+                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Method</th>
+                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Amount</th>
+                      <th className="py-3 text-end pe-4 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {fees.paymentHistory?.length ? (
-                      fees.paymentHistory.map((p, idx) => (
-                        <tr key={p._id || idx}>
-                          <td>{idx + 1}</td>
-                          <td className="fw-semibold">{formatMoney(p.amount)}</td>
-                          <td>
-                            <span className={`badge ${String(p.mode).toLowerCase() === "online" ? "bg-primary" : "bg-secondary"}`}>
-                              {p.mode}
-                            </span>
-                          </td>
-                          <td>{formatDateTime(p.date)}</td>
-                          <td className="text-truncate" style={{ maxWidth: 160 }}>{p.transactionId || "-"}</td>
-                          <td className="text-truncate" style={{ maxWidth: 160 }}>{p.orderId || "-"}</td>
-                          <td>
-                            <button className="btn btn-sm btn-outline-primary" onClick={() => downloadReceipt(p._id)}>
-                              Download
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      fees.paymentHistory.map((p, idx) => {
+                         const isOnline = String(p.mode).toLowerCase() === "online";
+                         return (
+                           <tr key={p._id || idx} className="border-bottom border-light-subtle">
+                             <td className="ps-4 py-3">
+                                <div className="text-dark fw-bold" style={{ fontSize: "0.85rem" }}>{p.receiptNo || `TRX-${idx+1}`}</div>
+                                <div className="text-muted small text-truncate" style={{ maxWidth: "120px", fontSize: "0.7rem" }}>
+                                   {p.transactionId || p.orderId || "-"}
+                                </div>
+                             </td>
+                             <td className="text-secondary small fw-medium">
+                                {formatDateTime(p.date)}
+                             </td>
+                             <td>
+                               <div className="d-flex align-items-center gap-2">
+                                  <div className={`rounded-circle d-flex align-items-center justify-content-center ${isOnline ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: "24px", height: "24px", fontSize: "10px" }}>
+                                     <i className={`bi ${isOnline ? 'bi-globe' : 'bi-cash'}`}></i>
+                                  </div>
+                                  <span className="fw-semibold text-dark small">{p.mode}</span>
+                               </div>
+                             </td>
+                             <td className="fw-bolder text-dark">
+                                {formatMoney(p.amount)}
+                             </td>
+                             <td className="text-end pe-4">
+                               <button 
+                                 className="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center ms-auto shadow-sm btn-icon-hover" 
+                                 style={{ width: "32px", height: "32px" }}
+                                 onClick={() => downloadReceipt(p._id)}
+                                 title="Download PDF Receipt"
+                               >
+                                 <i className="bi bi-download text-dark"></i>
+                               </button>
+                             </td>
+                           </tr>
+                         )
+                      })
                     ) : (
                       <tr>
-                        <td colSpan="7" className="text-center text-muted py-4">
-                          No payments yet
+                        <td colSpan="5" className="text-center text-muted py-5">
+                           <i className="bi bi-journal-x fs-1 d-block mb-3 opacity-25"></i>
+                           No payment transactions recorded yet.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-
-              <div className="small text-muted mt-3">
-                Online payments show Razorpay IDs. Cash payments show CASH reference.
+              <div className="card-footer bg-white p-3 border-top text-center text-muted" style={{ fontSize: "0.75rem" }}>
+                 Online transactions are secured by Razorpay. Cash payments are verified by administration.
               </div>
             </div>
           </div>
-        </div>
 
-        {/* RIGHT: Pay Panel */}
-        <div className="col-12 col-lg-4">
-          <div className="card border-0 shadow-sm rounded-4 position-sticky" style={{ top: 18 }}>
-            <div className="card-body">
-              <h5 className="mb-1">Pay Fees Online</h5>
-              <div className="text-muted small mb-3">
-                Pay with UPI / Card / Netbanking via Razorpay.
+          {/* ---------- RIGHT COLUMN: PAYMENT PORTAL ---------- */}
+          <div className="col-12 col-xl-4">
+            <div className="card border border-dark shadow-lg rounded-4 position-sticky bg-white overflow-hidden" style={{ top: 20 }}>
+              
+              {/* Portal Header */}
+              <div className="bg-dark text-white p-4">
+                 <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="fw-bold m-0"><i className="bi bi-credit-card-2-front me-2 opacity-75"></i>Payment Portal</h5>
+                 </div>
+                 <div className="opacity-75 small fw-medium lh-sm" style={{ maxWidth: "90%" }}>
+                    Secure online processing via UPI, Credit Card, or Netbanking.
+                 </div>
               </div>
 
-              {isPaid ? (
-                <div className="alert alert-success mb-0">
-                  ✅ Your fees are fully paid.
-                </div>
-              ) : (
-                <>
-                  <div className="p-3 rounded-4 bg-light border mb-3">
-                    <div className="d-flex justify-content-between">
-                      <div className="text-muted small">Total Due</div>
-                      <div className="fw-bold text-danger">{formatMoney(totalDue)}</div>
+              <div className="card-body p-4 bg-white">
+                {isPaid ? (
+                  <div className="text-center py-4">
+                    <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow" style={{ width: "64px", height: "64px" }}>
+                       <i className="bi bi-check-lg fs-1"></i>
                     </div>
-                    <div className="d-flex justify-content-between mt-1">
-                      <div className="text-muted small">Base Pending</div>
-                      <div className="fw-semibold">{formatMoney(baseRemaining)}</div>
+                    <h5 className="fw-bold text-dark mb-1">All Clear!</h5>
+                    <p className="text-muted small mb-0">Your account balance is currently zero.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Bill Breakdown Box */}
+                    <div className="bg-light p-3 rounded-4 border border-light-subtle mb-4">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="text-muted small fw-semibold">Base Tuition Pending</span>
+                        <span className="fw-bold text-dark">{formatMoney(baseRemaining)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="text-muted small fw-semibold">Late Penalties</span>
+                        <span className="fw-bold text-danger">{formatMoney(lateFee)}</span>
+                      </div>
+                      <hr className="my-2 border-secondary opacity-10" />
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="text-dark fw-bold">Total Assessment Due</span>
+                        <span className="fs-4 fw-bolder text-dark">{formatMoney(totalDue)}</span>
+                      </div>
+                      {feeSummary?.dueDate && (
+                         <div className="text-end mt-1 text-danger fw-bold" style={{ fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            Due By: {new Date(feeSummary.dueDate).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric'})}
+                         </div>
+                      )}
                     </div>
-                    <div className="d-flex justify-content-between mt-1">
-                      <div className="text-muted small">Late Fee</div>
-                      <div className="fw-semibold text-danger">{formatMoney(lateFee)}</div>
+
+                    {/* Payment Form */}
+                    <div className="mb-4">
+                      <h6 className="fw-bold text-dark mb-3 fs-6">Select Remittance Amount</h6>
+
+                      {/* Custom Radio Cards */}
+                      <div className="d-flex flex-column gap-2 mb-3">
+                         {/* Option 1: Full Payment */}
+                         <div 
+                           className={`p-3 rounded-3 border cursor-pointer transition-hover d-flex align-items-center gap-3 ${payMode === 'full' ? 'border-dark bg-dark text-white shadow-sm' : 'bg-white text-dark'}`}
+                           onClick={() => { if(!paying) setPayMode("full") }}
+                           style={{ cursor: paying ? 'not-allowed' : 'pointer' }}
+                         >
+                            <div className={`rounded-circle border d-flex align-items-center justify-content-center ${payMode === 'full' ? 'border-white bg-white text-dark' : 'border-secondary bg-light'}`} style={{ width: '20px', height: '20px' }}>
+                               {payMode === 'full' && <div className="bg-dark rounded-circle" style={{ width: '10px', height: '10px' }}></div>}
+                            </div>
+                            <div className="flex-grow-1">
+                               <div className="fw-bold" style={{ fontSize: "0.9rem" }}>Settle Full Balance</div>
+                            </div>
+                            <div className="fw-bolder fs-6">{formatMoney(totalDue)}</div>
+                         </div>
+
+                         {/* Option 2: Custom Amount */}
+                         <div 
+                           className={`p-3 rounded-3 border cursor-pointer transition-hover d-flex align-items-center gap-3 ${payMode === 'custom' ? 'border-dark bg-dark text-white shadow-sm' : 'bg-white text-dark'}`}
+                           onClick={() => { if(!paying) setPayMode("custom") }}
+                           style={{ cursor: paying ? 'not-allowed' : 'pointer' }}
+                         >
+                            <div className={`rounded-circle border d-flex align-items-center justify-content-center ${payMode === 'custom' ? 'border-white bg-white text-dark' : 'border-secondary bg-light'}`} style={{ width: '20px', height: '20px' }}>
+                               {payMode === 'custom' && <div className="bg-dark rounded-circle" style={{ width: '10px', height: '10px' }}></div>}
+                            </div>
+                            <div className="fw-bold" style={{ fontSize: "0.9rem" }}>Custom Installment</div>
+                         </div>
+                      </div>
+
+                      {/* Custom Input Field (Expands if selected) */}
+                      {payMode === "custom" && (
+                        <div className="p-3 bg-light rounded-3 border border-dark border-opacity-25 mt-2 animate-fade-in">
+                          <label className="text-muted fw-semibold small mb-2 d-block text-uppercase" style={{ letterSpacing: "0.5px" }}>Enter Amount (₹)</label>
+                          <div className="input-group input-group-lg shadow-sm">
+                            <span className="input-group-text bg-white border-end-0 fw-bold text-dark">₹</span>
+                            <input
+                              type="number"
+                              min="1"
+                              className="form-control border-start-0 fw-bold text-dark shadow-none"
+                              placeholder={`Max ${totalDue}`}
+                              value={payAmount}
+                              onChange={(e) => setPayAmount(e.target.value)}
+                              disabled={paying}
+                              style={{ fontSize: "1.2rem" }}
+                            />
+                          </div>
+                          
+                          {/* Quick Select Pills */}
+                          <div className="d-flex flex-wrap gap-2 mt-3">
+                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.25)} disabled={paying}>25%</button>
+                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.50)} disabled={paying}>50%</button>
+                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.75)} disabled={paying}>75%</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="d-flex justify-content-between mt-1">
-                      <div className="text-muted small">Student</div>
-                      <div className="fw-semibold text-truncate" style={{ maxWidth: 170 }}>
-                        {fees.studentName}
+
+                    {/* Checkout Button Area */}
+                    <div className="mt-4 pt-4 border-top">
+                      <button 
+                         className="btn btn-dark w-100 py-3 fw-bolder fs-6 rounded-pill shadow d-flex justify-content-center align-items-center gap-2 btn-checkout" 
+                         onClick={payOnline} 
+                         disabled={paying}
+                      >
+                        {paying ? (
+                           <><div className="spinner-border spinner-border-sm text-light" /> Establishing secure link...</>
+                        ) : (
+                           <><i className="bi bi-shield-lock-fill"></i> Proceed to Pay {formatMoney(calculatedPayAmount || 0)}</>
+                        )}
+                      </button>
+
+                      <div className="d-flex align-items-center justify-content-center gap-3 mt-3 opacity-50">
+                         <i className="bi bi-credit-card-fill fs-5"></i>
+                         <i className="bi bi-bank fs-5"></i>
+                         <i className="bi bi-phone-fill fs-5"></i>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Choose option */}
-                  <div className="mb-3">
-                    <div className="fw-semibold mb-2">Choose payment option</div>
-
-                    <div className="form-check mb-2">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        id="payFull"
-                        checked={payMode === "full"}
-                        onChange={() => setPayMode("full")}
-                        disabled={paying}
-                      />
-                      <label className="form-check-label" htmlFor="payFull">
-                        Pay full due ({formatMoney(totalDue)})
-                      </label>
-                    </div>
-
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        id="payCustom"
-                        checked={payMode === "custom"}
-                        onChange={() => setPayMode("custom")}
-                        disabled={paying}
-                      />
-                      <label className="form-check-label" htmlFor="payCustom">
-                        Pay custom amount
-                      </label>
-                    </div>
-
-                    {payMode === "custom" && (
-                      <div className="mt-2">
-                        <input
-                          type="number"
-                          min="1"
-                          className="form-control"
-                          placeholder={`Max ${formatMoney(totalDue)}`}
-                          value={payAmount}
-                          onChange={(e) => setPayAmount(e.target.value)}
-                          disabled={paying}
-                        />
-                        <div className="d-flex flex-wrap gap-2 mt-2">
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setQuickPay(0.25)} disabled={paying}>
-                            25%
-                          </button>
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setQuickPay(0.5)} disabled={paying}>
-                            50%
-                          </button>
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setQuickPay(0.75)} disabled={paying}>
-                            75%
-                          </button>
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setPayMode("full"); setPayAmount(""); }} disabled={paying}>
-                            Full
-                          </button>
-                        </div>
-                        <div className="form-text">
-                          You can pay in installments.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pay button */}
-                  <div className="d-grid gap-2">
-                    <button className="btn btn-success btn-lg" onClick={payOnline} disabled={paying}>
-                      {paying ? "Processing..." : `Pay Now (${formatMoney(calculatedPayAmount || 0)})`}
-                    </button>
-
-                    <button
-                      className="btn btn-outline-primary"
-                      onClick={() => {
-                        if (!lastPayment?._id) return setMessage("No payment found to download receipt.");
-                        downloadReceipt(lastPayment._id);
-                      }}
-                      disabled={!lastPayment?._id || paying}
-                    >
-                      Generate Full Receipt
-                    </button>
-                  </div>
-
-                  {/* Test card hint */}
-                  <div className="mt-3 small text-muted">
-                    <div className="fw-semibold">Test Mode Card:</div>
-                    <div>5267 3181 8797 5449 • 12/30 • 123 • OTP 123456</div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
+            
+            {/* Developer Testing Note (Optional) */}
+            <div className="mt-4 text-center">
+               <div className="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-2 fw-medium">
+                  <i className="bi bi-tools me-1"></i> Testing Gateway
+               </div>
+               <div className="small text-muted mt-2 px-4" style={{ fontSize: "0.7rem", lineHeight: "1.5" }}>
+                  For testing, use card <strong>5267 3181 8797 5449</strong>, any future date, CVV 123, and OTP 123456.
+               </div>
+            </div>
+
           </div>
         </div>
       </div>
+
+      {/* --- CUSTOM CSS --- */}
+      <style>{`
+        .tracking-wider {
+          letter-spacing: 0.5px;
+        }
+        .transition-hover {
+          transition: all 0.2s ease;
+        }
+        .transition-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        .btn-icon-hover:hover {
+          background-color: #f8f9fa;
+          border-color: #ced4da !important;
+        }
+        .custom-table tbody tr { transition: background-color 0.2s ease; }
+        .custom-table tbody tr:hover { background-color: #f8f9fa; }
+        .btn-checkout {
+          transition: all 0.2s ease;
+        }
+        .btn-checkout:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
+        }
+        .btn-checkout:active:not(:disabled) {
+          transform: translateY(0);
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
-

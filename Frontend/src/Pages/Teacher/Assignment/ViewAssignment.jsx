@@ -13,6 +13,7 @@ import {
   OverlayTrigger,
   Tooltip,
 } from "react-bootstrap";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function ViewAssignments() {
   const teacherId = localStorage.getItem("teacherId");
@@ -64,6 +65,7 @@ export default function ViewAssignments() {
 
   useEffect(() => {
     fetchAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherId]);
 
   useEffect(() => {
@@ -288,131 +290,159 @@ export default function ViewAssignments() {
 
   if (loading)
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: "70vh" }}>
-        <Spinner animation="grow" variant="primary" />
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
+        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
+        <p className="mt-3 fw-semibold text-muted">Loading Assignments...</p>
       </div>
     );
 
   return (
-    <div className="container py-4">
-      {/* Header Area */}
-      <div className="d-flex align-items-center justify-content-between mb-5">
+    <div className="container-fluid bg-light min-vh-100 py-4 px-3 px-md-5">
+      {/* ---------- HEADER AREA ---------- */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
         <div>
-          <h3 className="fw-bold text-dark mb-1">Teacher Dashboard</h3>
-          <p className="text-muted small mb-0">Manage your active assignments and grade submissions.</p>
+          <Badge bg="primary" className="bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill border border-primary border-opacity-25">
+            <i className="bi bi-journal-check me-2"></i>Teacher Workspace
+          </Badge>
+          <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>Active Assignments</h2>
+          <p className="text-secondary small mb-0">Manage homework, track deadlines, and review student submissions.</p>
         </div>
-        <Badge bg="primary" pill className="px-3 py-2">
-          {assignments.length} Total Assignments
-        </Badge>
+        <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
+          <span className="d-block text-muted small fw-bold text-uppercase" style={{ letterSpacing: '1px' }}>Total Posted</span>
+          <span className="fs-4 fw-bolder text-primary">{assignments.length}</span>
+        </div>
       </div>
 
-      {/* Main Content Card */}
-      <Card className="border-0 shadow-sm overflow-hidden" style={{ borderRadius: "15px" }}>
+      {/* ---------- MAIN DATA TABLE ---------- */}
+      <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
         <div className="table-responsive">
-          <Table hover className="align-middle mb-0 custom-table">
-            <thead className="bg-light">
+          <Table hover className="align-middle mb-0 custom-hover-table border-light">
+            <thead className="bg-light border-bottom border-light">
               <tr>
-                <th className="py-3 ps-4 text-uppercase small fw-bold text-muted">Details</th>
-                <th className="py-3 text-uppercase small fw-bold text-muted">Scope</th>
-                <th className="py-3 text-uppercase small fw-bold text-muted text-center">Due Date</th>
-                <th className="py-3 text-uppercase small fw-bold text-muted text-center">Attachment</th>
-                <th className="py-3 pe-4 text-uppercase small fw-bold text-muted text-end">Actions</th>
+                <th className="py-3 ps-4 text-uppercase small fw-bold text-secondary" style={{ letterSpacing: '0.5px' }}>Assignment Details</th>
+                <th className="py-3 text-uppercase small fw-bold text-secondary" style={{ letterSpacing: '0.5px' }}>Class Scope</th>
+                <th className="py-3 text-uppercase small fw-bold text-secondary text-center" style={{ letterSpacing: '0.5px' }}>Due Date</th>
+                <th className="py-3 text-uppercase small fw-bold text-secondary text-center" style={{ letterSpacing: '0.5px' }}>Resource</th>
+                <th className="py-3 pe-4 text-uppercase small fw-bold text-secondary text-end" style={{ letterSpacing: '0.5px' }}>Manage</th>
               </tr>
             </thead>
             <tbody>
               {assignments.length ? (
-                assignments.map((ass) => (
-                  <tr key={ass._id}>
-                    <td className="ps-4 py-3">
-                      <div className="fw-bold text-dark">{ass.title}</div>
-                      <div className="small text-primary fw-semibold">{ass.subject}</div>
-                    </td>
-                    <td>
-                      <div className="d-flex gap-1">
-                        <Badge bg="secondary" className="bg-opacity-10 text-secondary border">
-                          Cl: {Array.isArray(ass.classAssigned) ? ass.classAssigned.join(", ") : ass.classAssigned}
-                        </Badge>
-                        <Badge bg="light" text="dark" className="border">
-                          Sec: {ass.sectionAssigned || "N/A"}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 small text-muted">Stream: {ass.streamAssigned || "N/A"}</div>
-                    </td>
-                    <td className="text-center">
-                      <span className={`small fw-bold ${new Date(ass.dueDate) < new Date() ? 'text-danger' : 'text-dark'}`}>
-                        {ass.dueDate ? ass.dueDate.split("T")[0] : "-"}
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      {ass.file ? (
-                        <OverlayTrigger placement="top" overlay={tt("Open attached file")}>
-                          <Button 
-                            variant="link" 
-                            className="p-0 text-decoration-none small"
-                            href={`http://localhost:3000/${ass.file}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <i className="bi bi-paperclip me-1"></i>View File
-                          </Button>
-                        </OverlayTrigger>
-                      ) : (
-                        <span className="text-muted opacity-50 small">—</span>
-                      )}
-                    </td>
-                    <td className="pe-4 text-end">
-                      <div className="d-flex gap-2 justify-content-end">
-                        <OverlayTrigger placement="top" overlay={tt("View student submissions")}>
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            className="rounded-pill px-3"
-                            onClick={() => handleViewSubmissions(ass._id)}
-                          >
-                            Submissions
-                          </Button>
-                        </OverlayTrigger>
-                        {ass.dueDate && new Date(ass.dueDate) < new Date() && (
-                          <OverlayTrigger placement="top" overlay={tt("Extend assignment due date")}>
-                            <Button
+                assignments.map((ass) => {
+                  const isOverdue = ass.dueDate && new Date(ass.dueDate) < new Date();
+                  
+                  return (
+                    <tr key={ass._id} className="border-bottom border-light">
+                      <td className="ps-4 py-3">
+                        <div className="fw-bold text-dark fs-6 mb-1">{ass.title}</div>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 fw-medium rounded-pill px-2 py-1">
+                            <i className="bi bi-book me-1"></i> {ass.subject}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="d-flex flex-wrap gap-2 mb-1">
+                          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 rounded">
+                            Class {Array.isArray(ass.classAssigned) ? ass.classAssigned.join(", ") : ass.classAssigned}
+                          </span>
+                          <span className="badge bg-light text-dark border px-2 py-1 rounded">
+                            Sec {ass.sectionAssigned || "N/A"}
+                          </span>
+                        </div>
+                        <div className="small text-muted fw-medium mt-1 d-flex align-items-center">
+                          <i className="bi bi-diagram-2 me-1 opacity-75"></i> 
+                          {ass.streamAssigned || "General Stream"}
+                        </div>
+                      </td>
+                      <td className="text-center">
+                        <div className={`d-inline-flex align-items-center px-3 py-1 rounded-pill border ${isOverdue ? 'bg-danger bg-opacity-10 text-danger border-danger border-opacity-25' : 'bg-light text-dark'}`}>
+                          <i className={`bi bi-calendar-event me-2 ${isOverdue ? '' : 'text-muted'}`}></i>
+                          <span className="fw-semibold small">
+                            {ass.dueDate ? ass.dueDate.split("T")[0] : "No Date"}
+                          </span>
+                        </div>
+                        {isOverdue && <div className="text-danger small mt-1 fw-bold" style={{ fontSize: '0.7rem' }}>OVERDUE</div>}
+                      </td>
+                      <td className="text-center">
+                        {ass.file ? (
+                          <OverlayTrigger placement="top" overlay={tt("Download attached resource")}>
+                            <Button 
+                              variant="outline-primary" 
                               size="sm"
-                              variant="warning"
-                              className="rounded-pill px-3"
-                              onClick={() => handleExtendDueDate(ass)}
+                              className="rounded-pill px-3 py-1 fw-medium border-opacity-50"
+                              href={`http://localhost:3000/${ass.file}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
-                              Extend Date
+                              <i className="bi bi-paperclip me-1"></i> View
                             </Button>
                           </OverlayTrigger>
+                        ) : (
+                          <span className="text-muted small px-3 py-1 bg-light rounded-pill border d-inline-block">No File</span>
                         )}
-                        <OverlayTrigger placement="top" overlay={tt("Edit assignment")}>
-                          <Button
-                            size="sm"
-                            variant="light"
-                            className="rounded-circle border"
-                            onClick={() => handleEdit(ass)}
-                          >
-                            ✎
-                          </Button>
-                        </OverlayTrigger>
-                        <OverlayTrigger placement="top" overlay={tt("Delete assignment")}>
-                          <Button
-                            size="sm"
-                            variant="outline-danger"
-                            className="rounded-circle"
-                            onClick={() => handleDelete(ass._id)}
-                          >
-                            ✕
-                          </Button>
-                        </OverlayTrigger>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="pe-4 text-end">
+                        <div className="d-flex gap-2 justify-content-end align-items-center">
+                          <OverlayTrigger placement="top" overlay={tt("Review Submissions")}>
+                            <Button
+                              variant="primary"
+                              className="btn-icon-hover shadow-sm d-flex align-items-center gap-1 rounded-pill px-3 py-1"
+                              onClick={() => handleViewSubmissions(ass._id)}
+                            >
+                              <i className="bi bi-ui-checks"></i>
+                              <span className="small fw-semibold d-none d-xl-inline">Grade</span>
+                            </Button>
+                          </OverlayTrigger>
+
+                          <div className="vr mx-1 opacity-25"></div>
+
+                          {isOverdue && (
+                            <OverlayTrigger placement="top" overlay={tt("Extend deadline")}>
+                              <Button
+                                variant="light"
+                                className="btn-icon-hover text-warning border shadow-sm rounded-circle d-flex align-items-center justify-content-center p-0"
+                                style={{ width: '32px', height: '32px' }}
+                                onClick={() => handleExtendDueDate(ass)}
+                              >
+                                <i className="bi bi-calendar-plus"></i>
+                              </Button>
+                            </OverlayTrigger>
+                          )}
+                          
+                          <OverlayTrigger placement="top" overlay={tt("Edit Assignment")}>
+                            <Button
+                              variant="light"
+                              className="btn-icon-hover text-primary border shadow-sm rounded-circle d-flex align-items-center justify-content-center p-0"
+                              style={{ width: '32px', height: '32px' }}
+                              onClick={() => handleEdit(ass)}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </Button>
+                          </OverlayTrigger>
+                          
+                          <OverlayTrigger placement="top" overlay={tt("Delete")}>
+                            <Button
+                              variant="light"
+                              className="btn-icon-hover text-danger border shadow-sm rounded-circle d-flex align-items-center justify-content-center p-0"
+                              style={{ width: '32px', height: '32px' }}
+                              onClick={() => handleDelete(ass._id)}
+                            >
+                              <i className="bi bi-trash3"></i>
+                            </Button>
+                          </OverlayTrigger>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="5" className="text-center py-5">
-                    <div className="text-muted">
-                       <p className="mb-0">No assignments posted yet.</p>
+                    <div className="d-flex flex-column align-items-center justify-content-center opacity-50 py-3">
+                      <i className="bi bi-folder-x fs-1 text-secondary mb-2"></i>
+                      <p className="mb-0 fw-semibold text-secondary">No assignments posted yet.</p>
+                      <small className="text-muted">Assignments you create will appear here.</small>
                     </div>
                   </td>
                 </tr>
@@ -422,76 +452,99 @@ export default function ViewAssignments() {
         </div>
       </Card>
 
-      {/* View Submissions Modal */}
-      <Modal show={!!viewingSubmissions} onHide={() => setViewingSubmissions(null)} centered size="lg" className="submission-modal">
-        <Modal.Header closeButton className="border-0 px-4 pt-4">
-          <Modal.Title className="fw-bold">Review Submissions</Modal.Title>
+      {/* ---------- REVIEW SUBMISSIONS MODAL ---------- */}
+      <Modal show={!!viewingSubmissions} onHide={() => setViewingSubmissions(null)} centered size="lg" className="border-0">
+        <Modal.Header closeButton className="bg-light border-bottom px-4 pt-4 pb-3">
+          <Modal.Title className="fw-bolder text-dark d-flex align-items-center">
+            <div className="bg-primary bg-opacity-10 text-primary p-2 rounded me-3 d-flex align-items-center justify-content-center">
+              <i className="bi bi-check2-all fs-5"></i>
+            </div>
+            Student Submissions
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="px-4 pb-4">
+        <Modal.Body className="px-0 pb-0 pt-0 bg-white rounded-bottom-3">
           {submissionsLoading ? (
-            <div className="text-center my-5">
+            <div className="text-center py-5">
               <Spinner animation="border" variant="primary" />
+              <p className="mt-2 text-muted small fw-medium">Fetching records...</p>
             </div>
           ) : submissions.length ? (
-            <div className="table-responsive rounded-3 border">
-              <Table hover className="align-middle mb-0">
+            <div className="table-responsive">
+              <Table hover className="align-middle mb-0 border-light">
                 <thead className="bg-light">
-                  <tr className="small text-uppercase">
-                    <th>Student Name</th>
-                    <th>Status</th>
-                    <th>Submitted On</th>
-                    <th>Grade</th>
-                    <th className="text-end">Action</th>
+                  <tr>
+                    <th className="py-3 ps-4 text-uppercase small fw-bold text-secondary">Student Name</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary text-center">Status</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary text-center">Submitted On</th>
+                    <th className="py-3 text-uppercase small fw-bold text-secondary text-center">Grade</th>
+                    <th className="py-3 pe-4 text-uppercase small fw-bold text-secondary text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {submissions.map((s) => (
-                    <tr key={s._id || s.studentMongoId}>
-                      <td className="fw-semibold">{s.name || "Unknown Student"}</td>
-                      <td>
-                        <Badge bg={s.submitted ? "success" : "secondary"} className="rounded-pill">
-                          {s.submissionStatus || (s.submitted ? "Submitted" : "Not Submitted")}
+                    <tr key={s._id || s.studentMongoId} className="border-bottom border-light">
+                      <td className="ps-4 py-3 fw-semibold text-dark">
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="bg-light text-secondary rounded-circle d-flex align-items-center justify-content-center fw-bold border" style={{ width: '30px', height: '30px', fontSize: '12px' }}>
+                            {s.name ? s.name.charAt(0).toUpperCase() : "?"}
+                          </div>
+                          {s.name || "Unknown Student"}
+                        </div>
+                      </td>
+                      <td className="text-center">
+                        <Badge 
+                          bg={s.submitted ? "success" : "secondary"} 
+                          className={`rounded-pill px-3 py-1 fw-medium ${s.submitted ? 'bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-opacity-10 text-secondary border border-secondary border-opacity-25'}`}
+                        >
+                          {s.submissionStatus || (s.submitted ? "Submitted" : "Pending")}
                         </Badge>
                       </td>
-                      <td className="small text-muted">{s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : "-"}</td>
-                      <td>
+                      <td className="text-center small text-muted fw-medium">
+                        {s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("en-IN") : "—"}
+                      </td>
+                      <td className="text-center">
                         {s.submitted && s.grade ? (
-                          <Badge bg="success" className="bg-opacity-10 text-success border border-success">
+                          <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary border-opacity-50 px-3 py-1 fs-6 rounded-pill">
                             {s.grade}
                           </Badge>
                         ) : s.submitted ? (
-                          <span className="text-muted small italic">Pending</span>
+                          <span className="badge bg-light text-muted border px-2 py-1">Needs Grade</span>
                         ) : (
-                          <span className="text-muted small italic">Not Submitted</span>
+                          <span className="text-muted opacity-50">—</span>
                         )}
                       </td>
-                      <td className="text-end">
+                      <td className="pe-4 text-end">
                         <div className="d-flex gap-2 justify-content-end align-items-center">
-                          {s.submitted && s.file ? (
-                            <a href={`http://localhost:3000/${s.file}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-link text-decoration-none">
-                              Open
-                            </a>
-                          ) : (
-                            <span className="text-muted small">No File</span>
+                          {s.submitted && s.file && (
+                            <OverlayTrigger placement="top" overlay={tt("View File")}>
+                              <a href={`http://localhost:3000/${s.file}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-light border rounded-circle text-primary d-flex align-items-center justify-content-center p-0" style={{ width: '30px', height: '30px' }}>
+                                <i className="bi bi-file-earmark-text"></i>
+                              </a>
+                            </OverlayTrigger>
                           )}
+                          
                           {s.submitted && grading === s._id ? (
-                            <div className="d-flex gap-1">
+                            <div className="d-flex align-items-center gap-1 bg-light border p-1 rounded-pill shadow-sm">
                               <Form.Control
                                 size="sm"
-                                style={{ width: "60px" }}
-                                placeholder="80"
+                                className="border-0 shadow-none text-center rounded-pill bg-white"
+                                style={{ width: "60px", padding: "0.1rem 0.5rem" }}
+                                placeholder="A+"
                                 value={gradeValue}
                                 onChange={(e) => setGradeValue(e.target.value)}
+                                autoFocus
                               />
-                              <Button size="sm" variant="success" onClick={() => handleGrade(s._id)}>✓</Button>
+                              <Button size="sm" variant="success" className="rounded-circle p-0 d-flex align-items-center justify-content-center" style={{ width: '26px', height: '26px' }} onClick={() => handleGrade(s._id)}>
+                                <i className="bi bi-check2"></i>
+                              </Button>
                             </div>
                           ) : s.submitted ? (
-                            <OverlayTrigger placement="top" overlay={tt("Add or update grade")}>
-                              <Button size="sm" variant="dark" className="rounded-pill px-3" onClick={() => setGrading(s._id)}>Grade</Button>
-                            </OverlayTrigger>
+                            <Button size="sm" variant="outline-primary" className="rounded-pill px-3 py-1 fw-medium" onClick={() => setGrading(s._id)}>
+                              {s.grade ? "Edit Grade" : "Add Grade"}
+                            </Button>
                           ) : (
-                            <Button size="sm" variant="light" className="rounded-pill px-3" disabled>
-                              Grade
+                            <Button size="sm" variant="light" className="rounded-pill px-3 py-1 text-muted border" disabled>
+                              Waiting
                             </Button>
                           )}
                         </div>
@@ -502,123 +555,160 @@ export default function ViewAssignments() {
               </Table>
             </div>
           ) : (
-            <div className="text-center py-4 border rounded-3 bg-light">
-               <p className="text-muted mb-0 small">No students found for this assignment.</p>
+            <div className="text-center py-5 bg-light m-3 rounded-4">
+               <p className="text-muted mb-0 fw-medium">No students found for this assignment.</p>
             </div>
           )}
         </Modal.Body>
       </Modal>
 
-      {/* Edit Assignment Modal */}
-      <Modal show={!!editingAssignment} onHide={() => setEditingAssignment(null)} centered>
-        <Modal.Header closeButton className="border-0 px-4 pt-4">
-          <Modal.Title className="fw-bold">Modify Assignment</Modal.Title>
+      {/* ---------- EDIT ASSIGNMENT MODAL ---------- */}
+      <Modal show={!!editingAssignment} onHide={() => setEditingAssignment(null)} centered backdrop="static">
+        <Modal.Header closeButton className="border-bottom-0 px-4 pt-4">
+          <Modal.Title className="fw-bolder">Modify Assignment</Modal.Title>
         </Modal.Header>
         <Modal.Body className="px-4 pb-4">
           <Form onSubmit={handleEditSubmit}>
             {editingAssignment?.dueDate && new Date(editingAssignment.dueDate) < new Date() && (
-              <div className="alert alert-warning small border-0 mb-3">
-                This assignment is past due. Update the due date below to reopen submissions.
+              <div className="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger border-opacity-25 small fw-medium mb-4 rounded-3 d-flex align-items-center">
+                <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                This assignment is currently overdue. Update the due date below to reopen submissions for students.
               </div>
             )}
-            <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold text-muted">ASSIGNMENT TITLE</Form.Label>
-              <Form.Control name="title" className="py-2 border-2" value={editForm.title} onChange={handleEditChange} />
-            </Form.Group>
             
             <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold text-muted">DESCRIPTION</Form.Label>
-              <Form.Control as="textarea" rows={3} name="description" className="border-2" value={editForm.description} onChange={handleEditChange} />
+              <Form.Label className="small fw-bold text-secondary tracking-wide">ASSIGNMENT TITLE</Form.Label>
+              <Form.Control name="title" className="py-2 bg-light border-0 shadow-none" value={editForm.title} onChange={handleEditChange} required />
+            </Form.Group>
+            
+            <Form.Group className="mb-4">
+              <Form.Label className="small fw-bold text-secondary tracking-wide">DESCRIPTION / INSTRUCTIONS</Form.Label>
+              <Form.Control as="textarea" rows={3} name="description" className="bg-light border-0 shadow-none" value={editForm.description} onChange={handleEditChange} />
             </Form.Group>
 
-            <div className="row g-3 mb-4">
-              <div className="col-6">
-                <Form.Label className="small fw-bold text-muted">CLASS</Form.Label>
-                <Form.Select name="classAssigned" className="border-2" value={editForm.classAssigned} onChange={handleEditChange}>
-                  <option value="">Select Class</option>
-                  {classes.map((cls) => (
-                    <option key={cls._id} value={cls.className}>
-                      Class {cls.className}
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
-              <div className="col-6">
-                <Form.Label className="small fw-bold text-muted">STREAM</Form.Label>
-                <Form.Select
-                  name="streamAssigned"
-                  className="border-2"
-                  value={editForm.streamAssigned}
-                  onChange={handleEditChange}
-                  disabled={!editForm.classAssigned || !classHasStreams || !hasAssignedStreams}
-                >
-                  <option value="">
-                    {!classHasStreams ? "N/A" : hasAssignedStreams ? "Select Stream" : "No assigned stream"}
-                  </option>
-                  {streamOptions.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
-              <div className="col-6">
-                <Form.Label className="small fw-bold text-muted">SECTION</Form.Label>
-                <Form.Select
-                  name="sectionAssigned"
-                  className="border-2"
-                  value={editForm.sectionAssigned}
-                  onChange={handleEditChange}
-                  disabled={!editForm.classAssigned || (classHasStreams && !editForm.streamAssigned)}
-                >
-                  <option value="">Select Section</option>
-                  {sectionOptions.map((sec) => (
-                    <option key={sec} value={sec}>
-                      {sec}
-                    </option>
-                  ))}
-                </Form.Select>
-              </div>
-              <div className="col-6">
-                <Form.Label className="small fw-bold text-muted">SUBJECT</Form.Label>
-                {subjectsLoading ? (
-                  <div className="py-1">
-                    <Spinner animation="border" size="sm" />
-                  </div>
-                ) : (
-                  <Form.Select name="subject" className="border-2" value={editForm.subject} onChange={handleEditChange}>
-                    <option value="">{subjects.length ? "Select Subject" : "No subjects"}</option>
-                    {subjects.map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub}
-                      </option>
+            <div className="bg-light p-3 rounded-3 mb-4 border">
+              <h6 className="fw-bold fs-6 mb-3 text-dark border-bottom pb-2">Scope & Subject</h6>
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">CLASS</Form.Label>
+                  <Form.Select name="classAssigned" className="border shadow-none" value={editForm.classAssigned} onChange={handleEditChange} required>
+                    <option value="">Select Class</option>
+                    {classes.map((cls) => (
+                      <option key={cls._id} value={cls.className}>Class {cls.className}</option>
                     ))}
                   </Form.Select>
-                )}
-              </div>
-              <div className="col-6">
-                <Form.Label className="small fw-bold text-muted">DUE DATE</Form.Label>
-                <Form.Control type="date" name="dueDate" className="border-2" value={editForm.dueDate} onChange={handleEditChange} />
+                </div>
+                <div className="col-12 col-md-6">
+                  <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">STREAM</Form.Label>
+                  <Form.Select
+                    name="streamAssigned"
+                    className="border shadow-none"
+                    value={editForm.streamAssigned}
+                    onChange={handleEditChange}
+                    disabled={!editForm.classAssigned || !classHasStreams || !hasAssignedStreams}
+                  >
+                    <option value="">{!classHasStreams ? "N/A" : hasAssignedStreams ? "Select Stream" : "No assigned stream"}</option>
+                    {streamOptions.map((st) => <option key={st} value={st}>{st}</option>)}
+                  </Form.Select>
+                </div>
+                <div className="col-12 col-md-6">
+                  <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">SECTION</Form.Label>
+                  <Form.Select
+                    name="sectionAssigned"
+                    className="border shadow-none"
+                    value={editForm.sectionAssigned}
+                    onChange={handleEditChange}
+                    disabled={!editForm.classAssigned || (classHasStreams && !editForm.streamAssigned)}
+                    required
+                  >
+                    <option value="">Select Section</option>
+                    {sectionOptions.map((sec) => <option key={sec} value={sec}>{sec}</option>)}
+                  </Form.Select>
+                </div>
+                <div className="col-12 col-md-6">
+                  <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">SUBJECT</Form.Label>
+                  {subjectsLoading ? (
+                    <div className="py-2 px-2 border rounded bg-white text-muted small d-flex align-items-center">
+                      <Spinner animation="border" size="sm" className="me-2" /> Loading...
+                    </div>
+                  ) : (
+                    <Form.Select name="subject" className="border shadow-none" value={editForm.subject} onChange={handleEditChange} required>
+                      <option value="">{subjects.length ? "Select Subject" : "No subjects"}</option>
+                      {subjects.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
+                    </Form.Select>
+                  )}
+                </div>
               </div>
             </div>
 
-            <Form.Group className="mb-4">
-              <Form.Label className="small fw-bold text-muted">REPLACE FILE (OPTIONAL)</Form.Label>
-              <Form.Control type="file" name="file" className="border-2" onChange={handleEditChange} />
-            </Form.Group>
+            <div className="row g-3 mb-4">
+              <div className="col-12 col-md-6">
+                <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">DUE DATE</Form.Label>
+                <Form.Control type="date" name="dueDate" className="py-2 bg-light border-0 shadow-none" value={editForm.dueDate} onChange={handleEditChange} required />
+              </div>
+              <div className="col-12 col-md-6">
+                <Form.Label className="small fw-bold text-secondary tracking-wide mb-1">REPLACE ATTACHMENT</Form.Label>
+                <Form.Control type="file" name="file" className="py-2 bg-light border-0 shadow-none" onChange={handleEditChange} />
+              </div>
+            </div>
 
-            <Button type="submit" className="w-100 py-2 fw-bold shadow-sm rounded-pill" variant="primary">
-              Save Changes
-            </Button>
+            <div className="d-flex gap-2 justify-content-end mt-4">
+              <Button variant="light" className="px-4 fw-medium border rounded-pill" onClick={() => setEditingAssignment(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" className="px-4 fw-medium rounded-pill shadow-sm">
+                Save Changes
+              </Button>
+            </div>
           </Form>
         </Modal.Body>
       </Modal>
 
-      <ToastContainer position="bottom-end" className="p-3">
-        <Toast show={toast.show} bg={toast.variant} delay={3000} autohide onClose={() => setToast({ ...toast, show: false })} className="border-0 text-white shadow-lg">
-          <Toast.Body className="fw-semibold">{toast.message}</Toast.Body>
+      {/* ---------- TOAST NOTIFICATIONS ---------- */}
+      <ToastContainer position="bottom-end" className="p-4" style={{ zIndex: 1060 }}>
+        <Toast show={toast.show} bg={toast.variant} delay={3500} autohide onClose={() => setToast({ ...toast, show: false })} className="border-0 text-white shadow-lg rounded-3">
+          <Toast.Body className="fw-medium d-flex align-items-center">
+            <i className={`bi bi-${toast.variant === 'success' ? 'check-circle' : toast.variant === 'danger' ? 'x-octagon' : 'info-circle'} fs-5 me-2`}></i>
+            {toast.message}
+          </Toast.Body>
         </Toast>
       </ToastContainer>
+
+      {/* ---------- CUSTOM STYLES ---------- */}
+      <style>{`
+        .custom-hover-table tbody tr {
+          transition: background-color 0.2s ease;
+        }
+        .custom-hover-table tbody tr:hover {
+          background-color: #f8f9fa;
+        }
+        .btn-icon-hover {
+          transition: all 0.2s ease;
+        }
+        .btn-icon-hover:hover {
+          transform: translateY(-2px);
+          filter: brightness(0.95);
+        }
+        .tracking-wide {
+          letter-spacing: 0.5px;
+        }
+        /* Custom scrollbar for table modal */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #f1f1f1; 
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #c1c1c1; 
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8; 
+        }
+      `}</style>
     </div>
   );
 }
