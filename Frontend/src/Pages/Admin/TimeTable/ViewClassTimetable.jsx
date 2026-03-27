@@ -3,6 +3,7 @@ import api from "../../../api/api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "bootstrap/dist/css/bootstrap.min.css"; 
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const periods = [1, 2, 3, 4, 5];
@@ -23,7 +24,7 @@ export default function ViewClassTimetable() {
   const [editTeacherId, setEditTeacherId] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  // NEW STATE FOR DELETE MODAL
+  // STATE FOR DELETE MODAL
   const [deleteTarget, setDeleteTarget] = useState(null); 
 
   useEffect(() => {
@@ -258,299 +259,296 @@ export default function ViewClassTimetable() {
   };
 
   return (
-    <div className="bg-light min-vh-100 py-5">
-      <div className="container-fluid px-5">
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .input-premium { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; transition: all 0.2s; font-weight: 500; color: #0f172a; }
+        .input-premium:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); background: #ffffff; outline: none; }
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); color: white; }
         
-        <div className="row mb-4 align-items-center">
-          <div className="col">
-            <h2 className="fw-bold text-dark mb-1">
-              <i className="bi bi-grid-3x3-gap-fill text-primary me-2"></i>
-              Class Timetable
-            </h2>
-            <p className="text-muted mb-0">View and manage schedules per class</p>
+        .timetable-table { border-collapse: separate; border-spacing: 0; }
+        .timetable-table th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700; color: #64748b; background: #f8fafc !important; border-bottom: 2px solid #e2e8f0 !important; padding: 16px; text-align: center; }
+        .timetable-table td { padding: 12px; border: 1px solid #f1f5f9; background: #ffffff; vertical-align: top; min-width: 140px; }
+        
+        .slot-card { border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; transition: all 0.2s ease; }
+        .slot-card:hover { border-color: #4f46e5; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1); transform: translateY(-2px); }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      {/* Premium Header Card */}
+      <div 
+        className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+        style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+      >
+        <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+        <div className="position-relative z-1 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+          <div>
+            <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+              <i className="bi bi-grid-3x3-gap-fill me-1"></i> Timetable Viewer
+            </span>
+            <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Class Timetable</h2>
+            <p className="text-white opacity-75 fw-medium mb-0">View, edit, and export class schedules.</p>
           </div>
-          <div className="col-auto">
-              <div className="d-flex gap-2">
-                <button
-                  className="btn btn-outline-danger shadow-sm rounded-pill px-4 fw-semibold"
-                  disabled={!canViewTimetable || actionLoading || timetable.length === 0}
-                  onClick={() => setDeleteTarget({ type: 'full' })}
-                >
-                  Delete Full Table
-                </button>
-                <button
-                  className="btn btn-primary shadow-sm rounded-pill px-4 fw-semibold"
-                  disabled={!canViewTimetable}
-                  onClick={exportPDF}
-                >
-                  <i className="bi bi-file-earmark-pdf-fill me-2"></i>
-                  Download PDF
-                </button>
-              </div>
-          </div>
-        </div>
-
-        <div className="row g-4">
-          <div className="col-md-3 col-lg-2">
-            <div className="card border-0 shadow-sm h-100">
-              <div className="card-body">
-                <label className="form-label fw-bold text-uppercase small text-muted mb-3">
-                  Select Class
-                </label>
-                <div className="d-grid gap-2">
-                  <select
-                    className="form-select form-select-lg border-2"
-                    value={classId}
-                    onChange={e => {
-                      setClassId(e.target.value);
-                      setStream("");
-                      setSection("");
-                    }}
-                  >
-                    <option value="">Choose...</option>
-                    {classes.map(c => (
-                      <option key={c._id} value={c._id}>
-                        Class {c.className}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                 <div className="mt-3">
-                  <label className="form-label fw-bold text-uppercase small text-muted mb-2">
-                    Stream
-                  </label>
-                  <select
-                    className="form-select"
-                    value={stream}
-                    onChange={e => {
-                      setStream(e.target.value);
-                      setSection("");
-                      setSubjectChoice("");
-                    }}
-                    disabled={!classId || !hasStreams}
-                  >
-                    <option value="">{hasStreams ? "Select stream" : "No stream required"}</option>
-                    {streamOptions.map((s) => (
-                      <option key={s.name} value={s.name}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mt-3">
-                  <label className="form-label fw-bold text-uppercase small text-muted mb-2">
-                    Section
-                  </label>
-                  <select
-                    className="form-select"
-                    value={section}
-                    onChange={e => setSection(normalizeUpper(e.target.value))}
-                    disabled={!classId || (hasStreams && !stream)}
-                  >
-                    <option value="">{hasStreams && !stream ? "Select stream first" : "Select section"}</option>
-                    {sectionOptions.map((s) => (
-                      <option key={s._id || s.name} value={normalizeUpper(s.name)}>
-                        Section {normalizeUpper(s.name)}{s.stream ? ` (${s.stream})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {classId ? (
-                   <div className="mt-4 p-3 bg-light rounded text-center border border-primary border-opacity-25">
-                     <small className="text-muted d-block text-uppercase">Currently Viewing</small>
-                     <h3 className="text-primary fw-bold mb-0">Class {selectedClass?.className}</h3>
-                     {stream ? <div className="small text-muted">Stream: {stream}</div> : null}
-                     {section ? <div className="small text-muted">Section: {section}</div> : null}
-                   </div>
-                ) : (
-                  <div className="mt-4 text-center text-muted opacity-50">
-                    <i className="bi bi-arrow-up-circle fs-1"></i>
-                    <p className="small mt-2">Please select a class to view the timetable.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="col-md-9 col-lg-10">
-            <div className="card border-0 shadow-sm rounded-3 overflow-hidden h-100">
-              <div className="card-body p-0">
-                {canViewTimetable ? (
-                  <div className="table-responsive">
-                    <table className="table table-bordered mb-0 align-middle text-center" style={{ minWidth: '1000px' }}>
-                      <thead className="bg-dark text-white text-uppercase small">
-                        <tr>
-                          <th className="py-3 px-4" style={{ width: '100px' }}>Period</th>
-                          {days.map(day => (
-                            <th key={day} className="py-3 px-2">{day}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {periods.map(period => (
-                          <tr key={period}>
-                            <td className="bg-light fw-bold text-secondary border-end">
-                              <span className="badge bg-secondary rounded-pill px-3 py-2">
-                                {period}
-                              </span>
-                            </td>
-
-                            {days.map(day => {
-                              const cells = getCells(day, period);
-                              return (
-                                <td key={day} className="p-3">
-                                  {cells.length ? (
-                                    <div className="d-flex flex-column gap-2">
-                                      {cells.map((cell, idx) => (
-                                        <div key={`${day}-${period}-${idx}`} className="card border-primary border-opacity-25 shadow-sm">
-                                          <div className="card-body p-2 d-flex flex-column justify-content-center">
-                                            <div className="fw-bold text-dark text-truncate mb-1" title={cell.subject}>
-                                              {cell.subject}
-                                            </div>
-                                            <div className="badge bg-primary bg-opacity-10 text-primary fw-normal text-truncate border border-primary border-opacity-10">
-                                              <i className="bi bi-person-fill me-1"></i>
-                                              {cell.teacherId?.name || cell.teacherName || "N/A"}
-                                            </div>
-                                            <div className="d-flex gap-2 mt-2">
-                                              <button
-                                                className="btn btn-sm btn-outline-primary w-50"
-                                                onClick={() => openEdit(cell)}
-                                                disabled={actionLoading}
-                                              >
-                                                Edit
-                                              </button>
-                                              <button
-                                                className="btn btn-sm btn-outline-danger w-50"
-                                                onClick={() => setDeleteTarget({ type: 'slot', cell })}
-                                                disabled={actionLoading}
-                                              >
-                                                Delete
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="text-muted opacity-25 fw-light py-3">
-                                      &mdash;
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="d-flex flex-column align-items-center justify-content-center py-5 h-100 text-muted">
-                    <div className="bg-light rounded-circle p-4 mb-3">
-                      <i className="bi bi-calendar-range fs-1"></i>
-                    </div>
-                    <h5 className="fw-normal">Complete Selection</h5>
-                    <p className="mb-0 small">
-                      {!classId
-                        ? "Select class first."
-                        : hasStreams && !stream
-                        ? "Select stream first."
-                        : !section
-                        ? "Select section to view timetable."
-                        : "No timetable data."}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+          
+          <div className="d-flex flex-wrap gap-2">
+            <button
+              className="btn btn-light text-danger fw-bold rounded-pill px-4 py-2 shadow-sm d-flex align-items-center transition-all"
+              disabled={!canViewTimetable || actionLoading || timetable.length === 0}
+              onClick={() => setDeleteTarget({ type: 'full' })}
+            >
+              <i className="bi bi-trash3-fill me-2"></i> Delete Timetable
+            </button>
+            <button
+              className="btn bg-white text-primary fw-bold rounded-pill px-4 py-2 shadow-sm d-flex align-items-center transition-all"
+              disabled={!canViewTimetable}
+              onClick={exportPDF}
+            >
+              <i className="bi bi-file-earmark-pdf-fill me-2"></i> Export to PDF
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editingCell ? (
-        <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.35)" }}>
+      <div className="row g-4">
+        {/* --- SIDEBAR: Filters --- */}
+        <div className="col-12 col-xl-3">
+          <div className="premium-card p-4 h-100 position-sticky" style={{ top: '20px' }}>
+            <h6 className="fw-bolder text-dark mb-4 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+              <i className="bi bi-funnel-fill text-primary me-2"></i> View Filters
+            </h6>
+            
+            <div className="mb-4">
+              <label className="form-label small fw-bold text-muted mb-2">Select Class</label>
+              <select
+                className="form-select input-premium py-2"
+                value={classId}
+                onChange={e => {
+                  setClassId(e.target.value);
+                  setStream("");
+                  setSection("");
+                }}
+              >
+                <option value="">Choose Class...</option>
+                {classes.map(c => (
+                  <option key={c._id} value={c._id}>Class {c.className}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label small fw-bold text-muted mb-2">Academic Stream</label>
+              <select
+                className="form-select input-premium py-2"
+                value={stream}
+                onChange={e => {
+                  setStream(e.target.value);
+                  setSection("");
+                  setSubjectChoice("");
+                }}
+                disabled={!classId || !hasStreams}
+              >
+                <option value="">{hasStreams ? "Select stream..." : "Core (No Stream)"}</option>
+                {streamOptions.map((s) => (
+                  <option key={s.name} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label small fw-bold text-muted mb-2">Section</label>
+              <select
+                className="form-select input-premium py-2"
+                value={section}
+                onChange={e => setSection(normalizeUpper(e.target.value))}
+                disabled={!classId || (hasStreams && !stream)}
+              >
+                <option value="">{hasStreams && !stream ? "Select stream first" : "Select section..."}</option>
+                {sectionOptions.map((s) => (
+                  <option key={s._id || s.name} value={normalizeUpper(s.name)}>
+                    Section {normalizeUpper(s.name)}{s.stream ? ` (${s.stream})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <hr className="border-secondary opacity-10 my-4" />
+
+            {classId && section ? (
+              <div className="p-4 bg-primary bg-opacity-10 rounded-4 text-center border border-primary border-opacity-25 animate-fade-in">
+                <div className="small fw-bolder text-primary text-uppercase mb-2" style={{ letterSpacing: '1px' }}>Active View</div>
+                <h2 className="text-dark fw-bolder mb-1">Class {selectedClass?.className}-{section}</h2>
+                {stream && <div className="badge bg-white text-primary border border-primary border-opacity-25 mt-2 px-3 py-2 rounded-pill fw-semibold">{stream} Stream</div>}
+              </div>
+            ) : (
+              <div className="text-center text-muted opacity-50 py-4">
+                <i className="bi bi-calendar4-week fs-1 mb-2 d-block"></i>
+                <p className="small fw-medium mb-0">Select criteria above to load schedule.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* --- MAIN TIMETABLE VIEW --- */}
+        <div className="col-12 col-xl-9">
+          <div className="premium-card overflow-hidden h-100 d-flex flex-column">
+            {canViewTimetable ? (
+              <div className="table-responsive flex-grow-1">
+                <table className="table timetable-table mb-0 w-100">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '80px', borderRight: '1px solid #e2e8f0' }}>Period</th>
+                      {days.map(day => <th key={day}>{day}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {periods.map(period => (
+                      <tr key={period}>
+                        <td className="align-middle text-center bg-light" style={{ borderRight: '1px solid #e2e8f0' }}>
+                          <span className="badge bg-white text-dark border shadow-sm rounded-pill px-3 py-2 fs-6 fw-bold">
+                            {period}
+                          </span>
+                        </td>
+
+                        {days.map(day => {
+                          const cells = getCells(day, period);
+                          return (
+                            <td key={day} className="bg-light bg-opacity-50">
+                              {cells.length ? (
+                                <div className="d-flex flex-column gap-2 h-100">
+                                  {cells.map((cell, idx) => (
+                                    <div key={`${day}-${period}-${idx}`} className="slot-card p-3 shadow-sm d-flex flex-column h-100">
+                                      <div className="fw-bolder text-dark text-truncate mb-2 lh-1" title={cell.subject}>
+                                        {cell.subject}
+                                      </div>
+                                      <div className="badge bg-primary bg-opacity-10 text-primary fw-medium text-truncate border border-primary border-opacity-10 mb-3 align-self-start">
+                                        <i className="bi bi-person-fill me-1"></i>
+                                        {cell.teacherId?.name || cell.teacherName || "N/A"}
+                                      </div>
+                                      <div className="d-flex gap-2 mt-auto pt-2 border-top" style={{ borderColor: '#f1f5f9' }}>
+                                        <button className="btn btn-sm bg-light text-primary flex-grow-1 fw-bold" onClick={() => openEdit(cell)} disabled={actionLoading}>
+                                          Edit
+                                        </button>
+                                        <button className="btn btn-sm bg-light text-danger flex-grow-1 fw-bold" onClick={() => setDeleteTarget({ type: 'slot', cell })} disabled={actionLoading}>
+                                          <i className="bi bi-trash3-fill"></i>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="d-flex align-items-center justify-content-center h-100 w-100 opacity-25 text-muted py-4">
+                                  <i className="bi bi-dash-lg fs-4"></i>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="d-flex flex-column align-items-center justify-content-center h-100 py-5 text-muted">
+                <div className="rounded-circle bg-light d-flex align-items-center justify-content-center mb-3" style={{ width: 80, height: 80 }}>
+                  <i className="bi bi-table fs-1 opacity-50"></i>
+                </div>
+                <h5 className="fw-bolder text-dark mb-1">No Timetable Selected</h5>
+                <p className="mb-0 fw-medium">
+                  {!classId
+                    ? "Please select a class first."
+                    : hasStreams && !stream
+                    ? "Please select an academic stream."
+                    : !section
+                    ? "Please select a section to view the timetable."
+                    : "No timetable data found."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* --- EDIT MODAL --- */}
+      {editingCell && (
+        <div className="modal show d-block" style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  Edit Slot: {editingCell.day} / Period {editingCell.period}
-                </h5>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "24px", overflow: "hidden" }}>
+              <div className="modal-header border-0 bg-light px-4 pt-4 pb-3">
+                <div>
+                  <h5 className="fw-bolder text-dark mb-1">Edit Timetable Slot</h5>
+                  <p className="text-muted small fw-medium mb-0">{editingCell.day} &bull; Period {editingCell.period}</p>
+                </div>
                 <button type="button" className="btn-close" onClick={closeEdit} disabled={actionLoading}></button>
               </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Subject</label>
-                  <select
-                    className="form-select"
-                    value={editSubject}
-                    onChange={(e) => setEditSubject(e.target.value)}
-                    disabled={actionLoading}
-                  >
-                    <option value="">Select subject</option>
+              <div className="modal-body px-4 py-4">
+                <div className="mb-4">
+                  <label className="form-label small fw-bold text-muted text-uppercase mb-2">Subject Allocation</label>
+                  <select className="form-select input-premium" value={editSubject} onChange={(e) => setEditSubject(e.target.value)} disabled={actionLoading}>
+                    <option value="">Select subject...</option>
                     {editSubjectOptions.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Teacher</label>
-                  <select
-                    className="form-select"
-                    value={editTeacherId}
-                    onChange={(e) => setEditTeacherId(e.target.value)}
-                    disabled={actionLoading}
-                  >
-                    <option value="">Select teacher</option>
+                  <label className="form-label small fw-bold text-muted text-uppercase mb-2">Teacher Assignment</label>
+                  <select className="form-select input-premium" value={editTeacherId} onChange={(e) => setEditTeacherId(e.target.value)} disabled={actionLoading}>
+                    <option value="">Select teacher...</option>
                     {teachers.map((t) => (
                       <option key={t._id} value={t._id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-light" onClick={closeEdit} disabled={actionLoading}>Cancel</button>
-                <button className="btn btn-primary" onClick={saveEdit} disabled={actionLoading}>
-                  {actionLoading ? "Saving..." : "Save Changes"}
+              <div className="modal-footer border-0 bg-light px-4 py-3 justify-content-between">
+                <button className="btn bg-white border text-muted fw-bold rounded-pill px-4" onClick={closeEdit} disabled={actionLoading}>Cancel</button>
+                <button className="btn btn-brand rounded-pill px-5 fw-bold shadow-sm" onClick={saveEdit} disabled={actionLoading}>
+                  {actionLoading ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : "Save Changes"}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {/* NEW: Delete Confirmation Modal */}
-      {deleteTarget ? (
-        <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      {/* --- DELETE CONFIRMATION MODAL --- */}
+      {deleteTarget && (
+        <div className="modal show d-block" style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg">
-              <div className="modal-header bg-danger text-white">
-                <h5 className="modal-title">Confirm Deletion</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setDeleteTarget(null)} disabled={actionLoading}></button>
-              </div>
-              <div className="modal-body p-4 text-center">
-                <i className="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "24px", overflow: "hidden" }}>
+              <div className="p-5 text-center">
+                <div className="rounded-circle d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 mb-4" style={{ width: 80, height: 80 }}>
+                  <i className="bi bi-exclamation-triangle-fill text-danger" style={{ fontSize: '2.5rem' }}></i>
+                </div>
+                <h4 className="fw-bolder text-dark mb-3">Confirm Deletion</h4>
+                
                 {deleteTarget.type === 'slot' ? (
-                  <p className="fs-5">
-                    Are you sure you want to delete the <strong>{deleteTarget.cell.subject}</strong> slot on {deleteTarget.cell.day}?
+                  <p className="text-muted fw-medium mb-4 px-3 fs-6">
+                    Are you sure you want to remove the <strong className="text-dark">{deleteTarget.cell.subject}</strong> slot on <strong className="text-dark">{deleteTarget.cell.day}</strong>?
                   </p>
                 ) : (
-                  <p className="fs-5">
-                    <strong>WARNING:</strong> This will permanently delete the <strong>ENTIRE</strong> timetable for Class {selectedClass?.className}, Section {section}.
+                  <p className="text-muted fw-medium mb-4 px-3 fs-6">
+                    <strong className="text-danger">WARNING:</strong> This will permanently delete the entire schedule for Class <strong className="text-dark">{selectedClass?.className}-{section}</strong>.
                   </p>
                 )}
-                <p className="text-muted small">This action cannot be undone.</p>
-              </div>
-              <div className="modal-footer bg-light">
-                <button className="btn btn-secondary px-4" onClick={() => setDeleteTarget(null)} disabled={actionLoading}>Cancel</button>
-                <button className="btn btn-danger px-4 fw-bold" onClick={handleConfirmDelete} disabled={actionLoading}>
-                  {actionLoading ? "Deleting..." : "Yes, Delete It"}
-                </button>
+
+                <div className="d-flex gap-3 justify-content-center mt-2">
+                  <button className="btn bg-light border text-dark fw-bold rounded-pill px-4 py-2" onClick={() => setDeleteTarget(null)} disabled={actionLoading}>Cancel Action</button>
+                  <button className="btn btn-danger fw-bold rounded-pill px-4 py-2 shadow-sm" onClick={handleConfirmDelete} disabled={actionLoading}>
+                    {actionLoading ? <span className="spinner-border spinner-border-sm"></span> : "Yes, Delete It"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

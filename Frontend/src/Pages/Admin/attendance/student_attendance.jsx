@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 import { Doughnut, Bar, Line } from "react-chartjs-2";
 import {
@@ -273,12 +274,12 @@ export default function AdminClassAttendance() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: true, labels: { boxWidth: 10, boxHeight: 10 } },
-        tooltip: { enabled: true },
+        legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, font: { family: "'Inter', sans-serif" } } },
+        tooltip: { enabled: true, titleFont: { family: "'Inter', sans-serif" }, bodyFont: { family: "'Inter', sans-serif" } },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#64748b", font: { size: 11 } } },
-        y: { grid: { color: "#f1f5f9" }, ticks: { color: "#64748b", font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { color: "#64748b", font: { size: 11, family: "'Inter', sans-serif" } } },
+        y: { grid: { color: "#f1f5f9" }, ticks: { color: "#64748b", font: { size: 11, family: "'Inter', sans-serif" } } },
       },
     }),
     []
@@ -289,10 +290,10 @@ export default function AdminClassAttendance() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: true, position: "bottom" },
+        legend: { display: true, position: "bottom", labels: { font: { family: "'Inter', sans-serif" } } },
         tooltip: { enabled: true },
       },
-      cutout: "70%",
+      cutout: "75%",
     }),
     []
   );
@@ -303,421 +304,310 @@ export default function AdminClassAttendance() {
   }, [filteredSessions]);
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
-      {/* Top header */}
-      <div
-        className="py-4"
-        style={{
-          background: "linear-gradient(135deg, rgba(79,70,229,0.10), rgba(15,23,42,0.04))",
-          borderBottom: "1px solid #eef2ff",
-        }}
-      >
-        <div className="container" style={{ maxWidth: 1200 }}>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-              <div className="d-flex align-items-center gap-2">
-                <div
-                  className="rounded-4 d-flex align-items-center justify-content-center"
-                  style={{
-                    width: 44,
-                    height: 44,
-                    background: "rgba(79,70,229,0.12)",
-                    border: "1px solid rgba(79,70,229,0.18)",
-                  }}
-                >
-                  <span style={{ fontWeight: 900, color: "#4f46e5" }}>A</span>
-                </div>
-                <div>
-                  <h3 className="mb-0" style={{ fontWeight: 900, letterSpacing: "-0.5px" }}>
-                    Attendance Analytics
-                  </h3>
-                  <div className="text-muted" style={{ fontSize: 12 }}>
-                    Class-wise insights • trends • session logs
-                  </div>
-                </div>
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .premium-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(79, 70, 229, 0.15); border-color: rgba(79, 70, 229, 0.3); }
+        
+        .input-premium { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; font-weight: 500; color: #0f172a; transition: all 0.2s; }
+        .input-premium:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); outline: none; }
+        
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; font-weight: 600; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); color: white; }
+        .btn-brand:disabled { opacity: 0.7; transform: none; box-shadow: none; cursor: not-allowed; }
+        
+        .table-premium th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: #64748b; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding: 16px; background: #f8fafc; }
+        .table-premium td { padding: 16px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+        .table-premium tr:hover td { background-color: #f8fafc; }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+      `}</style>
+
+      <div className="container" style={{ maxWidth: "1400px" }}>
+        
+        {/* Premium Header Card */}
+        <div 
+          className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+        >
+          <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          
+          <div className="position-relative z-1 mb-4">
+            <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+              <i className="bi bi-graph-up-arrow me-1"></i> Data & Analytics
+            </span>
+            <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Class Attendance Analytics</h2>
+            <p className="text-white opacity-75 fw-medium mb-0">Class-wise insights, periodic trends, and detailed session logs.</p>
+          </div>
+          
+          {/* Glassmorphism Control Panel */}
+          <div className="position-relative z-1 d-flex flex-column flex-lg-row gap-3 p-3 rounded-4 shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+            
+            <div className="row g-2 flex-grow-1">
+              <div className="col-12 col-md-4">
+                <select className="form-select input-premium py-2 border-0" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
+                  <option value="">Select Class...</option>
+                  {classes.map((cls) => (
+                    <option key={cls._id} value={cls._id}>Class {cls.className}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-12 col-md-4">
+                <select className="form-select input-premium py-2 border-0" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass}>
+                  <option value="">All Sections</option>
+                  {sectionOptions.map((sec) => (
+                    <option key={sec} value={sec}>Section {sec}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-12 col-md-4">
+                <select className="form-select input-premium py-2 border-0" value={selectedStream} onChange={(e) => setSelectedStream(e.target.value)} disabled={!selectedClass || streamOptions.length === 0}>
+                  <option value="">All Streams</option>
+                  {streamOptions.map((stream) => (
+                    <option key={stream} value={stream}>{stream}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="bg-white border shadow-sm rounded-4 p-2 d-flex flex-wrap gap-2 align-items-center">
-              <select
-                className="form-select border-0 shadow-none"
-                style={{ width: 240, fontWeight: 700, cursor: "pointer" }}
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-              >
-                <option value="">Select Class</option>
-                {classes.map((cls) => (
-                  <option key={cls._id} value={cls._id}>
-                    {cls.className}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="form-select border-0 shadow-none"
-                style={{ width: 180, fontWeight: 700, cursor: "pointer" }}
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                disabled={!selectedClass}
-              >
-                <option value="">All Sections</option>
-                {sectionOptions.map((sec) => (
-                  <option key={sec} value={sec}>
-                    Section {sec}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="form-select border-0 shadow-none"
-                style={{ width: 180, fontWeight: 700, cursor: "pointer" }}
-                value={selectedStream}
-                onChange={(e) => setSelectedStream(e.target.value)}
-                disabled={!selectedClass || streamOptions.length === 0}
-              >
-                <option value="">All Streams</option>
-                {streamOptions.map((stream) => (
-                  <option key={stream} value={stream}>
-                    {stream}
-                  </option>
-                ))}
-              </select>
-
-              <div className="d-flex gap-2 align-items-center">
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: 160 }}
-                  value={range.from}
-                  onChange={(e) => setRange((p) => ({ ...p, from: e.target.value }))}
-                />
-                <span className="text-muted small">to</span>
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ width: 160 }}
-                  value={range.to}
-                  onChange={(e) => setRange((p) => ({ ...p, to: e.target.value }))}
-                />
-              </div>
-
-              <button
-                className="btn btn-dark px-4"
-                style={{ borderRadius: 14, fontWeight: 800 }}
-                onClick={fetchAttendance}
-                disabled={!selectedClass || loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" />
-                    Loading
-                  </>
-                ) : (
-                  "Analyze"
-                )}
-              </button>
+            <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center bg-white rounded-3 p-1 px-2 border-0">
+              <input type="date" className="form-control border-0 shadow-none bg-transparent fw-medium" style={{ width: '140px', fontSize: '0.9rem' }} value={range.from} onChange={(e) => setRange((p) => ({ ...p, from: e.target.value }))} />
+              <span className="text-muted small fw-bold px-1 d-none d-md-inline">TO</span>
+              <input type="date" className="form-control border-0 shadow-none bg-transparent fw-medium" style={{ width: '140px', fontSize: '0.9rem' }} value={range.to} onChange={(e) => setRange((p) => ({ ...p, to: e.target.value }))} />
             </div>
+
+            <button className="btn btn-brand rounded-3 px-4 py-2 text-nowrap shadow-sm" onClick={fetchAttendance} disabled={!selectedClass || loading}>
+              {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-funnel-fill me-2"></i>}
+              Analyze
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="container py-4" style={{ maxWidth: 1200 }}>
-        {/* Empty state */}
+        {/* Empty State */}
         {!loading && !attendanceData.length && (
-          <div className="card border-0 shadow-sm rounded-4">
-            <div className="card-body p-5 text-center">
-              <div
-                className="mx-auto mb-3 rounded-circle"
-                style={{
-                  width: 64,
-                  height: 64,
-                  background: "rgba(79,70,229,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 900,
-                  color: "#4f46e5",
-                }}
-              >
-                %
-              </div>
-              <h5 className="mb-1" style={{ fontWeight: 900 }}>
-                Select a class to view analytics
-              </h5>
-              <div className="text-muted" style={{ fontSize: 13 }}>
-                Choose class/section/stream and click <b>Analyze</b>. Optionally filter by date range.
-              </div>
+          <div className="text-center py-5 my-5">
+            <div className="rounded-circle bg-white shadow-sm d-inline-flex align-items-center justify-content-center mb-4" style={{ width: 80, height: 80 }}>
+              <i className="bi bi-bar-chart-fill text-muted opacity-50 fs-1"></i>
             </div>
+            <h4 className="fw-bolder text-dark mb-2">Ready to Analyze</h4>
+            <p className="text-muted fw-medium">Select a class, section, and optional date range to generate insights.</p>
           </div>
         )}
 
-        {/* Dashboard */}
+        {/* Dashboard Content */}
         {!loading && attendanceData.length > 0 && (
-          <>
-            {/* KPI cards */}
-            <div className="row g-3 mb-3">
-              <div className="col-lg-3 col-md-6">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="text-muted small fw-bold">OVERALL ATTENDANCE</div>
-                    <div className="d-flex align-items-end justify-content-between mt-2">
-                      <div style={{ fontWeight: 900, fontSize: 28, letterSpacing: "-0.5px" }}>
-                        {summary.overallPercent.toFixed(1)}%
-                      </div>
-                      <div className="text-muted small">avg</div>
-                    </div>
-                    <div className="mt-3" style={{ height: 8, background: "#eef2ff", borderRadius: 20 }}>
-                      <div
-                        style={{
-                          width: `${Math.min(100, Math.max(0, summary.overallPercent))}%`,
-                          height: "100%",
-                          background: "#4f46e5",
-                          borderRadius: 20,
-                        }}
-                      />
-                    </div>
+          <div className="animate-fade-in">
+            
+            {/* KPI Cards */}
+            <div className="row g-4 mb-4">
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-primary">
+                  <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Overall Attendance</div>
+                  <div className="d-flex align-items-end justify-content-between">
+                    <div className="fw-bolder text-dark lh-1" style={{ fontSize: '2.5rem' }}>{summary.overallPercent.toFixed(1)}%</div>
+                  </div>
+                  <div className="progress mt-3" style={{ height: '6px', borderRadius: '10px', backgroundColor: '#e2e8f0' }}>
+                    <div className="progress-bar bg-primary" style={{ width: `${summary.overallPercent}%`, borderRadius: '10px' }}></div>
                   </div>
                 </div>
               </div>
-
-              <div className="col-lg-3 col-md-6">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="text-muted small fw-bold">TOTAL SESSIONS</div>
-                    <div className="mt-2" style={{ fontWeight: 900, fontSize: 28 }}>
-                      {summary.sessionsCount}
-                    </div>
-                    <div className="text-muted small">in selected period</div>
-                  </div>
+              
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-dark">
+                  <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Total Sessions</div>
+                  <div className="fw-bolder text-dark lh-1" style={{ fontSize: '2.5rem' }}>{summary.sessionsCount}</div>
+                  <div className="text-muted small mt-2 fw-medium">Analyzed in selected period</div>
                 </div>
               </div>
 
-              <div className="col-lg-3 col-md-6">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="text-muted small fw-bold">AVG CLASS SIZE</div>
-                    <div className="mt-2" style={{ fontWeight: 900, fontSize: 28 }}>
-                      {summary.avgClassSize.toFixed(0)}
-                    </div>
-                    <div className="text-muted small">students per session</div>
-                  </div>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-info">
+                  <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Avg Class Size</div>
+                  <div className="fw-bolder text-dark lh-1" style={{ fontSize: '2.5rem' }}>{summary.avgClassSize.toFixed(0)}</div>
+                  <div className="text-muted small mt-2 fw-medium">Students per session</div>
                 </div>
               </div>
 
-              <div className="col-lg-3 col-md-6">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="text-muted small fw-bold">BEST DAY</div>
-                    <div className="mt-2" style={{ fontWeight: 900, fontSize: 16 }}>
-                      {summary.bestDay ? fmtDate(summary.bestDay.date) : "-"}
-                    </div>
-                    <div className="text-muted small">
-                      {summary.bestDay ? `${summary.bestDay.percent.toFixed(1)}% present` : "—"}
-                    </div>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-success">
+                  <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Best Performing Day</div>
+                  <div className="fw-bolder text-dark lh-1 mb-2" style={{ fontSize: '1.5rem' }}>{summary.bestDay ? fmtDate(summary.bestDay.date) : "-"}</div>
+                  <div className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 align-self-start fw-bold">
+                    {summary.bestDay ? `${summary.bestDay.percent.toFixed(1)}% Present` : "—"}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Charts row */}
-            <div className="row g-3 mb-3">
-              <div className="col-lg-4">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div>
-                        <div className="text-muted small fw-bold">OVERALL SPLIT</div>
-                        <div style={{ fontWeight: 900 }}>Present vs Absent</div>
-                      </div>
-                      <span className="badge rounded-pill text-bg-light border">
-                        {summary.totalPresent + summary.totalAbsent} marks
-                      </span>
+            {/* Charts Row 1 */}
+            <div className="row g-4 mb-4">
+              <div className="col-12 col-lg-4">
+                <div className="premium-card p-4 h-100">
+                  <div className="d-flex align-items-center justify-content-between mb-4">
+                    <div>
+                      <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Overall Split</div>
+                      <h6 className="fw-bolder text-dark m-0">Present vs Absent</h6>
                     </div>
+                    <span className="badge bg-light text-dark border rounded-pill px-2 py-1">{summary.totalPresent + summary.totalAbsent} marks</span>
+                  </div>
+                  
+                  <div className="position-relative" style={{ height: '260px' }}>
+                    {doughnutData && <Doughnut data={doughnutData} options={doughnutOptions} />}
+                    <div className="position-absolute top-50 start-50 translate-middle text-center pointer-events-none">
+                      <div className="text-muted small fw-bold">AVG</div>
+                      <div className="fw-bolder text-dark lh-1" style={{ fontSize: '1.8rem' }}>{summary.overallPercent.toFixed(0)}%</div>
+                    </div>
+                  </div>
+                  
+                  <div className="d-flex justify-content-around mt-4 pt-3 border-top" style={{ borderColor: '#f1f5f9' }}>
+                    <div className="text-center">
+                      <div className="small text-muted fw-bold mb-1">PRESENT</div>
+                      <h5 className="fw-bolder text-primary m-0">{summary.totalPresent}</h5>
+                    </div>
+                    <div className="vr text-secondary opacity-25"></div>
+                    <div className="text-center">
+                      <div className="small text-muted fw-bold mb-1">ABSENT</div>
+                      <h5 className="fw-bolder text-secondary m-0">{summary.totalAbsent}</h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                    <div style={{ height: 260, position: "relative" }}>
-                      {doughnutData && <Doughnut data={doughnutData} options={doughnutOptions} />}
-                      {/* Center label overlay */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          pointerEvents: "none",
-                          flexDirection: "column",
-                        }}
-                      >
-                        <div className="text-muted small">Overall</div>
-                        <div style={{ fontWeight: 900, fontSize: 26 }}>
-                          {summary.overallPercent.toFixed(1)}%
+              <div className="col-12 col-lg-8">
+                <div className="premium-card p-4 h-100 d-flex flex-column">
+                  <div className="d-flex align-items-center justify-content-between mb-4">
+                    <div>
+                      <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Session Distribution</div>
+                      <h6 className="fw-bolder text-dark m-0">Daily Volume Analysis</h6>
+                    </div>
+                  </div>
+                  <div className="flex-grow-1" style={{ minHeight: '260px' }}>
+                    {monthlyChartData && <Bar data={monthlyChartData} options={baseChartOptions} />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Row 2 & Table */}
+            <div className="row g-4">
+              <div className="col-12 col-lg-5">
+                <div className="premium-card p-4 h-100 d-flex flex-column">
+                  <div className="mb-4">
+                    <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Trend Analysis</div>
+                    <h6 className="fw-bolder text-dark m-0">Attendance Rate Over Time</h6>
+                  </div>
+                  <div className="flex-grow-1" style={{ minHeight: '260px' }}>
+                    {trendChartData && <Line data={trendChartData} options={baseChartOptions} />}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12 col-lg-7">
+                <div className="premium-card overflow-hidden h-100 d-flex flex-column">
+                  <div className="p-4 border-bottom" style={{ borderColor: '#f1f5f9' }}>
+                    <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                      <div>
+                        <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Session Logs</div>
+                        <h6 className="fw-bolder text-dark m-0">Detailed Records</h6>
+                      </div>
+                      <div className="d-flex gap-2">
+                        <div className="position-relative">
+                          <i className="bi bi-search position-absolute text-muted" style={{ top: '50%', transform: 'translateY(-50%)', left: '12px', fontSize: '0.85rem' }}></i>
+                          <input
+                            className="form-control input-premium py-1"
+                            style={{ width: '200px', paddingLeft: '32px', fontSize: '0.85rem' }}
+                            placeholder="Filter dates..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                          />
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="d-flex justify-content-between mt-2 small text-muted">
-                      <span>Present: <b className="text-dark">{summary.totalPresent}</b></span>
-                      <span>Absent: <b className="text-dark">{summary.totalAbsent}</b></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-lg-8">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                      <div>
-                        <div className="text-muted small fw-bold">SESSION DISTRIBUTION</div>
-                        <div style={{ fontWeight: 900 }}>Present & Absent per day</div>
-                      </div>
-                    </div>
-                    <div style={{ height: 280 }}>
-                      {monthlyChartData && <Bar data={monthlyChartData} options={baseChartOptions} />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Trend + Table */}
-            <div className="row g-3">
-              <div className="col-lg-5">
-                <div className="card border-0 shadow-sm rounded-4 h-100">
-                  <div className="card-body p-4">
-                    <div className="text-muted small fw-bold">TREND</div>
-                    <div style={{ fontWeight: 900 }} className="mb-3">
-                      Attendance % over time
-                    </div>
-                    <div style={{ height: 260 }}>
-                      {trendChartData && <Line data={trendChartData} options={baseChartOptions} />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-lg-7">
-                <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-                  <div className="card-body p-4 pb-2">
-                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                      <div>
-                        <div className="text-muted small fw-bold">SESSIONS</div>
-                        <div style={{ fontWeight: 900 }}>Session logs</div>
-                      </div>
-
-                      <div className="d-flex gap-2 align-items-center">
-                        <input
-                          className="form-control"
-                          style={{ width: 220 }}
-                          placeholder="Search date (e.g., Feb)"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                        />
-                        <button
-                          className="btn btn-outline-dark"
-                          style={{ borderRadius: 14, fontWeight: 800 }}
-                          onClick={() => setRange({ from: "", to: "" })}
-                        >
-                          Reset Range
+                        <button className="btn bg-light border text-muted fw-bold py-1 px-3 rounded-3" style={{ fontSize: '0.85rem' }} onClick={() => setRange({ from: "", to: "" })}>
+                          Reset
                         </button>
                       </div>
                     </div>
                   </div>
-
-                  <div className="table-responsive">
-                    <table className="table align-middle mb-0">
-                      <thead style={{ background: "#fbfdff" }}>
+                  
+                  <div className="table-responsive flex-grow-1 custom-scroll" style={{ maxHeight: '400px' }}>
+                    <table className="table table-premium align-middle mb-0">
+                      <thead className="sticky-top z-1 shadow-sm">
                         <tr>
-                          <th className="px-4 py-3 text-muted small fw-bold">DATE</th>
-                          <th className="text-center text-muted small fw-bold">TOTAL</th>
-                          <th className="text-center text-muted small fw-bold">PRESENT</th>
-                          <th className="text-center text-muted small fw-bold">ABSENT</th>
-                          <th className="px-4 py-3 text-end"></th>
+                          <th className="ps-4">Date</th>
+                          <th className="text-center">Total</th>
+                          <th className="text-center">Present</th>
+                          <th className="text-center">Absent</th>
+                          <th className="text-end pe-4">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white">
-                        {tableSessions
-                          .filter((rec) => fmtDate(rec.date).toLowerCase().includes(query.toLowerCase()))
-                          .map((rec) => {
-                            const present =
-                              rec.attendance?.filter((a) => a.status === "Present").length || 0;
-                            const total = rec.attendance?.length || 0;
-                            const absent = Math.max(0, total - present);
-                            const percent = total ? (present / total) * 100 : 0;
+                      <tbody>
+                        {tableSessions.length === 0 ? (
+                           <tr>
+                             <td colSpan="5" className="text-center py-5 text-muted fw-medium">No sessions logged in this date range.</td>
+                           </tr>
+                        ) : (
+                          tableSessions
+                            .filter((rec) => fmtDate(rec.date).toLowerCase().includes(query.toLowerCase()))
+                            .map((rec) => {
+                              const present = rec.attendance?.filter((a) => a.status === "Present").length || 0;
+                              const total = rec.attendance?.length || 0;
+                              const absent = Math.max(0, total - present);
+                              const percent = total ? (present / total) * 100 : 0;
 
-                            return (
-                              <tr key={rec._id} style={{ borderTop: "1px solid #f1f5f9" }}>
-                                <td className="px-4 py-3">
-                                  <div style={{ fontWeight: 900 }}>{fmtDate(rec.date)}</div>
-                                  <div className="text-muted small">{percent.toFixed(1)}% present</div>
-                                </td>
-                                <td className="text-center fw-bold text-muted">{total}</td>
-                                <td className="text-center fw-bold" style={{ color: "#4f46e5" }}>
-                                  {present}
-                                </td>
-                                <td className="text-center fw-bold text-muted">{absent}</td>
-                                <td className="px-4 text-end">
-                                  <button
-                                    className="btn btn-sm btn-dark"
-                                    style={{ borderRadius: 12, fontWeight: 800 }}
-                                    onClick={() => {
-                                      setSelectedRecord(rec);
-                                      setQuery("");
-                                    }}
-                                  >
-                                    View
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-
-                        {!tableSessions.length && (
-                          <tr>
-                            <td colSpan={5} className="text-center text-muted py-5">
-                              No sessions found in this date range.
-                            </td>
-                          </tr>
+                              return (
+                                <tr key={rec._id}>
+                                  <td className="ps-4">
+                                    <div className="fw-bolder text-dark">{fmtDate(rec.date)}</div>
+                                    <div className="text-muted small fw-medium">{percent.toFixed(1)}% presence</div>
+                                  </td>
+                                  <td className="text-center fw-bold text-muted">{total}</td>
+                                  <td className="text-center fw-bolder text-primary">{present}</td>
+                                  <td className="text-center fw-bold text-danger">{absent}</td>
+                                  <td className="text-end pe-4">
+                                    <button
+                                      className="btn btn-sm bg-light border text-dark fw-bold rounded-pill px-3 shadow-sm"
+                                      onClick={() => { setSelectedRecord(rec); setQuery(""); }}
+                                    >
+                                      View
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
                         )}
                       </tbody>
                     </table>
                   </div>
-
-                  <div className="px-4 pb-4 text-muted small">
-                    Tip: Use date range + search to quickly find a session.
-                  </div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* Details Modal */}
+        {/* Drill-down Modal */}
         {selectedRecord && (
-          <div
-            className="modal show d-block"
-            style={{
-              backgroundColor: "rgba(2, 6, 23, 0.55)",
-              backdropFilter: "blur(10px)",
-            }}
-          >
-            <div className="modal-dialog modal-dialog-centered modal-lg">
-              <div className="modal-content border-0 shadow rounded-5 overflow-hidden">
-                <div className="modal-header border-0 p-4">
+          <div className="modal show d-block" style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)", zIndex: 1050 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "24px", overflow: "hidden" }}>
+                
+                <div className="modal-header border-0 bg-light px-4 pt-4 pb-3">
                   <div>
-                    <div className="text-muted small fw-bold">SESSION DETAILS</div>
-                    <h5 className="modal-title mb-0" style={{ fontWeight: 950 }}>
-                      {fmtDate(selectedRecord.date)}
+                    <h5 className="fw-bolder text-dark mb-1 d-flex align-items-center">
+                      <i className="bi bi-calendar-event text-primary me-2"></i> Session Details
                     </h5>
+                    <p className="text-muted small fw-medium mb-0">Record for {fmtDate(selectedRecord.date)}</p>
                   </div>
-                  <button type="button" className="btn-close" onClick={() => setSelectedRecord(null)} />
+                  <button type="button" className="btn-close shadow-none" onClick={() => setSelectedRecord(null)}></button>
                 </div>
 
-                <div className="modal-body p-4 pt-0">
+                <div className="modal-body p-4 bg-white custom-scroll">
                   {(() => {
-                    const present =
-                      selectedRecord.attendance?.filter((a) => a.status === "Present").length || 0;
+                    const present = selectedRecord.attendance?.filter((a) => a.status === "Present").length || 0;
                     const total = selectedRecord.attendance?.length || 0;
                     const absent = Math.max(0, total - present);
                     const percent = total ? (present / total) * 100 : 0;
@@ -734,109 +624,70 @@ export default function AdminClassAttendance() {
 
                     return (
                       <>
-                        {/* Summary strip */}
-                        <div
-                          className="p-4 rounded-4 mb-3"
-                          style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.10), #f8fafc)" }}
-                        >
+                        {/* Modal Summary Strip */}
+                        <div className="p-4 rounded-4 mb-4 border" style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.05), #f8fafc)" }}>
                           <div className="row g-3 align-items-center">
-                            <div className="col-md-4">
-                              <div className="text-muted small fw-bold">ATTENDANCE</div>
-                              <div style={{ fontWeight: 950, fontSize: 28 }}>{percent.toFixed(1)}%</div>
+                            <div className="col-12 col-md-4 border-end-md" style={{ borderColor: '#e2e8f0' }}>
+                              <div className="text-muted small fw-bold text-uppercase">Attendance</div>
+                              <div className="fw-bolder text-primary lh-1 mt-1" style={{ fontSize: '2rem' }}>{percent.toFixed(1)}%</div>
                             </div>
-                            <div className="col-md-8">
-                              <div className="d-flex gap-2 flex-wrap">
-                                <span className="badge rounded-pill text-bg-primary">
-                                  Present: {present}
-                                </span>
-                                <span className="badge rounded-pill text-bg-light border">
-                                  Absent: {absent}
-                                </span>
-                                <span className="badge rounded-pill text-bg-dark">
-                                  Total: {total}
-                                </span>
+                            <div className="col-12 col-md-8 ps-md-4">
+                              <div className="d-flex flex-wrap gap-2 mb-3">
+                                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fw-semibold">Total: {total}</span>
+                                <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 fw-semibold">Present: {present}</span>
+                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 fw-semibold">Absent: {absent}</span>
                               </div>
-                              <div className="mt-3" style={{ height: 8, background: "#eef2ff", borderRadius: 20 }}>
-                                <div
-                                  style={{
-                                    width: `${Math.min(100, Math.max(0, percent))}%`,
-                                    height: "100%",
-                                    background: "#4f46e5",
-                                    borderRadius: 20,
-                                  }}
-                                />
+                              <div className="progress shadow-sm" style={{ height: '8px', borderRadius: '10px', backgroundColor: '#fee2e2' }}>
+                                <div className="progress-bar bg-success" style={{ width: `${percent}%`, borderRadius: '10px' }} />
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Search inside modal */}
+                        {/* Search Roster */}
                         <div className="d-flex gap-2 mb-3">
-                          <input
-                            className="form-control"
-                            placeholder="Search student name / ID / status..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                          />
-                          <button className="btn btn-outline-dark" style={{ borderRadius: 14, fontWeight: 800 }} onClick={() => setQuery("")}>
-                            Clear
-                          </button>
+                          <div className="position-relative flex-grow-1">
+                            <i className="bi bi-search position-absolute text-muted" style={{ top: '50%', transform: 'translateY(-50%)', left: '12px' }}></i>
+                            <input
+                              className="form-control input-premium py-2 w-100"
+                              style={{ paddingLeft: '36px' }}
+                              placeholder="Search student by name, ID, or status..."
+                              value={query}
+                              onChange={(e) => setQuery(e.target.value)}
+                            />
+                          </div>
+                          <button className="btn bg-light border text-muted fw-bold rounded-3 px-3" onClick={() => setQuery("")}>Clear</button>
                         </div>
 
-                        {/* List */}
-                        <div className="border rounded-4 overflow-hidden">
-                          <div
-                            className="px-3 py-2 d-flex justify-content-between align-items-center"
-                            style={{ background: "#fbfdff", borderBottom: "1px solid #f1f5f9" }}
-                          >
-                            <div className="text-muted small fw-bold">STUDENTS</div>
-                            <div className="text-muted small">{filtered.length} records</div>
+                        {/* Roster List */}
+                        <div className="border rounded-4 overflow-hidden shadow-sm">
+                          <div className="px-4 py-3 d-flex justify-content-between align-items-center bg-light border-bottom">
+                            <div className="text-muted small fw-bold text-uppercase">Student Roster</div>
+                            <div className="badge bg-white text-dark border px-2 py-1 shadow-sm">{filtered.length} Records</div>
                           </div>
 
-                          <div style={{ maxHeight: 420, overflowY: "auto" }}>
-                            {filtered.map((std, index) => (
-                              <div
-                                key={index}
-                                className="d-flex align-items-center justify-content-between px-3 py-3"
-                                style={{ borderBottom: "1px solid #f1f5f9" }}
-                              >
-                                <div className="d-flex align-items-center gap-3">
-                                  <div
-                                    className="rounded-circle d-flex align-items-center justify-content-center"
-                                    style={{
-                                      width: 38,
-                                      height: 38,
-                                      background: "#f1f5f9",
-                                      fontWeight: 900,
-                                      color: "#334155",
-                                      fontSize: 12,
-                                    }}
-                                  >
-                                    {index + 1}
-                                  </div>
-                                  <div>
-                                    <div style={{ fontWeight: 900, fontSize: 13 }}>
-                                      {std?.studentId?.name || "Student"}
+                          <div>
+                            {filtered.length === 0 ? (
+                              <div className="text-center text-muted py-5 fw-medium">No students match your search criteria.</div>
+                            ) : (
+                              filtered.map((std, index) => (
+                                <div key={index} className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom bg-white hover-bg-light transition-all">
+                                  <div className="d-flex align-items-center gap-3">
+                                    <div className="rounded-circle d-flex align-items-center justify-content-center bg-light text-muted fw-bold border shadow-sm" style={{ width: 36, height: 36, fontSize: '0.85rem' }}>
+                                      {index + 1}
                                     </div>
-                                    <div className="text-muted" style={{ fontSize: 11 }}>
-                                      ID: {std?.studentId?.studentId || "—"}
+                                    <div>
+                                      <div className="fw-bolder text-dark mb-1 lh-sm">{std?.studentId?.name || "Unknown Student"}</div>
+                                      <div className="text-muted small fw-medium font-monospace" style={{ fontSize: '0.75rem' }}>
+                                        ID: {std?.studentId?.studentId || "—"}
+                                      </div>
                                     </div>
                                   </div>
+                                  <span className={`badge rounded-pill px-3 py-2 fw-bold shadow-sm ${std?.status === "Present" ? "bg-success" : "bg-danger"}`}>
+                                    {(std?.status || "—").toUpperCase()}
+                                  </span>
                                 </div>
-
-                                <span
-                                  className={`badge rounded-pill ${
-                                    std?.status === "Present" ? "text-bg-primary" : "text-bg-light border"
-                                  }`}
-                                  style={{ fontWeight: 900 }}
-                                >
-                                  {(std?.status || "—").toUpperCase()}
-                                </span>
-                              </div>
-                            ))}
-
-                            {!filtered.length && (
-                              <div className="text-center text-muted py-5">No matching students found.</div>
+                              ))
                             )}
                           </div>
                         </div>
@@ -844,17 +695,10 @@ export default function AdminClassAttendance() {
                     );
                   })()}
                 </div>
-
-                <div className="modal-footer border-0 p-4 pt-0">
-                  <button
-                    className="btn btn-dark px-4"
-                    style={{ borderRadius: 14, fontWeight: 900 }}
-                    onClick={() => {
-                      setSelectedRecord(null);
-                      setQuery("");
-                    }}
-                  >
-                    Close
+                
+                <div className="modal-footer border-0 bg-light px-4 py-3">
+                  <button className="btn btn-dark w-100 rounded-pill fw-bold py-2 shadow-sm" onClick={() => { setSelectedRecord(null); setQuery(""); }}>
+                    Close Details
                   </button>
                 </div>
               </div>
@@ -862,18 +706,13 @@ export default function AdminClassAttendance() {
           </div>
         )}
 
-        {/* Loading overlay (nice feel) */}
+        {/* Global Loading Overlay */}
         {loading && (
-          <div
-            className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-            style={{ background: "rgba(248,250,252,0.7)", backdropFilter: "blur(6px)", zIndex: 9999 }}
-          >
-            <div className="bg-white border shadow-sm rounded-4 p-4 d-flex align-items-center gap-3">
-              <span className="spinner-border text-primary" />
-              <div>
-                <div style={{ fontWeight: 900 }}>Analyzing attendance…</div>
-                <div className="text-muted small">Fetching class session records</div>
-              </div>
+          <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(6px)", zIndex: 1060 }}>
+            <div className="bg-white p-4 rounded-4 shadow-lg border text-center">
+              <div className="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}></div>
+              <h5 className="fw-bolder text-dark mb-1">Crunching Data...</h5>
+              <p className="text-muted small fw-medium mb-0">Analyzing session records</p>
             </div>
           </div>
         )}

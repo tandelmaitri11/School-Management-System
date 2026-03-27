@@ -19,7 +19,11 @@ const getMonthlyCount = async (Model) => {
 // Helper: Get monthly total fees
 const getMonthlyFeesTotal = async () => {
   const pipeline = [
-    { $group: { _id: { $month: "$createdAt" }, total: { $sum: "$amount" } } },
+    {  $unwind: "$paymentHistory"},
+    { $group: { 
+      _id: { $month: "$paymentHistory.date" }, 
+      total: { $sum: "$paymentHistory.amount" } 
+    } },
     { $sort: { "_id": 1 } },
   ];
   const result = await Fee.aggregate(pipeline);

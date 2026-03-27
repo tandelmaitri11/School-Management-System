@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Button, Badge } from "react-bootstrap";
+import { Card, Badge } from "react-bootstrap";
 import {
   FaUserGraduate,
   FaChalkboardTeacher,
@@ -7,8 +7,9 @@ import {
   FaWallet,
   FaLayerGroup,
   FaProjectDiagram,
+  FaEllipsisV,
 } from "react-icons/fa";
-import { Line, Bar } from "react-chartjs-2";
+import { Line, Bar, Doughnut, PolarArea } from "react-chartjs-2";
 import { Link } from "react-router-dom";
 import {
   Chart as ChartJS,
@@ -17,6 +18,8 @@ import {
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
   Legend,
@@ -24,12 +27,15 @@ import {
 } from "chart.js";
 import api from "../../api/api";
 
+// Register all required Chart.js elements
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
   Legend,
@@ -112,10 +118,7 @@ function Dashboard() {
         streamWiseStudents: Array.isArray(res.data.streamWiseStudents) ? res.data.streamWiseStudents : [],
         classWiseFees: Array.isArray(res.data.classWiseFees) ? res.data.classWiseFees : [],
         classSummary: res.data.classSummary || {
-          totalSections: 0,
-          activeSections: 0,
-          totalStreams: 0,
-          activeStreams: 0,
+          totalSections: 0, activeSections: 0, totalStreams: 0, activeStreams: 0,
         },
       });
     } catch (err) {
@@ -123,376 +126,353 @@ function Dashboard() {
     }
   };
 
+  // Modern Color Palette
+  const colors = {
+    students: { base: "#6366f1", light: "rgba(99, 102, 241, 0.15)", grad: "linear-gradient(135deg, #6366f1, #4f46e5)" },
+    teachers: { base: "#10b981", light: "rgba(16, 185, 129, 0.15)", grad: "linear-gradient(135deg, #10b981, #059669)" },
+    classes: { base: "#f59e0b", light: "rgba(245, 158, 11, 0.15)", grad: "linear-gradient(135deg, #f59e0b, #d97706)" },
+    fees: { base: "#ec4899", light: "rgba(236, 72, 153, 0.15)", grad: "linear-gradient(135deg, #ec4899, #db2777)" },
+    sections: { base: "#06b6d4", light: "rgba(6, 182, 212, 0.15)", grad: "linear-gradient(135deg, #06b6d4, #0891b2)" },
+    streams: { base: "#8b5cf6", light: "rgba(139, 92, 246, 0.15)", grad: "linear-gradient(135deg, #8b5cf6, #7c3aed)" },
+  };
+
   const cards = [
-    {
-      title: "Students",
-      value: data.students,
-      sub: "registered",
-      icon: <FaUserGraduate size={24} />,
-      badge: "Records",
-      link: "/Students/allstudents",
-      ring: "rgba(243,168,71,.28)",
-      tint: "rgba(243,168,71,.10)",
-      color: "#f3a847",
-    },
-    {
-      title: "Teachers",
-      value: data.teachers,
-      sub: "active",
-      icon: <FaChalkboardTeacher size={24} />,
-      badge: "Staff",
-      link: "/teacher/allteacher",
-      ring: "rgba(100,181,246,.28)",
-      tint: "rgba(100,181,246,.10)",
-      color: "#64b5f6",
-    },
-    {
-      title: "Classes",
-      value: data.classes,
-      sub: "total",
-      icon: <FaChalkboard size={24} />,
-      badge: "Groups",
-      link: "/classes/all",
-      ring: "rgba(255,138,101,.28)",
-      tint: "rgba(255,138,101,.10)",
-      color: "#ff8a65",
-    },
-    {
-      title: "Fees",
-      value: data.fees,
-      sub: "records",
-      icon: <FaWallet size={24} />,
-      badge: "Finance",
-      link: "/studentfees",
-      ring: "rgba(186,104,200,.28)",
-      tint: "rgba(186,104,200,.10)",
-      color: "#ba68c8",
-    },
-    {
-      title: "Sections",
-      value: distribution.classSummary.totalSections || 0,
-      sub: `${distribution.classSummary.activeSections || 0} active`,
-      icon: <FaLayerGroup size={24} />,
-      badge: "Class Setup",
-      link: "/classes/all",
-      ring: "rgba(56,142,60,.28)",
-      tint: "rgba(56,142,60,.10)",
-      color: "#388e3c",
-    },
-    {
-      title: "Streams",
-      value: distribution.classSummary.totalStreams || 0,
-      sub: `${distribution.classSummary.activeStreams || 0} active`,
-      icon: <FaProjectDiagram size={24} />,
-      badge: "Senior Setup",
-      link: "/classes/all",
-      ring: "rgba(0,121,107,.28)",
-      tint: "rgba(0,121,107,.10)",
-      color: "#00796b",
-    },
+    { title: "Students", value: data.students, sub: "Registered", icon: <FaUserGraduate size={22} />, link: "/Students/allstudents", theme: colors.students },
+    { title: "Teachers", value: data.teachers, sub: "Active Staff", icon: <FaChalkboardTeacher size={22} />, link: "/teacher/allteacher", theme: colors.teachers },
+    { title: "Classes", value: data.classes, sub: "Total Groups", icon: <FaChalkboard size={22} />, link: "/classes/all", theme: colors.classes },
+    { title: "Fees", value: data.fees, sub: "Finance Records", icon: <FaWallet size={22} />, link: "/studentfees", theme: colors.fees },
+    { title: "Sections", value: distribution.classSummary.totalSections || 0, sub: `${distribution.classSummary.activeSections || 0} Active`, icon: <FaLayerGroup size={22} />, link: "/classes/all", theme: colors.sections },
+    { title: "Streams", value: distribution.classSummary.totalStreams || 0, sub: `${distribution.classSummary.activeStreams || 0} Active`, icon: <FaProjectDiagram size={22} />, link: "/classes/all", theme: colors.streams },
   ];
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+  // --- Dynamic Gradient Helper ---
+  const getGradient = (context, colorStart, colorEnd) => {
+    const chart = context.chart;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return null; 
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, colorStart);
+    gradient.addColorStop(1, colorEnd);
+    return gradient;
+  };
+
+  // --- Enhanced Tooltips Formatter ---
   const commonTooltip = {
     enabled: true,
     mode: "index",
     intersect: false,
-    backgroundColor: "rgba(15, 23, 42, 0.9)", // Darker, sleeker tooltip
+    backgroundColor: "rgba(15, 23, 42, 0.95)",
     titleColor: "#fff",
-    bodyColor: "#f1f5f9",
-    padding: 12,
-    cornerRadius: 8,
+    bodyColor: "#cbd5e1",
+    padding: 16,
+    cornerRadius: 12,
     displayColors: true,
+    titleFont: { size: 14, family: "'Inter', sans-serif", weight: 'bold' },
+    bodyFont: { size: 14, family: "'Inter', sans-serif", weight: '500' },
+    boxPadding: 6,
+    usePointStyle: true,
+    callbacks: {
+      label: function(context) {
+        let label = context.dataset.label || context.label || '';
+        if (label) label += ': ';
+        // Add commas to large numbers for professional readability
+        if (context.parsed.y !== null && context.parsed.y !== undefined) {
+          label += new Intl.NumberFormat('en-US').format(context.parsed.y);
+        } else if (context.parsed !== null) {
+          label += new Intl.NumberFormat('en-US').format(context.parsed);
+        }
+        return label;
+      }
+    }
   };
 
   const commonScales = {
     x: {
       grid: { display: false },
-      ticks: { color: "#64748b", font: { weight: 500, family: "'Inter', sans-serif" } },
+      ticks: { color: "#64748b", font: { family: "'Inter', sans-serif" } },
     },
     y: {
       beginAtZero: true,
-      border: { dash: [4, 4], display: false },
-      grid: { color: "rgba(0,0,0,0.04)" },
-      ticks: { color: "#64748b", font: { family: "'Inter', sans-serif" } },
+      border: { display: false },
+      grid: { color: "rgba(226, 232, 240, 0.6)", drawBorder: false, borderDash: [5, 5] },
+      ticks: { color: "#64748b", font: { family: "'Inter', sans-serif" }, padding: 10 },
     },
   };
 
+  // --- Custom Plugins for Text Inside Doughnuts ---
+
+  // 1. Center Text for Full Doughnut (Attendance)
+  const attendanceCenterText = {
+    id: 'attendanceCenterText',
+    beforeDraw(chart) {
+      const { ctx, chartArea: { top, width, height } } = chart;
+      ctx.save();
+      const total = attendanceSummary.present + attendanceSummary.absent;
+      const percentage = total > 0 ? Math.round((attendanceSummary.present / total) * 100) : 0;
+      
+      const centerX = chart.chartArea.left + width / 2;
+      const centerY = top + height / 2;
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Percentage Text
+      ctx.font = 'bolder 36px "Inter", sans-serif';
+      ctx.fillStyle = '#1e293b';
+      ctx.fillText(`${percentage}%`, centerX, centerY - 10);
+      
+      // Subtext
+      ctx.font = '500 14px "Inter", sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Present', centerX, centerY + 20);
+      ctx.restore();
+    }
+  };
+
+  // 2. Center Text for Half Doughnut (Fee Status)
+  const feeCenterText = {
+    id: 'feeCenterText',
+    beforeDraw(chart) {
+      const { ctx, chartArea: { left, width, bottom } } = chart;
+      ctx.save();
+      const total = feeSummary.paid + feeSummary.pending;
+      const percentage = total > 0 ? Math.round((feeSummary.paid / total) * 100) : 0;
+      
+      const centerX = left + width / 2;
+      // For a half-doughnut, the center is near the bottom
+      const centerY = bottom - 15; 
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      
+      // Percentage Text
+      ctx.font = 'bolder 36px "Inter", sans-serif';
+      ctx.fillStyle = '#1e293b';
+      ctx.fillText(`${percentage}%`, centerX, centerY - 25);
+      
+      // Subtext
+      ctx.font = '500 14px "Inter", sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Collected', centerX, centerY);
+      ctx.restore();
+    }
+  };
+
+  // --- Chart Options ---
+  
+  // UPDATED: Dual Y-Axes configuration for the Line Chart
   const lineOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: { duration: 2500, easing: 'easeOutQuart' },
     interaction: { mode: "index", intersect: false },
     plugins: {
-      legend: {
-        position: "top",
-        align: "end",
-        labels: {
-          usePointStyle: true,
-          pointStyle: "circle",
-          boxWidth: 8,
-          boxHeight: 8,
-          padding: 20,
-          color: "#475569",
-          font: { weight: 600, family: "'Inter', sans-serif" },
-        },
-      },
-      tooltip: {
-        ...commonTooltip,
-        callbacks: {
-          title: (items) => `Month: ${items?.[0]?.label || "-"}`,
-          label: (ctx) => {
-            const label = ctx.dataset.label || "Value";
-            const val = ctx.parsed?.y ?? 0;
-            if (label === "Fees") return `${label}: Rs ${Number(val).toLocaleString()}`;
-            return `${label}: ${Number(val).toLocaleString()}`;
-          },
-        },
-      },
-    },
-    scales: commonScales,
-  };
-
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-    plugins: {
-      legend: {
-        position: "top",
-        align: "end",
-        labels: {
-          usePointStyle: true,
-          pointStyle: "circle",
-          boxWidth: 8,
-          padding: 20,
-          color: "#475569",
-          font: { weight: 600, family: "'Inter', sans-serif" },
-        },
-      },
+      legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8, padding: 20, font: { family: "'Inter', sans-serif", weight: 500 } } },
       tooltip: commonTooltip,
     },
-    scales: commonScales,
+    scales: {
+      x: commonScales.x,
+      y: {
+        ...commonScales.y,
+        type: 'linear',
+        position: 'left',
+        title: { display: true, text: 'Counts (People/Classes)', font: { size: 12, weight: 'bold' } }
+      },
+      y1: {
+        ...commonScales.y,
+        type: 'linear',
+        position: 'right',
+        grid: { drawOnChartArea: false }, // Hides the grid lines for the right axis to keep it clean
+        title: { display: true, text: 'Revenue (₹)', font: { size: 12, weight: 'bold' } },
+        ticks: {
+          color: "#64748b",
+          font: { family: "'Inter', sans-serif" },
+          padding: 10,
+          callback: function(value) {
+            // Format with Indian Rupee symbol
+            return '₹' + new Intl.NumberFormat('en-IN').format(value); 
+          }
+        }
+      },
+    },
   };
 
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "78%", 
+    animation: { animateScale: true, animateRotate: true, duration: 1500, easing: "easeOutCirc" },
+    plugins: {
+      legend: { position: "bottom", labels: { usePointStyle: true, padding: 20, font: { family: "'Inter', sans-serif", weight: 500 } } },
+      tooltip: { ...commonTooltip, mode: "nearest" },
+    },
+  };
+
+  const halfDoughnutOptions = {
+    ...doughnutOptions,
+    rotation: -90,
+    circumference: 180,
+    cutout: "78%",
+  };
+
+  const polarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { animateScale: true, animateRotate: true, duration: 1500 },
+    scales: { r: { ticks: { display: false }, grid: { color: "rgba(226, 232, 240, 0.4)" } } },
+    plugins: {
+      legend: { position: "right", labels: { usePointStyle: true, padding: 15, font: { family: "'Inter', sans-serif", weight: 500 } } },
+      tooltip: { ...commonTooltip, mode: "nearest" },
+    },
+  };
+
+  const stackedBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 1500, easing: 'easeOutBounce' },
+    plugins: {
+      legend: { position: "top", align: "end", labels: { usePointStyle: true, boxWidth: 8, font: { family: "'Inter', sans-serif" } } },
+      tooltip: commonTooltip,
+    },
+    scales: {
+      x: { ...commonScales.x, stacked: true },
+      y: { ...commonScales.y, stacked: true },
+    },
+  };
+
+
+  // --- Chart Datasets ---
+  
+  // UPDATED: Added yAxisID to bind each dataset to the correct axis
   const lineChartData = {
     labels: months,
     datasets: [
-      {
-        label: "Students",
-        data: monthlyData.students,
-        borderColor: "#f3a847",
-        backgroundColor: "rgba(243,168,71,0.05)",
-        tension: 0.4, // Smoother curves
-        fill: true,
-        borderWidth: 3,
-        pointRadius: 0, // Cleaner look without heavy dots unless hovered
-        pointHoverRadius: 6,
+      { 
+        label: "Students", data: monthlyData.students, yAxisID: 'y', borderColor: colors.students.base, 
+        backgroundColor: (context) => getGradient(context, "rgba(99, 102, 241, 0.4)", "rgba(99, 102, 241, 0.0)"), 
+        fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, pointBackgroundColor: "#fff"
       },
-      {
-        label: "Teachers",
-        data: monthlyData.teachers,
-        borderColor: "#64b5f6",
-        backgroundColor: "rgba(100,181,246,0.05)",
-        tension: 0.4,
-        fill: true,
-        borderWidth: 3,
-        pointRadius: 0,
-        pointHoverRadius: 6,
+      { 
+        label: "Teachers", data: monthlyData.teachers, yAxisID: 'y', borderColor: colors.teachers.base, 
+        backgroundColor: (context) => getGradient(context, "rgba(16, 185, 129, 0.4)", "rgba(16, 185, 129, 0.0)"), 
+        fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, pointBackgroundColor: "#fff"
       },
-      {
-        label: "Classes",
-        data: monthlyData.classes,
-        borderColor: "#ff8a65",
-        backgroundColor: "rgba(255,138,101,0.05)",
-        tension: 0.4,
-        fill: true,
-        borderWidth: 3,
-        pointRadius: 0,
-        pointHoverRadius: 6,
+      { 
+        label: "Classes", data: monthlyData.classes, yAxisID: 'y', borderColor: colors.classes.base, 
+        backgroundColor: (context) => getGradient(context, "rgba(245, 158, 11, 0.4)", "rgba(245, 158, 11, 0.0)"), 
+        fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, pointBackgroundColor: "#fff"
       },
-      {
-        label: "Fees",
-        data: monthlyData.fees,
-        borderColor: "#ba68c8",
-        backgroundColor: "rgba(186,104,200,0.05)",
-        tension: 0.4,
-        fill: true,
-        borderWidth: 3,
-        pointRadius: 0,
-        pointHoverRadius: 6,
+      { 
+        label: "Fees", data: monthlyData.fees, yAxisID: 'y1', borderColor: colors.fees.base, 
+        backgroundColor: (context) => getGradient(context, "rgba(236, 72, 153, 0.4)", "rgba(236, 72, 153, 0.0)"), 
+        fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, pointBackgroundColor: "#fff"
       },
     ],
   };
 
   const attendanceData = {
     labels: ["Present", "Absent"],
-    datasets: [
-      {
-        label: "Teacher Attendance",
-        data: [attendanceSummary.present, attendanceSummary.absent],
-        backgroundColor: ["#10b981", "#ef4444"], // Modern Tailwind greens/reds
-        borderRadius: 6,
-        barThickness: 50,
-      },
-    ],
+    datasets: [{
+      data: [attendanceSummary.present, attendanceSummary.absent],
+      backgroundColor: [colors.teachers.base, "#f43f5e"],
+      hoverBackgroundColor: ["#059669", "#e11d48"],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }],
   };
 
   const feeStatusData = {
     labels: ["Paid", "Pending"],
-    datasets: [
-      {
-        label: "Fee Status",
-        data: [feeSummary.paid, feeSummary.pending],
-        backgroundColor: ["#3b82f6", "#f59e0b"], // Modern blues/ambers
-        borderRadius: 6,
-        barThickness: 50,
-      },
-    ],
+    datasets: [{
+      data: [feeSummary.paid, feeSummary.pending],
+      backgroundColor: [colors.sections.base, colors.classes.base],
+      hoverBackgroundColor: ["#0284c7", "#d97706"],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }],
   };
 
-  const combinedStudentDistributionRows = [
-    ...distribution.classWiseStudents.map((r) => ({
-      label: `Class ${r.className}`,
-      count: r.count,
-      color: "#f59e0b",
-    })),
-    ...distribution.sectionWiseStudents.map((r) => ({
-      label: `Section ${r.section}`,
-      count: r.count,
-      color: "#10b981",
-    })),
-    ...distribution.streamWiseStudents.map((r) => ({
-      label: `Stream ${r.stream}`,
-      count: r.count,
-      color: "#3b82f6",
-    })),
+  const combinedDistributionData = [
+    ...distribution.classWiseStudents.map((r) => ({ label: `Class ${r.className}`, count: r.count, color: colors.classes.base })),
+    ...distribution.sectionWiseStudents.map((r) => ({ label: `Sec ${r.section}`, count: r.count, color: colors.teachers.base })),
+    ...distribution.streamWiseStudents.map((r) => ({ label: `Str ${r.stream}`, count: r.count, color: colors.students.base })),
   ];
-
-  const combinedStudentDistributionChart = {
-    labels: combinedStudentDistributionRows.map((r) => r.label),
-    datasets: [
-      {
-        label: "Students",
-        data: combinedStudentDistributionRows.map((r) => r.count),
-        backgroundColor: combinedStudentDistributionRows.map((r) => r.color),
-        borderRadius: 6,
-        barThickness: 'flex',
-        maxBarThickness: 40,
-      },
-    ],
+  
+  const distributionChart = {
+    labels: combinedDistributionData.map((r) => r.label),
+    datasets: [{
+      data: combinedDistributionData.map((r) => r.count),
+      backgroundColor: combinedDistributionData.map((r) => r.color + "80"),
+      borderColor: combinedDistributionData.map((r) => r.color),
+      borderWidth: 1,
+      hoverBackgroundColor: combinedDistributionData.map((r) => r.color + "E6"),
+    }],
   };
 
-  const classFeeAmountChart = {
+  const classFeeChart = {
     labels: distribution.classWiseFees.map((r) => r.label),
     datasets: [
-      {
-        label: "Paid Amount",
-        data: distribution.classWiseFees.map((r) => r.paidAmount),
-        backgroundColor: "#10b981",
-        borderRadius: 4,
-      },
-      {
-        label: "Pending Amount",
-        data: distribution.classWiseFees.map((r) => r.remainingAmount),
-        backgroundColor: "#f59e0b",
-        borderRadius: 4,
-      },
+      { label: "Paid", data: distribution.classWiseFees.map((r) => r.paidAmount), backgroundColor: colors.teachers.base, borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 }, borderSkipped: false },
+      { label: "Pending", data: distribution.classWiseFees.map((r) => r.remainingAmount), backgroundColor: colors.classes.base, borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false },
     ],
   };
 
   return (
-    <div
-      className="min-vh-100 py-4"
-      style={{
-        backgroundColor: "#f3f4f6",
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div className="container-xxl">
+    <div className="min-vh-100 py-4" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        .fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        @keyframes fadeInUp {
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .stat-card:hover {
+          transform: translateY(-5px) scale(1.01);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        }
+        .icon-box { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .stat-card:hover .icon-box { transform: scale(1.15) rotate(5deg); }
+      `}</style>
+
+      <div className="container-fluid px-4">
         
-        {/* Modern Header Banner */}
-        <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 position-relative">
-          <div
-            className="p-4 p-md-5"
-            style={{
-              background: "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)",
-            }}
-          >
-            {/* Decorative background shapes */}
-            <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '200px', height: '200px', top: '-50px', right: '-50px' }}></div>
-            <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '100px', height: '100px', bottom: '20px', right: '15%' }}></div>
-            
-            <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 position-relative z-1">
-              <div className="text-white">
-                <h2 className="mb-2 fw-bold tracking-tight">Admin Dashboard</h2>
-                <div className="opacity-75 fs-6">
-                  School analytics by fees, class, section, stream, and operational status.
-                </div>
-              </div>
-              <div className="d-flex gap-2 flex-wrap">
-                <Badge bg="white" text="primary" className="rounded-pill px-3 py-2 fw-semibold shadow-sm">
-                  <i className="bi bi-record-circle-fill text-danger me-2"></i>Live Overview
-                </Badge>
-                <Badge bg="dark" className="rounded-pill px-3 py-2 fw-semibold bg-opacity-50">
-                  <i className="bi bi-graph-up me-2"></i>Analytics
-                </Badge>
-              </div>
-            </div>
+        {/* Header Section */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 fade-in-up" style={{ animationDelay: "0ms" }}>
+          <div>
+            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: "-0.5px" }}>SchoolY Dashboard</h2>
+            <p className="text-muted mb-0">Welcome back! Here's what's happening across your institution today.</p>
           </div>
+          
         </div>
 
-        {/* Summary Cards Grid */}
-        <div className="row g-4 mb-4">
+        {/* Stats Grid */}
+        <div className="row g-4 mb-5">
           {cards.map((c, idx) => (
-            <div className="col-12 col-sm-6 col-xl-4" key={idx}>
-              <Card 
-                className="border-0 shadow-sm rounded-4 h-100 transition-all"
-                style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
-                  e.currentTarget.style.boxShadow = '0 .5rem 1rem rgba(0,0,0,.08)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 .125rem .25rem rgba(0,0,0,.075)';
-                }}
-              >
+            <div className="col-12 col-sm-6 col-xl-4 fade-in-up" key={idx} style={{ animationDelay: `${(idx + 1) * 75}ms` }}>
+              <Card className="border-0 shadow-sm rounded-4 h-100 stat-card overflow-hidden">
                 <Card.Body className="p-4">
-                  <div className="d-flex align-items-start justify-content-between mb-3">
+                  <div className="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                      <div className="text-muted small fw-semibold text-uppercase tracking-wider mb-2">{c.title}</div>
-                      <div className="d-flex align-items-end gap-2">
-                        <div className="fw-bold text-dark" style={{ fontSize: '2.25rem', lineHeight: 1 }}>
-                          {c.value}
-                        </div>
-                      </div>
-                      <div className="text-muted small mt-1">
-                        <span style={{ color: c.color, fontWeight: 600 }}>{c.sub}</span> records
-                      </div>
+                      <p className="text-secondary fw-semibold mb-1 text-uppercase tracking-wider" style={{ fontSize: "0.75rem", letterSpacing: "1px" }}>{c.title}</p>
+                      <h3 className="fw-bold text-dark mb-0" style={{ fontSize: "2.25rem", letterSpacing: "-1px" }}>{c.value.toLocaleString()}</h3>
                     </div>
-
-                    <div
-                      className="d-flex align-items-center justify-content-center rounded-4"
-                      style={{
-                        width: 54,
-                        height: 54,
-                        background: c.tint,
-                        color: c.color,
-                      }}
-                    >
+                    <div className="icon-box d-flex align-items-center justify-content-center rounded-circle shadow-sm" style={{ width: 54, height: 54, background: c.theme.grad, color: "white" }}>
                       {c.icon}
                     </div>
                   </div>
-
-                  <hr className="text-muted opacity-25" />
-
-                  <div className="d-flex align-items-center justify-content-between mt-2">
-                    <Badge bg="light" text="secondary" className="border rounded-pill px-3 py-2 fw-medium">
-                      {c.badge}
-                    </Badge>
-                    <Link to={c.link} className="text-decoration-none fw-semibold small" style={{ color: c.color }}>
-                      View Details <i className="bi bi-arrow-right-short ms-1 fs-6 align-middle" />
+                  <div className="d-flex align-items-center justify-content-between pt-3 border-top" style={{ borderColor: "#f1f5f9" }}>
+                    <span className="badge rounded-pill fw-semibold px-3 py-2" style={{ background: c.theme.light, color: c.theme.base }}>
+                      {c.sub}
+                    </span>
+                    <Link to={c.link} className="text-decoration-none small fw-bold text-secondary hover-primary">
+                      View details →
                     </Link>
                   </div>
                 </Card.Body>
@@ -501,21 +481,19 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* Charts - Row 1 */}
-        <div className="row g-4 mb-4">
+        {/* Charts Row 1: Line Chart */}
+        <div className="row mb-4 fade-in-up" style={{ animationDelay: "500ms" }}>
           <div className="col-12">
             <Card className="border-0 shadow-sm rounded-4">
-              <Card.Body className="p-4 p-lg-5">
-                <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4">
+              <Card.Body className="p-4 p-md-5">
+                <div className="d-flex justify-content-between align-items-center mb-4">
                   <div>
-                    <h5 className="fw-bold mb-1 text-dark">Monthly Trends</h5>
-                    <div className="text-muted small">Students, teachers, classes and fees trend (month-wise).</div>
+                    <h5 className="fw-bold mb-1">Growth & Trends</h5>
+                    <p className="text-muted small mb-0">Monthly analysis of student enrollments and fee collections.</p>
                   </div>
-                  <Badge bg="light" text="secondary" className="border rounded-pill px-3 py-2 fw-medium">
-                    <i className="bi bi-graph-up text-primary me-2"></i>Line Chart
-                  </Badge>
+                  <button className="btn btn-light btn-sm rounded-circle"><FaEllipsisV className="text-muted"/></button>
                 </div>
-                <div style={{ height: "clamp(300px, 45vw, 420px)" }}>
+                <div style={{ height: "400px" }}>
                   <Line data={lineChartData} options={lineOptions} />
                 </div>
               </Card.Body>
@@ -523,89 +501,68 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Charts - Row 2 */}
-        <div className="row g-4 mb-4">
-          <div className="col-12">
-            <Card className="border-0 shadow-sm rounded-4">
-              <Card.Body className="p-4 p-lg-5">
-                <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4">
-                  <div>
-                    <h5 className="fw-bold mb-1 text-dark">Distribution Overview</h5>
-                    <div className="text-muted small">
-                      Students by Class, Section, and Stream combined.
-                    </div>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2">Class</span>
-                    <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2">Section</span>
-                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">Stream</span>
-                  </div>
+        {/* Charts Row 2: Doughnut & Gauge Charts with Custom Center Text */}
+        <div className="row g-4 mb-4 fade-in-up" style={{ animationDelay: "600ms" }}>
+          <div className="col-12 col-lg-6">
+            <Card className="border-0 shadow-sm rounded-4 h-100">
+              <Card.Body className="p-4 p-md-5">
+                <div className="mb-4">
+                  <h5 className="fw-bold mb-1">Staff Attendance</h5>
+                  <p className="text-muted small mb-0">Today's present vs absent ratio.</p>
                 </div>
-                <div style={{ height: "360px" }}>
-                  <Bar data={combinedStudentDistributionChart} options={barOptions} />
+                <div style={{ height: "300px", position: "relative" }}>
+                  <Doughnut 
+                    data={attendanceData} 
+                    options={doughnutOptions} 
+                    plugins={[attendanceCenterText]} 
+                  />
+                </div>
+              </Card.Body>
+            </Card>
+          </div>
+          <div className="col-12 col-lg-6">
+            <Card className="border-0 shadow-sm rounded-4 h-100">
+              <Card.Body className="p-4 p-md-5">
+                <div className="mb-4">
+                  <h5 className="fw-bold mb-1">Overall Fee Status</h5>
+                  <p className="text-muted small mb-0">Comparison of paid vs pending fees.</p>
+                </div>
+                <div style={{ height: "300px", position: "relative" }}>
+                  <Doughnut 
+                    data={feeStatusData} 
+                    options={halfDoughnutOptions} 
+                    plugins={[feeCenterText]} 
+                  />
                 </div>
               </Card.Body>
             </Card>
           </div>
         </div>
 
-        {/* Charts - Row 3 */}
-        <div className="row g-4 mb-4">
-          <div className="col-12 col-lg-6">
+        {/* Charts Row 3: Polar Area & Stacked Bar */}
+        <div className="row g-4 fade-in-up" style={{ animationDelay: "700ms" }}>
+          <div className="col-12 col-xl-6">
             <Card className="border-0 shadow-sm rounded-4 h-100">
-              <Card.Body className="p-4 p-lg-5">
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                  <div>
-                    <h5 className="fw-bold mb-1 text-dark">Teacher Attendance</h5>
-                    <div className="text-muted small">Present vs absent summary.</div>
-                  </div>
-                  <Badge bg="light" text="secondary" className="border rounded-pill px-3 py-2 fw-medium">
-                     <i className="bi bi-bar-chart-fill text-success me-2"></i>Status
-                  </Badge>
+              <Card.Body className="p-4 p-md-5">
+                <div className="mb-4">
+                  <h5 className="fw-bold mb-1">Student Demographics</h5>
+                  <p className="text-muted small mb-0">Population across classes, sections, and streams.</p>
                 </div>
-                <div style={{ height: "300px" }}>
-                  <Bar data={attendanceData} options={barOptions} />
+                <div style={{ height: "350px" }}>
+                  <PolarArea data={distributionChart} options={polarOptions} />
                 </div>
               </Card.Body>
             </Card>
           </div>
-
-          <div className="col-12 col-lg-6">
+          <div className="col-12 col-xl-6">
             <Card className="border-0 shadow-sm rounded-4 h-100">
-              <Card.Body className="p-4 p-lg-5">
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                  <div>
-                    <h5 className="fw-bold mb-1 text-dark">Fee Status</h5>
-                    <div className="text-muted small">Paid vs pending fee records.</div>
-                  </div>
-                  <Badge bg="light" text="secondary" className="border rounded-pill px-3 py-2 fw-medium">
-                    <i className="bi bi-wallet2 text-primary me-2"></i>Finance
-                  </Badge>
+              <Card.Body className="p-4 p-md-5">
+                <div className="mb-4">
+                  <h5 className="fw-bold mb-1">Class-wise Revenue</h5>
+                  <p className="text-muted small mb-0">Financial breakdown (Paid vs Pending) per class.</p>
                 </div>
-                <div style={{ height: "300px" }}>
-                  <Bar data={feeStatusData} options={barOptions} />
-                </div>
-              </Card.Body>
-            </Card>
-          </div>
-        </div>
-
-        {/* Charts - Row 4 */}
-        <div className="row g-4">
-          <div className="col-12">
-            <Card className="border-0 shadow-sm rounded-4">
-              <Card.Body className="p-4 p-lg-5">
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                  <div>
-                    <h5 className="fw-bold mb-1 text-dark">Class-wise Fee Amount</h5>
-                    <div className="text-muted small">Total paid and pending amount split by class level.</div>
-                  </div>
-                  <Badge bg="light" text="secondary" className="border rounded-pill px-3 py-2 fw-medium">
-                    <i className="bi bi-cash-stack text-success me-2"></i>Revenue
-                  </Badge>
-                </div>
-                <div style={{ height: "360px" }}>
-                  <Bar data={classFeeAmountChart} options={barOptions} />
+                <div style={{ height: "350px" }}>
+                  <Bar data={classFeeChart} options={stackedBarOptions} />
                 </div>
               </Card.Body>
             </Card>

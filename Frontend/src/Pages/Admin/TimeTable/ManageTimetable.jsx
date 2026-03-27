@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiCpu, FiEdit3, FiAlertCircle,FiCheckCircle, FiArrowRight, FiInfo, FiPlus } from "react-icons/fi"; 
+import { FiCalendar, FiCpu, FiEdit3, FiAlertCircle, FiCheckCircle, FiArrowRight, FiInfo, FiPlus } from "react-icons/fi"; 
 import api from "../../../api/api";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const PERIODS = [1, 2, 3, 4, 5];
@@ -194,118 +196,172 @@ export default function ManageTimetable() {
 
   const cellText = (day, period) => {
     const rows = filteredTimetable.filter((r) => r.day === day && Number(r.period) === Number(period));
-    if (!rows.length) return <span className="text-muted opacity-25">-</span>;
+    if (!rows.length) return (
+      <div className="d-flex align-items-center justify-content-center h-100 w-100 opacity-25 text-muted">
+        <i className="bi bi-dash-lg fs-4"></i>
+      </div>
+    );
     return rows.map((r, i) => (
-      <div key={i} className="small fw-medium py-1">
-        <div className="text-primary">{r.subject}</div>
-        <div className="text-muted extra-small" style={{fontSize: '0.7rem'}}>{r.teacherId?.name || r.teacherName || "N/A"}</div>
+      <div key={i} className="timetable-slot p-2 rounded-3 mb-1 shadow-sm bg-white border">
+        <div className="fw-bolder text-primary mb-1 lh-1 text-truncate" style={{ fontSize: '0.75rem', letterSpacing: '0.2px' }}>{r.subject}</div>
+        <div className="text-muted text-truncate lh-1 fw-medium" style={{ fontSize: '0.65rem' }}>
+          <i className="bi bi-person-fill me-1 opacity-75"></i>{r.teacherId?.name || r.teacherName || "N/A"}
+        </div>
       </div>
     ));
   };
 
-  // Styles
-  const modernCard = {
-    background: "#ffffff",
-    borderRadius: "16px",
-    border: "1px solid #f0f0f0",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.04)"
-  };
-
   return (
-    <div className="container-fluid py-4 bg-light min-vh-100">
-      {/* --- HEADER --- */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 px-2">
-        <div>
-          <h2 className="fw-bold text-dark mb-0">Timetable</h2>
-          <p className="text-muted small">Manage schedules, conflicts, and academic flows.</p>
-        </div>
-        <div className="d-flex gap-2">
-          <button 
-            className={`btn px-4 rounded-pill fw-semibold transition-all ${mode === "auto" ? "btn-primary shadow-sm" : "btn-light border text-muted"}`}
-            onClick={() => setMode("auto")}
-          >
-            <FiCpu className="me-2" /> Auto
-          </button>
-          <button 
-            className={`btn px-4 rounded-pill fw-semibold transition-all ${mode === "manual" ? "btn-success shadow-sm" : "btn-light border text-muted"}`}
-            onClick={() => setMode("manual")}
-          >
-            <FiEdit3 className="me-2" /> Manual
-          </button>
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .input-premium { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; transition: all 0.2s; font-weight: 500; color: #0f172a; }
+        .input-premium:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); background: #ffffff; outline: none; }
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); color: white; }
+        
+        .segmented-control { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 4px; border-radius: 50rem; border: 1px solid rgba(255,255,255,0.3); display: inline-flex; }
+        .segmented-btn { border: none; background: transparent; padding: 8px 24px; border-radius: 50rem; font-weight: 600; color: white; transition: all 0.2s; display: flex; align-items: center; }
+        .segmented-btn.active { background: #ffffff; color: #4f46e5; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        
+        .timetable-table th { text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; font-weight: 700; color: #64748b; background: #f8fafc !important; border-bottom: 2px solid #e2e8f0 !important; padding: 16px; text-align: center; }
+        .timetable-table td { padding: 8px; border-color: #f1f5f9; background: #ffffff; vertical-align: top; }
+        .timetable-slot { transition: all 0.2s ease; border-color: rgba(79, 70, 229, 0.15) !important; }
+        .timetable-slot:hover { border-color: #4f46e5 !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15) !important; }
+        
+        .form-switch .form-check-input { width: 2.5em; height: 1.25em; cursor: pointer; }
+        .form-switch .form-check-input:checked { background-color: #4f46e5; border-color: #4f46e5; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      {/* Premium Header Card */}
+      <div 
+        className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+        style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+      >
+        <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+        <div className="position-relative z-1 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+          <div>
+            <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+              <i className="bi bi-calendar-range me-1"></i> Scheduling Engine
+            </span>
+            <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Timetable Manager</h2>
+            <p className="text-white opacity-75 fw-medium mb-0">Generate schedules automatically or fine-tune them manually.</p>
+          </div>
+          
+          {/* Segmented Control for Mode */}
+          <div className="segmented-control shadow-sm">
+            <button 
+              className={`segmented-btn ${mode === "auto" ? "active" : "opacity-75"}`}
+              onClick={() => setMode("auto")}
+            >
+              <FiCpu className="me-2 fs-5" /> Auto-Generate
+            </button>
+            <button 
+              className={`segmented-btn ${mode === "manual" ? "active" : "opacity-75"}`}
+              onClick={() => setMode("manual")}
+            >
+              <FiEdit3 className="me-2 fs-5" /> Manual Editor
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Alert Banner */}
       {message && (
-        <div className="alert border-0 shadow-sm d-flex align-items-center rounded-4 mb-4 fade show" 
-             style={{backgroundColor: message.includes('failed') ? '#fff5f5' : '#f0f9ff', color: message.includes('failed') ? '#c53030' : '#005fa3'}}>
-          <FiInfo className="me-3 fs-4" />
-          <span className="fw-medium">{message}</span>
+        <div className="animate-fade-in mb-4">
+          <div className="alert border-0 shadow-sm d-flex align-items-center rounded-4 m-0" 
+               style={{ backgroundColor: message.includes('failed') ? '#fef2f2' : '#f0fdf4', borderLeft: `4px solid ${message.includes('failed') ? '#ef4444' : '#10b981'}` }}>
+            <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 p-2 ${message.includes('failed') ? 'bg-danger text-white' : 'bg-success text-white'}`}>
+              {message.includes('failed') ? <FiAlertCircle className="fs-5" /> : <FiCheckCircle className="fs-5" />}
+            </div>
+            <span className="fw-semibold" style={{ color: message.includes('failed') ? '#991b1b' : '#166534' }}>{message}</span>
+          </div>
         </div>
       )}
 
       {/* --- CONFIGURATION SECTION --- */}
-      <div className="card border-0 mb-4" style={modernCard}>
-        <div className="card-body p-4">
-          <div className="row g-3 align-items-end">
-            <div className="col-md-3">
-              <label className="form-label small fw-bold text-uppercase text-muted">Academic Class</label>
-              <select className="form-select border-0 bg-light rounded-3 py-2" value={classId} onChange={(e) => setClassId(e.target.value)}>
-                <option value="">Choose Class...</option>
-                {classes.map((c) => <option key={c._id} value={c._id}>Class {c.className}</option>)}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small fw-bold text-uppercase text-muted">Stream</label>
-              <select className="form-select border-0 bg-light rounded-3 py-2" value={stream} onChange={(e) => setStream(e.target.value)} disabled={!classId || streamOptions.length === 0}>
-                <option value="">{streamOptions.length ? "Choose Stream..." : "N/A"}</option>
-                {streamOptions.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small fw-bold text-uppercase text-muted">Section</label>
-              <select className="form-select border-0 bg-light rounded-3 py-2" value={section} onChange={(e) => setSection(normalizeUpper(e.target.value))} disabled={!classId || (streamOptions.length > 0 && !stream)}>
-                <option value="">Choose Section...</option>
-                {sectionOptions.map((s) => <option key={s._id || s.name} value={normalizeUpper(s.name)}>{normalizeUpper(s.name)}</option>)}
-              </select>
-            </div>
-            <div className="col-md-3 d-grid">
-               {mode === 'auto' ? (
-                  <button className="btn btn-dark py-2 rounded-3 fw-bold shadow-sm" onClick={handlePreview} disabled={loading}>
-                    Generate Preview <FiArrowRight className="ms-1" />
-                  </button>
-               ) : (
-                  <button className="btn btn-success py-2 rounded-3 fw-bold shadow-sm" onClick={handleManualSave} disabled={loading}>
-                    <FiPlus className="me-1" /> Add Entry
-                  </button>
-               )}
-            </div>
+      <div className="premium-card p-4 mb-4">
+        <h6 className="fw-bolder text-dark mb-3 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Target Audience Details</h6>
+        <div className="row g-3 align-items-end">
+          <div className="col-12 col-md-3">
+            <label className="form-label small fw-bold text-muted mb-2">Academic Class</label>
+            <select className="form-select input-premium" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Choose Class...</option>
+              {classes.map((c) => <option key={c._id} value={c._id}>Class {c.className}</option>)}
+            </select>
+          </div>
+          <div className="col-12 col-md-3">
+            <label className="form-label small fw-bold text-muted mb-2">Academic Stream</label>
+            <select className="form-select input-premium" value={stream} onChange={(e) => setStream(e.target.value)} disabled={!classId || streamOptions.length === 0}>
+              <option value="">{streamOptions.length ? "Choose Stream..." : "Core (No Stream)"}</option>
+              {streamOptions.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="col-12 col-md-3">
+            <label className="form-label small fw-bold text-muted mb-2">Section Identifier</label>
+            <select className="form-select input-premium" value={section} onChange={(e) => setSection(normalizeUpper(e.target.value))} disabled={!classId || (streamOptions.length > 0 && !stream)}>
+              <option value="">Choose Section...</option>
+              {sectionOptions.map((s) => <option key={s._id || s.name} value={normalizeUpper(s.name)}>Section {normalizeUpper(s.name)}</option>)}
+            </select>
+          </div>
+          <div className="col-12 col-md-3 d-flex align-items-end">
+             {mode === 'auto' ? (
+                <button className="btn btn-dark w-100 py-2 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center h-100" onClick={handlePreview} disabled={loading} style={{ minHeight: '44px' }}>
+                  {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <FiCpu className="me-2" />} Generate Preview
+                </button>
+             ) : (
+                <button className="btn btn-success w-100 py-2 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center h-100" onClick={handleManualSave} disabled={loading} style={{ minHeight: '44px' }}>
+                  {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <FiPlus className="me-2" />} Save Entry
+                </button>
+             )}
           </div>
         </div>
       </div>
 
       <div className="row g-4">
+        
         {/* --- MAIN TIMETABLE VIEW --- */}
-        <div className="col-xl-8">
-          <div className="card border-0 h-100" style={modernCard}>
-            <div className="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-              <h5 className="mb-0 fw-bold">Academic Schedule</h5>
-              <FiCalendar className="text-muted" />
+        <div className="col-12 col-xl-8">
+          <div className="premium-card h-100 d-flex flex-column overflow-hidden">
+            <div className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+              <h5 className="mb-0 fw-bolder text-dark d-flex align-items-center">
+                <div className="rounded-circle d-flex align-items-center justify-content-center me-3 bg-primary bg-opacity-10 text-primary" style={{ width: 36, height: 36 }}>
+                  <FiCalendar />
+                </div>
+                Master Schedule
+              </h5>
+              {classId && section && (
+                <span className="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">
+                  Class {selectedClass?.className}-{section} {stream ? `(${stream})` : ''}
+                </span>
+              )}
             </div>
-            <div className="table-responsive p-2">
-              <table className="table table-hover border-top">
+            
+            <div className="table-responsive flex-grow-1 p-0 m-0">
+              <table className="table timetable-table mb-0 w-100 h-100">
                 <thead>
-                  <tr className="text-muted small">
-                    <th className="border-0 bg-white">PERIOD</th>
-                    {DAYS.map(d => <th key={d} className="border-0 bg-white">{d.substring(0,3).toUpperCase()}</th>)}
+                  <tr>
+                    <th style={{ width: '80px' }}>Period</th>
+                    {DAYS.map(d => <th key={d}>{d.substring(0,3)}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {PERIODS.map((p) => (
                     <tr key={p}>
-                      <td className="fw-bold text-muted bg-light-subtle" style={{width: '80px'}}>{p}</td>
+                      <td className="fw-bolder text-muted align-middle text-center bg-light" style={{ fontSize: '1.2rem' }}>{p}</td>
                       {DAYS.map((d) => (
-                        <td key={`${d}-${p}`} className="p-3" style={{minWidth: '120px', height: '80px', verticalAlign: 'middle'}}>
-                          {cellText(d, p)}
+                        <td key={`${d}-${p}`}>
+                          <div className="d-flex flex-column h-100" style={{ minHeight: '70px' }}>
+                            {cellText(d, p)}
+                          </div>
                         </td>
                       ))}
                     </tr>
@@ -317,58 +373,82 @@ export default function ManageTimetable() {
         </div>
 
         {/* --- SIDEBAR: AUTO OPTIONS & PREVIEW --- */}
-        <div className="col-xl-4">
+        <div className="col-12 col-xl-4">
           {mode === 'auto' ? (
-             <div className="d-flex flex-column gap-4">
+             <div className="d-flex flex-column gap-4 h-100">
+               
                {/* Overwrite Controls */}
-               <div className="card border-0 p-3" style={{...modernCard, background: '#f8f9ff'}}>
-                 <div className="form-check form-switch mb-2">
-                    <input className="form-check-input" type="checkbox" id="owToggle" checked={overwriteExisting} 
-                           onChange={(e) => { setOverwriteExisting(e.target.checked); setPreview(null); }} />
-                    <label className="form-check-label fw-bold small text-primary" htmlFor="owToggle">Overwrite Mode</label>
+               <div className="premium-card p-4" style={{ background: '#f8fafc' }}>
+                 <div className="d-flex align-items-center justify-content-between mb-3">
+                   <div className="d-flex align-items-center">
+                     <i className="bi bi-arrow-repeat text-primary fs-5 me-2"></i>
+                     <h6 className="fw-bolder text-dark mb-0">Overwrite Mode</h6>
+                   </div>
+                   <div className="form-check form-switch m-0 p-0 d-flex align-items-center">
+                     <input className="form-check-input m-0" type="checkbox" id="owToggle" checked={overwriteExisting} 
+                            onChange={(e) => { setOverwriteExisting(e.target.checked); setPreview(null); }} />
+                   </div>
                  </div>
-                 <p className="extra-small text-muted mb-3" style={{fontSize: '0.75rem'}}>
-                   When active, existing slots will be replaced by the AI generator.
+                 <p className="text-muted mb-4 fw-medium" style={{ fontSize: '0.8rem' }}>
+                   When active, existing slots will be replaced by the AI generator. Otherwise, only empty slots will be filled.
                  </p>
-                 <button className="btn btn-primary w-100 rounded-3 fw-bold shadow-sm py-2" onClick={executeGenerate} disabled={loading}>
-                   {canGenerate ? "Apply Generation" : "Generate Preview First"}
+                 <button className="btn btn-brand w-100 rounded-pill fw-bold shadow-sm py-3" onClick={executeGenerate} disabled={loading || !classId || !section}>
+                   {loading ? <span className="spinner-border spinner-border-sm"></span> : canGenerate ? "Apply Final Generation" : "Generate Preview First"}
                  </button>
                </div>
 
                {/* Preview Panel */}
-               <div className="card border-0" style={modernCard}>
-                 <div className="card-header bg-white border-0 pt-3 px-4">
-                    <h6 className="fw-bold mb-0">Conflict Analysis</h6>
+               <div className="premium-card d-flex flex-column flex-grow-1 overflow-hidden">
+                 <div className="bg-white border-bottom py-3 px-4">
+                    <h6 className="fw-bolder text-dark mb-0 d-flex align-items-center">
+                      <i className="bi bi-shield-exclamation text-warning me-2"></i> Conflict Analysis
+                    </h6>
                  </div>
-                 <div className="card-body px-4 pt-2">
+                 <div className="p-4 flex-grow-1 d-flex flex-column bg-light">
                     {!preview ? (
-                      <div className="text-center py-5">
-                        <FiCpu className="fs-1 text-light mb-2" />
-                        <p className="text-muted small">No data analyzed yet.</p>
+                      <div className="text-center py-5 my-auto">
+                        <div className="rounded-circle d-inline-flex align-items-center justify-content-center bg-white shadow-sm mb-3" style={{ width: 64, height: 64 }}>
+                          <FiCpu className="fs-2 text-muted opacity-50" />
+                        </div>
+                        <h6 className="fw-bold text-dark">Awaiting Analysis</h6>
+                        <p className="text-muted small px-3">Select a class and click "Generate Preview" to analyze potential scheduling conflicts.</p>
                       </div>
                     ) : (
-                      <div>
-                         <div className="d-flex gap-2 mb-3">
-                           <div className="flex-fill bg-light p-2 rounded-3 text-center">
-                              <div className="small text-muted">New Slots</div>
-                              <div className="fw-bold fs-5 text-primary">{preview.createdCount || 0}</div>
+                      <div className="animate-fade-in d-flex flex-column h-100">
+                         <div className="row g-2 mb-4">
+                           <div className="col-6">
+                             <div className="bg-white border p-3 rounded-4 text-center shadow-sm">
+                                <div className="small fw-bold text-muted text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>New Slots</div>
+                                <div className="fw-bolder fs-3 text-primary lh-1">{preview.createdCount || 0}</div>
+                             </div>
                            </div>
-                           <div className="flex-fill bg-light p-2 rounded-3 text-center">
-                              <div className="small text-muted">Conflicts</div>
-                              <div className={`fw-bold fs-5 ${(preview.conflicts || []).length > 0 ? 'text-danger' : 'text-success'}`}>
-                                {(preview.conflicts || []).length}
-                              </div>
+                           <div className="col-6">
+                             <div className="bg-white border p-3 rounded-4 text-center shadow-sm">
+                                <div className="small fw-bold text-muted text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>Conflicts</div>
+                                <div className={`fw-bolder fs-3 lh-1 ${(preview.conflicts || []).length > 0 ? 'text-danger' : 'text-success'}`}>
+                                  {(preview.conflicts || []).length}
+                                </div>
+                             </div>
                            </div>
                          </div>
-                         <div className="overflow-auto" style={{maxHeight: '300px'}}>
-                            {(preview.conflicts || []).map((c, i) => (
-                              <div key={i} className="d-flex align-items-start gap-2 mb-2 p-2 rounded-2 border-start border-4 border-danger bg-light">
-                                <FiAlertCircle className="text-danger mt-1 flex-shrink-0" />
-                                <div style={{fontSize: '0.8rem'}}>
-                                  <span className="fw-bold">{c.day} (P{c.period})</span>: {c.reason}
-                                </div>
-                              </div>
-                            ))}
+                         
+                         <h6 className="fw-bold text-dark small text-uppercase mb-3">Detailed Log</h6>
+                         <div className="overflow-auto custom-scroll flex-grow-1 pe-2" style={{ maxHeight: '350px' }}>
+                           {(preview.conflicts || []).length === 0 ? (
+                             <div className="alert alert-success border-0 small fw-medium d-flex align-items-center">
+                               <FiCheckCircle className="me-2 fs-5" /> Perfect! No conflicts detected.
+                             </div>
+                           ) : (
+                             (preview.conflicts || []).map((c, i) => (
+                               <div key={i} className="d-flex align-items-start gap-3 mb-2 p-3 rounded-3 bg-white border shadow-sm border-start border-4 border-danger animate-fade-in">
+                                 <FiAlertCircle className="text-danger mt-1 fs-5 flex-shrink-0" />
+                                 <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                                   <span className="fw-bolder text-dark">{c.day} (P{c.period})</span><br/>
+                                   <span className="fw-medium">{c.reason}</span>
+                                 </div>
+                               </div>
+                             ))
+                           )}
                          </div>
                       </div>
                     )}
@@ -377,50 +457,83 @@ export default function ManageTimetable() {
              </div>
           ) : (
             /* MANUAL CONTROLS UI */
-            <div className="card border-0 p-4" style={modernCard}>
-               <h6 className="fw-bold mb-3">Placement Details</h6>
-               <div className="row g-3">
-                  <div className="col-6">
-                    <label className="extra-small fw-bold text-muted">DAY</label>
-                    <select className="form-select bg-light border-0" value={manualDay} onChange={(e) => setManualDay(e.target.value)}>
+            <div className="premium-card p-4 p-md-5 h-100">
+               <h5 className="fw-bolder text-dark mb-4 d-flex align-items-center border-bottom pb-3">
+                 <div className="rounded-circle d-flex align-items-center justify-content-center me-3 bg-success bg-opacity-10 text-success" style={{ width: 36, height: 36 }}>
+                   <FiEdit3 />
+                 </div>
+                 Manual Placement
+               </h5>
+               
+               <div className="row g-4">
+                  <div className="col-12 col-md-6">
+                    <label className="form-label small fw-bold text-muted text-uppercase">Day of Week</label>
+                    <select className="form-select input-premium" value={manualDay} onChange={(e) => setManualDay(e.target.value)}>
                       {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-                  <div className="col-6">
-                    <label className="extra-small fw-bold text-muted">PERIOD</label>
-                    <select className="form-select bg-light border-0" value={manualPeriod} onChange={(e) => setManualPeriod(Number(e.target.value))}>
-                      {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+                  <div className="col-12 col-md-6">
+                    <label className="form-label small fw-bold text-muted text-uppercase">Time Period</label>
+                    <select className="form-select input-premium" value={manualPeriod} onChange={(e) => setManualPeriod(Number(e.target.value))}>
+                      {PERIODS.map(p => <option key={p} value={p}>Period {p}</option>)}
                     </select>
                   </div>
+
                   <div className="col-12">
-                    <div className="form-check mb-3">
-                       <input className="form-check-input" type="checkbox" id="parallel" checked={manualUseParallel} onChange={(e) => setManualUseParallel(e.target.checked)} />
-                       <label className="form-check-label small" htmlFor="parallel">Parallel Electives?</label>
+                    <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 border">
+                       <label className="form-check-label fw-bold text-dark mb-0" htmlFor="parallel">Parallel Electives Mode</label>
+                       <div className="form-check form-switch m-0 p-0 d-flex align-items-center">
+                         <input className="form-check-input m-0" type="checkbox" id="parallel" checked={manualUseParallel} onChange={(e) => setManualUseParallel(e.target.checked)} />
+                       </div>
                     </div>
                   </div>
+
                   {!manualUseParallel ? (
                     <>
                       <div className="col-12">
-                        <label className="extra-small fw-bold text-muted">SUBJECT</label>
-                        <select className="form-select bg-light border-0" value={manualSubject} onChange={(e) => setManualSubject(e.target.value)}>
-                          <option value="">Select...</option>
+                        <label className="form-label small fw-bold text-muted text-uppercase">Primary Subject</label>
+                        <select className="form-select input-premium" value={manualSubject} onChange={(e) => setManualSubject(e.target.value)}>
+                          <option value="">Select subject...</option>
                           {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <div className="col-12">
-                        <label className="extra-small fw-bold text-muted">TEACHER</label>
-                        <select className="form-select bg-light border-0" value={manualTeacherId} onChange={(e) => setManualTeacherId(e.target.value)}>
-                          <option value="">Select...</option>
+                        <label className="form-label small fw-bold text-muted text-uppercase">Assigned Teacher</label>
+                        <select className="form-select input-premium" value={manualTeacherId} onChange={(e) => setManualTeacherId(e.target.value)}>
+                          <option value="">Select teacher...</option>
                           {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                         </select>
                       </div>
                     </>
                   ) : (
-                    <div className="col-12 bg-light p-2 rounded-3">
-                      <p className="extra-small fw-bold text-primary mb-2">ELECTIVE CHOICES</p>
-                      {/* Sub-fields for Choice A/B simplified for brevity, following same style */}
-                      <select className="form-select border-0 mb-2" value={manualChoiceA} onChange={(e) => setManualChoiceA(e.target.value)}><option>Choice A...</option>{subjects.map(s => <option key={s} value={s}>{s}</option>)}</select>
-                      <select className="form-select border-0" value={manualChoiceB} onChange={(e) => setManualChoiceB(e.target.value)}><option>Choice B...</option>{subjects.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                    <div className="col-12 animate-fade-in">
+                      <div className="p-3 bg-light rounded-4 border">
+                        <p className="small fw-bolder text-primary mb-3 text-uppercase"><i className="bi bi-diagram-2-fill me-2"></i>Parallel Options</p>
+                        
+                        <div className="mb-3 p-3 bg-white rounded-3 border shadow-sm">
+                          <label className="form-label small fw-bold text-muted text-uppercase">Option A Subject & Teacher</label>
+                          <select className="form-select input-premium mb-2" value={manualChoiceA} onChange={(e) => setManualChoiceA(e.target.value)}>
+                            <option value="">Select Option A Subject...</option>
+                            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <select className="form-select input-premium" value={manualChoiceATeacher} onChange={(e) => setManualChoiceATeacher(e.target.value)}>
+                            <option value="">Select Option A Teacher...</option>
+                            {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                          </select>
+                        </div>
+                        
+                        <div className="p-3 bg-white rounded-3 border shadow-sm">
+                          <label className="form-label small fw-bold text-muted text-uppercase">Option B Subject & Teacher</label>
+                          <select className="form-select input-premium mb-2" value={manualChoiceB} onChange={(e) => setManualChoiceB(e.target.value)}>
+                            <option value="">Select Option B Subject...</option>
+                            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <select className="form-select input-premium" value={manualChoiceBTeacher} onChange={(e) => setManualChoiceBTeacher(e.target.value)}>
+                            <option value="">Select Option B Teacher...</option>
+                            {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   )}
                </div>
@@ -429,24 +542,29 @@ export default function ManageTimetable() {
         </div>
       </div>
 
-      {/* MODALS - Minimal & Modernized */}
+      {/* Premium Modal for Missing Subjects */}
       {showSubjectRedirectModal && (
-        <div className="modal show d-block backdrop-blur" style={{backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)'}}>
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 rounded-4 shadow-lg p-3">
-              <div className="text-center py-4">
-                <FiAlertCircle className="text-warning fs-1 mb-3" />
-                <h4 className="fw-bold">No Subjects Found</h4>
-                <p className="text-muted px-3">This class/stream doesn't have any subjects assigned yet. You need subjects to create a timetable.</p>
-              </div>
-              <div className="d-flex gap-2">
-                <button className="btn btn-light flex-fill rounded-pill fw-bold" onClick={() => setShowSubjectRedirectModal(false)}>Stay Here</button>
-                <button className="btn btn-primary flex-fill rounded-pill fw-bold" onClick={() => navigate("/subject/newsubject")}>Add Subjects</button>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '24px', overflow: 'hidden' }}>
+              <div className="p-5 text-center">
+                <div className="rounded-circle d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 mb-4" style={{ width: 80, height: 80 }}>
+                  <FiAlertCircle className="text-warning" style={{ fontSize: '2.5rem' }} />
+                </div>
+                <h3 className="fw-bolder text-dark mb-3">No Curriculum Found</h3>
+                <p className="text-muted fw-medium mb-4 px-3" style={{ fontSize: '0.95rem' }}>
+                  This class/stream combination doesn't have any subjects assigned yet. You must define a curriculum before generating a timetable.
+                </p>
+                <div className="d-flex gap-3 justify-content-center">
+                  <button className="btn bg-light border text-dark fw-bold rounded-pill px-4 py-2" onClick={() => setShowSubjectRedirectModal(false)}>Cancel</button>
+                  <button className="btn btn-brand fw-bold rounded-pill px-4 py-2 shadow-sm" onClick={() => navigate("/subject/newsubject")}>Setup Curriculum <i className="bi bi-arrow-right ms-2"></i></button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

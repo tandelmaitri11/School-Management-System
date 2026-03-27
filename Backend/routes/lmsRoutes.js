@@ -5,6 +5,8 @@ const path = require("path");
 const { verifyToken } = require("../middleware/authMiddleware");
 const requireTeacher = require("../middleware/requireTeacher");
 const requireAdmin = require("../middleware/requireAdmin");
+
+// Don't forget to import the two new functions we added to the controller!
 const {
   createCourse,
   getTeacherCourses,
@@ -23,6 +25,8 @@ const {
   updateMaterialProgress,
   getStudentProgress,
   getTeacherProgress,
+  getTeacherProgressSanity,     // <-- Added this
+  getTeacherProgressAnalysis,   // <-- Added this
   getAdminProgress,
 } = require("../controller/lmsController");
 
@@ -70,6 +74,11 @@ router.get("/progress/student/:studentId/course/:courseId", verifyToken, getStud
 
 // Progress analytics
 router.get("/teacher/progress", verifyToken, requireTeacher, getTeacherProgress);
+
+// <-- Added the two new routes below so your frontend buttons work -->
+router.get("/teacher/progress/sanity", verifyToken, requireTeacher, getTeacherProgressSanity);
+router.get("/teacher/progress/analysis", verifyToken, requireTeacher, getTeacherProgressAnalysis);
+
 router.get("/admin/progress", verifyToken, requireAdmin, getAdminProgress);
 
 module.exports = router;

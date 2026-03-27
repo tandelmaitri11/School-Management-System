@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -78,62 +79,109 @@ export default function AdminTeacherAttendance() {
   const attendanceRate = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(1) : 0;
 
   return (
-    <div className="container-fluid py-4 bg-light min-vh-100">
-      <div className="container">
-        {/* Header Section */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-          <div>
-            <h2 className="fw-bold text-dark mb-1">Teacher Management</h2>
-            <p className="text-muted mb-0">Monitor and analyze daily faculty presence.</p>
-          </div>
-          <div className="bg-white p-2 rounded-3 shadow-sm border d-flex align-items-center gap-2">
-            <span className="small fw-bold text-muted ps-2">DATE:</span>
-            <input
-              type="date"
-              className="form-control form-control-sm border-0 fw-bold"
-              style={{ width: "150px" }}
-              value={date}
-              max={new Date().toISOString().split("T")[0]}
-              onChange={(e) => setDate(e.target.value)}
-            />
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .premium-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(79, 70, 229, 0.15); border-color: rgba(79, 70, 229, 0.3); }
+        
+        .input-premium { background: #ffffff; border: 1px solid transparent; border-radius: 10px; padding: 10px 16px; font-weight: 600; color: #0f172a; transition: all 0.2s; }
+        .input-premium:focus { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2); outline: none; }
+        
+        .btn-brand { background: #ffffff; color: #4f46e5; border: none; transition: all 0.2s; font-weight: 700; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); }
+        
+        .table-premium th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: #64748b; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding: 16px; background: #f8fafc; }
+        .table-premium td { padding: 16px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+        .table-premium tr:hover td { background-color: #f8fafc; }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      <div className="container" style={{ maxWidth: "1400px" }}>
+        
+        {/* Premium Header Card */}
+        <div 
+          className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+        >
+          <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          
+          <div className="position-relative z-1 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4">
+            <div>
+              <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+                <i className="bi bi-people-fill me-1"></i> Faculty Management
+              </span>
+              <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Teacher Attendance</h2>
+              <p className="text-white opacity-75 fw-medium mb-0">Monitor and analyze daily faculty presence and trends.</p>
+            </div>
+            
+            {/* Glassmorphism Control Panel */}
+            <div className="d-flex align-items-center gap-3 p-3 rounded-4 shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+              <div className="d-flex align-items-center bg-white bg-opacity-25 rounded-3 px-3 py-1">
+                <span className="small fw-bold text-white me-2 text-uppercase" style={{ letterSpacing: '0.5px' }}>Date:</span>
+                <input
+                  type="date"
+                  className="form-control input-premium bg-transparent text-white border-0 shadow-none px-0"
+                  style={{ width: "150px", colorScheme: 'dark' }}
+                  value={date}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Quick Stats Widgets */}
-        <div className="row g-3 mb-4">
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-5">
-              <small className="text-uppercase text-muted fw-bold">Total Staff</small>
-              <h3 className="fw-bold mb-0">{totalCount}</h3>
+        <div className="animate-fade-in">
+          {/* Quick Stats Widgets */}
+          <div className="row g-4 mb-4">
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-primary">
+                <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Total Staff</div>
+                <div className="fw-bolder text-dark lh-1" style={{ fontSize: '2.5rem' }}>{totalCount}</div>
+                <div className="text-muted small mt-2 fw-medium">Registered faculty members</div>
+              </div>
             </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 border-start border-success border-5">
-              <small className="text-uppercase text-muted fw-bold">Present Today</small>
-              <h3 className="fw-bold mb-0 text-success">{presentCount}</h3>
+            
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-success">
+                <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Present Today</div>
+                <div className="fw-bolder text-success lh-1" style={{ fontSize: '2.5rem' }}>{presentCount}</div>
+                <div className="text-muted small mt-2 fw-medium">Available on campus</div>
+              </div>
             </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 border-start border-danger border-5">
-              <small className="text-uppercase text-muted fw-bold">Absent Today</small>
-              <h3 className="fw-bold mb-0 text-danger">{absentCount}</h3>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm rounded-4 p-3 border-start border-info border-5">
-              <small className="text-uppercase text-muted fw-bold">Attendance Rate</small>
-              <h3 className="fw-bold mb-0 text-info">{attendanceRate}%</h3>
-            </div>
-          </div>
-        </div>
 
-        {/* Charts Section */}
-        <div className="row g-4 mb-4">
-          <div className="col-lg-5">
-            <div className="card border-0 shadow-sm rounded-4 h-100">
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-4">Daily Distribution</h6>
-                <div style={{ height: "250px" }}>
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-danger">
+                <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Absent Today</div>
+                <div className="fw-bolder text-danger lh-1" style={{ fontSize: '2.5rem' }}>{absentCount}</div>
+                <div className="text-muted small mt-2 fw-medium">Requires coverage</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="premium-card p-4 h-100 d-flex flex-column justify-content-center border-start border-4 border-info">
+                <div className="text-muted small fw-bold text-uppercase mb-2" style={{ letterSpacing: '0.5px' }}>Attendance Rate</div>
+                <div className="fw-bolder text-info lh-1" style={{ fontSize: '2.5rem' }}>{attendanceRate}%</div>
+                <div className="progress mt-3" style={{ height: '6px', borderRadius: '10px', backgroundColor: '#e2e8f0' }}>
+                  <div className="progress-bar bg-info" style={{ width: `${attendanceRate}%`, borderRadius: '10px' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="row g-4 mb-4">
+            <div className="col-12 col-lg-4">
+              <div className="premium-card p-4 h-100 d-flex flex-column">
+                <div className="mb-4">
+                  <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Daily Distribution</div>
+                  <h6 className="fw-bolder text-dark m-0">Present vs Absent</h6>
+                </div>
+                <div className="flex-grow-1" style={{ minHeight: "250px" }}>
                   <Bar
                     data={{
                       labels: ["Present", "Absent"],
@@ -148,99 +196,136 @@ export default function AdminTeacherAttendance() {
                       responsive: true, 
                       maintainAspectRatio: false,
                       plugins: { legend: { display: false } },
-                      scales: { y: { beginAtZero: true, grid: { display: false } } }
+                      scales: { 
+                        x: { grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif" } } },
+                        y: { beginAtZero: true, grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif" } } } 
+                      }
                     }}
                   />
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="col-lg-7">
-            <div className="card border-0 shadow-sm rounded-4 h-100">
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-4">7-Day Attendance Trend</h6>
-                <div style={{ height: "250px" }}>
+            <div className="col-12 col-lg-8">
+              <div className="premium-card p-4 h-100 d-flex flex-column">
+                <div className="mb-4">
+                  <div className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>7-Day Trend</div>
+                  <h6 className="fw-bolder text-dark m-0">Faculty Presence Over Time</h6>
+                </div>
+                <div className="flex-grow-1" style={{ minHeight: "250px" }}>
                   <Line
                     data={{
                       labels: historyData.map((h) => h.date.split('-').slice(1).join('/')),
                       datasets: [
                         {
-                          label: "Present",
+                          label: "Present Staff",
                           data: historyData.map((h) => h.present),
                           borderColor: "#10b981",
                           backgroundColor: "rgba(16, 185, 129, 0.1)",
                           fill: true,
                           tension: 0.4,
+                          borderWidth: 3,
+                          pointRadius: 4,
+                          pointBackgroundColor: "#ffffff",
+                          pointBorderColor: "#10b981",
                         },
                       ]
                     }}
                     options={{ 
                       responsive: true, 
                       maintainAspectRatio: false,
-                      plugins: { legend: { position: 'bottom' } },
-                      scales: { x: { grid: { display: false } } }
+                      plugins: { legend: { display: false }, tooltip: { titleFont: { family: "'Inter', sans-serif" }, bodyFont: { family: "'Inter', sans-serif" } } },
+                      scales: { 
+                        x: { grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif" } } },
+                        y: { grid: { color: "#f1f5f9" }, ticks: { font: { family: "'Inter', sans-serif" } } } 
+                      }
                     }}
                   />
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Table Section */}
-        <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-          <div className="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-            <h6 className="fw-bold mb-0 text-dark">Staff Attendance Roster</h6>
-            <button className="btn btn-sm btn-outline-primary fw-bold px-3 shadow-none rounded-pill" onClick={() => loadAttendanceForDate(date)}>
-              Refresh List
-            </button>
-          </div>
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="bg-light">
-                <tr className="small text-uppercase text-muted fw-bold">
-                  <th className="ps-4">Teacher Information</th>
-                  <th>Staff ID</th>
-                  <th>Contact</th>
-                  <th className="text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRecords.length === 0 ? (
+          {/* Table Section */}
+          <div className="premium-card overflow-hidden">
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center p-4 border-bottom" style={{ borderColor: '#f1f5f9' }}>
+              <h5 className="fw-bolder text-dark mb-3 mb-sm-0 d-flex align-items-center">
+                <i className="bi bi-card-list text-primary me-2"></i> Staff Attendance Roster
+              </h5>
+              <button className="btn bg-light border text-primary fw-bold px-4 rounded-pill shadow-sm" onClick={() => loadAttendanceForDate(date)}>
+                <i className="bi bi-arrow-clockwise me-2"></i> Refresh List
+              </button>
+            </div>
+            
+            <div className="table-responsive border-0">
+              <table className="table table-premium align-middle mb-0">
+                <thead>
                   <tr>
-                    <td colSpan="4" className="text-center py-5 text-muted">
-                      No records found for the selected date.
-                    </td>
+                    <th className="ps-4">Teacher Information</th>
+                    <th>Staff ID</th>
+                    <th>Contact</th>
+                    <th className="text-center pe-4">Status</th>
                   </tr>
-                ) : (
-                  attendanceRecords.map((a, idx) => (
-                    <tr key={a.teacherId?._id || idx}>
-                      <td className="ps-4">
-                        <div className="d-flex align-items-center">
-                          <div className="avatar me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width: '38px', height: '38px'}}>
-                            {a.teacherId?.name?.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="fw-bold text-dark">{a.teacherId?.name}</div>
-                            <div className="small text-muted">Faculty Member</div>
-                          </div>
+                </thead>
+                <tbody>
+                  {attendanceRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-5">
+                        <div className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style={{ width: 64, height: 64 }}>
+                          <i className="bi bi-calendar-x text-muted opacity-50 fs-2"></i>
                         </div>
-                      </td>
-                      <td><code className="bg-light px-2 py-1 rounded text-dark">{a.teacherId?.teacherId}</code></td>
-                      <td className="small text-muted">{a.teacherId?.email || "N/A"}</td>
-                      <td className="text-center">
-                        <span className={`badge rounded-pill px-3 py-2 ${a.status === "Present" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger"}`}>
-                          {a.status}
-                        </span>
+                        <h6 className="fw-bolder text-dark mb-1">No Records Found</h6>
+                        <p className="text-muted small fw-medium mb-0">There is no attendance data for the selected date.</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    attendanceRecords.map((a, idx) => (
+                      <tr key={a.teacherId?._id || idx}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary fw-bolder shadow-sm border" style={{ width: 44, height: 44, fontSize: '1.2rem' }}>
+                              {a.teacherId?.name?.charAt(0).toUpperCase() || "T"}
+                            </div>
+                            <div>
+                              <div className="fw-bolder text-dark lh-sm mb-1">{a.teacherId?.name || "Unknown Faculty"}</div>
+                              <div className="small text-muted fw-medium font-monospace" style={{ fontSize: '0.75rem' }}>Faculty Member</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="fw-bold text-secondary font-monospace bg-light px-2 py-1 rounded border">
+                            {a.teacherId?.teacherId || "---"}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="small text-muted fw-medium d-flex align-items-center" style={{ fontSize: '0.8rem' }}>
+                            <i className="bi bi-envelope-fill me-2 opacity-50"></i> {a.teacherId?.email || "N/A"}
+                          </div>
+                        </td>
+                        <td className="text-center pe-4">
+                          <span className={`badge rounded-pill px-3 py-2 fw-bold shadow-sm ${a.status === "Present" ? "bg-success bg-opacity-10 text-success border border-success border-opacity-25" : "bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"}`} style={{ minWidth: '85px' }}>
+                            {a.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+
+        {/* Global Loading Overlay */}
+        {loading && (
+          <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(6px)", zIndex: 1060 }}>
+            <div className="bg-white p-4 rounded-4 shadow-lg border text-center">
+              <div className="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}></div>
+              <h5 className="fw-bolder text-dark mb-1">Processing...</h5>
+              <p className="text-muted small fw-medium mb-0">Fetching attendance records</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

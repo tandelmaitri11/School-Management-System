@@ -34,7 +34,7 @@ export default function AdminProfile() {
     fetchAdmin();
   }, []);
 
-  // Update profile (✅ same logic)
+  // Update profile
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setUpdating(true);
@@ -61,7 +61,7 @@ export default function AdminProfile() {
     }
   };
 
-  // Change password (✅ same logic)
+  // Change password
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setUpdating(true);
@@ -92,8 +92,8 @@ export default function AdminProfile() {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
         <div className="text-center">
-          <Spinner animation="border" />
-          <div className="text-muted mt-2">Loading profile...</div>
+          <Spinner animation="border" style={{ color: "var(--brand-primary, #4f46e5)" }} />
+          <div className="mt-3 fw-medium" style={{ color: "var(--text-muted, #64748b)" }}>Loading profile...</div>
         </div>
       </div>
     );
@@ -101,51 +101,66 @@ export default function AdminProfile() {
   if (error && !admin)
     return (
       <div className="container py-4" style={{ maxWidth: 720 }}>
-        <Alert variant="danger" className="shadow-sm rounded-4">
-          {error}
+        <Alert variant="danger" className="shadow-sm rounded-4 border-0">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i> {error}
         </Alert>
       </div>
     );
 
   return (
-    <div className="container py-4" style={{ maxWidth: 980 }}>
+    <div className="container-fluid py-4" style={{ maxWidth: 1000, fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Component Specific Custom CSS to ensure it looks premium in light/dark modes */}
+      <style>{`
+        .profile-card { background: var(--bg-surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 16px; }
+        .detail-box { background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 16px; transition: all 0.2s; }
+        .detail-box:hover { border-color: rgba(79, 70, 229, 0.3); background: var(--bg-surface, #ffffff); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .input-premium { background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); color: var(--text-main, #0f172a); border-radius: 10px; padding: 12px 16px; transition: all 0.2s; }
+        .input-premium:focus { border-color: var(--brand-primary, #4f46e5); box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); background: var(--bg-surface, #ffffff); outline: none; }
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); color: white; }
+        .btn-brand:disabled { opacity: 0.7; transform: none; box-shadow: none; }
+      `}</style>
+
       {/* Top Header Card */}
-      <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">
-        <div
-          className="p-4"
-          style={{
-            background: "linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%)",
-          }}
-        >
+      <div 
+        className="rounded-4 overflow-hidden mb-4 shadow-sm border-0"
+        style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", position: 'relative' }}
+      >
+        {/* Decorative background circles */}
+        <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+        <div style={{ position: 'absolute', bottom: '-20%', right: '10%', width: '150px', height: '150px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+
+        <div className="p-4 p-md-5 position-relative z-1">
           <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div className="text-white">
-              <h3 className="mb-1 fw-bold">Admin Profile</h3>
-              <div className="opacity-75">Manage your profile details and password.</div>
+              <h3 className="mb-1 fw-bolder" style={{ letterSpacing: '-0.5px' }}>Admin Profile</h3>
+              <div className="opacity-75 fw-medium">Manage your personal information and security.</div>
             </div>
 
             <div className="d-flex gap-2 flex-wrap">
-              <Badge bg="light" text="dark" className="px-3 py-2 rounded-pill">
-                {admin?.role || "Administrator"}
-              </Badge>
-              <Badge bg="dark" className="px-3 py-2 rounded-pill">
+              <span className="badge px-3 py-2 rounded-pill fw-semibold" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+                <i className="bi bi-shield-check me-1"></i> {admin?.role || "Administrator"}
+              </span>
+              <span className="badge bg-dark px-3 py-2 rounded-pill fw-semibold shadow-sm">
                 Secure Zone
-              </Badge>
+              </span>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Alerts */}
       {(error || success) && (
-        <div className="mb-3">
+        <div className="mb-4 fade-in-up">
           {error && (
-            <Alert variant="danger" className="shadow-sm rounded-4 mb-2">
-              {error}
+            <Alert variant="danger" className="shadow-sm rounded-4 border-0 d-flex align-items-center">
+              <i className="bi bi-exclamation-circle-fill me-2 fs-5"></i> {error}
             </Alert>
           )}
           {success && (
-            <Alert variant="success" className="shadow-sm rounded-4 mb-0">
-              {success}
+            <Alert variant="success" className="shadow-sm rounded-4 border-0 d-flex align-items-center">
+              <i className="bi bi-check-circle-fill me-2 fs-5"></i> {success}
             </Alert>
           )}
         </div>
@@ -154,253 +169,218 @@ export default function AdminProfile() {
       <div className="row g-4">
         {/* Left: Profile Summary */}
         <div className="col-12 col-lg-4">
-          <Card className="border-0 shadow-sm rounded-4">
-            <Card.Body className="p-4">
-              <div className="d-flex flex-column align-items-center text-center">
-                {/* Avatar */}
-                <div
-                  className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-                  style={{
-                    width: 96,
-                    height: 96,
-                    fontSize: 28,
-                    background: "linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%)",
-                    boxShadow: "0 10px 22px rgba(13,110,253,0.25)",
+          <div className="profile-card shadow-sm h-100 p-4 p-xl-5 d-flex flex-column align-items-center text-center">
+            
+            {/* Avatar */}
+            <div
+              className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold mb-4"
+              style={{
+                width: 110,
+                height: 110,
+                fontSize: 36,
+                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                boxShadow: "0 12px 24px rgba(79, 70, 229, 0.25)",
+                border: "4px solid var(--bg-surface, #fff)"
+              }}
+            >
+              {initials}
+            </div>
+
+            <h4 className="fw-bolder mb-1" style={{ color: "var(--text-main, #0f172a)", letterSpacing: "-0.5px" }}>{admin?.name}</h4>
+            <div className="mb-3 fw-medium" style={{ color: "var(--text-muted, #64748b)" }}>{admin?.email}</div>
+
+            <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill fw-medium text-muted mb-4">
+              Joined {admin?.createdAt ? new Date(admin.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
+            </Badge>
+
+            <hr className="w-100 mb-4 mt-0" style={{ borderColor: 'var(--border-color, #e2e8f0)', opacity: 1 }} />
+
+            {!editingProfile && !changingPassword && (
+              <div className="d-grid gap-3 w-100 mt-auto">
+                <Button variant="light" className="rounded-pill py-2 fw-semibold border" onClick={() => setEditingProfile(true)} style={{ color: "var(--text-main, #0f172a)" }}>
+                  <i className="bi bi-pencil-square me-2"></i> Edit Profile
+                </Button>
+                <Button variant="light" className="rounded-pill py-2 fw-semibold border" onClick={() => setChangingPassword(true)} style={{ color: "var(--text-main, #0f172a)" }}>
+                  <i className="bi bi-lock-fill me-2"></i> Change Password
+                </Button>
+              </div>
+            )}
+
+            {(editingProfile || changingPassword) && (
+              <div className="d-grid w-100 mt-auto">
+                <Button
+                  variant="light"
+                  className="rounded-pill py-2 fw-semibold border text-muted"
+                  onClick={() => {
+                    setEditingProfile(false);
+                    setChangingPassword(false);
+                    setError("");
+                    setSuccess("");
                   }}
                 >
-                  {initials}
-                </div>
-
-                <h5 className="fw-bold mt-3 mb-1">{admin?.name}</h5>
-                <div className="text-muted">{admin?.email}</div>
-
-                <div className="d-flex gap-2 mt-3 flex-wrap justify-content-center">
-                  <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill">
-                    Joined:{" "}
-                    {admin?.createdAt ? new Date(admin.createdAt).toLocaleDateString() : "-"}
-                  </Badge>
-                </div>
-
-                <hr className="w-100 my-4" />
-
-                {!editingProfile && !changingPassword && (
-                  <div className="d-grid gap-2 w-100">
-                    <Button
-                      variant="primary"
-                      className="rounded-pill py-2"
-                      onClick={() => setEditingProfile(true)}
-                    >
-                      Edit Profile
-                    </Button>
-                    <Button
-                      variant="outline-warning"
-                      className="rounded-pill py-2"
-                      onClick={() => setChangingPassword(true)}
-                    >
-                      Change Password
-                    </Button>
-                  </div>
-                )}
-
-                {(editingProfile || changingPassword) && (
-                  <div className="d-grid gap-2 w-100">
-                    <Button
-                      variant="outline-secondary"
-                      className="rounded-pill py-2"
-                      onClick={() => {
-                        setEditingProfile(false);
-                        setChangingPassword(false);
-                        setError("");
-                        setSuccess("");
-                      }}
-                    >
-                      Back to Overview
-                    </Button>
-                  </div>
-                )}
+                  <i className="bi bi-arrow-left me-2"></i> Back to Overview
+                </Button>
               </div>
-            </Card.Body>
-          </Card>
+            )}
+          </div>
         </div>
 
         {/* Right: Forms / Details */}
         <div className="col-12 col-lg-8">
-          <Card className="border-0 shadow-sm rounded-4">
-            <Card.Body className="p-4 p-md-5">
-              {/* Overview */}
+          <div className="profile-card shadow-sm h-100">
+            <div className="p-4 p-xl-5">
+              
+              {/* Overview Mode */}
               {!editingProfile && !changingPassword && (
-                <>
-                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div className="fade-in">
+                  <div className="d-flex align-items-center justify-content-between mb-4">
                     <div>
-                      <h5 className="fw-bold mb-1">Account Details</h5>
-                      <div className="text-muted">Your current profile information.</div>
+                      <h4 className="fw-bolder mb-1" style={{ color: "var(--text-main, #0f172a)" }}>Account Details</h4>
+                      <div style={{ color: "var(--text-muted, #64748b)" }}>Your current profile information.</div>
                     </div>
-                    <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill">
-                      Read Only
-                    </Badge>
                   </div>
 
-                  <div className="row g-3 mt-1">
+                  <div className="row g-3">
                     <div className="col-12 col-md-6">
-                      <div className="p-3 rounded-4 border bg-light">
-                        <div className="text-muted small">Full Name</div>
-                        <div className="fw-semibold">{admin?.name}</div>
+                      <div className="detail-box">
+                        <div className="small fw-bold mb-1" style={{ color: "var(--text-muted, #64748b)", textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</div>
+                        <div className="fw-semibold fs-5" style={{ color: "var(--text-main, #0f172a)" }}>{admin?.name}</div>
                       </div>
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <div className="p-3 rounded-4 border bg-light">
-                        <div className="text-muted small">Email</div>
-                        <div className="fw-semibold">{admin?.email}</div>
+                      <div className="detail-box">
+                        <div className="small fw-bold mb-1" style={{ color: "var(--text-muted, #64748b)", textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email Address</div>
+                        <div className="fw-semibold fs-5 text-truncate" style={{ color: "var(--text-main, #0f172a)" }} title={admin?.email}>{admin?.email}</div>
                       </div>
                     </div>
 
                     <div className="col-12">
-                      <div className="p-3 rounded-4 border bg-light">
-                        <div className="text-muted small">Role</div>
-                        <div className="fw-semibold">{admin?.role || "Administrator"}</div>
+                      <div className="detail-box">
+                        <div className="small fw-bold mb-1" style={{ color: "var(--text-muted, #64748b)", textTransform: 'uppercase', letterSpacing: '0.5px' }}>System Role</div>
+                        <div className="fw-semibold fs-5 d-flex align-items-center" style={{ color: "var(--text-main, #0f172a)" }}>
+                          <i className="bi bi-person-badge text-primary me-2"></i>
+                          {admin?.role || "Administrator"}
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  <div className="d-flex gap-2 mt-4 flex-wrap">
-                    <Button variant="primary" className="rounded-pill px-4" onClick={() => setEditingProfile(true)}>
-                      Edit Profile
-                    </Button>
-                    <Button
-                      variant="warning"
-                      className="rounded-pill px-4"
-                      onClick={() => setChangingPassword(true)}
-                    >
-                      Change Password
-                    </Button>
-                  </div>
-                </>
+                </div>
               )}
 
-              {/* Edit Profile */}
+              {/* Edit Profile Mode */}
               {editingProfile && (
-                <>
-                  <div className="mb-3">
-                    <h5 className="fw-bold mb-1">Edit Profile</h5>
-                    <div className="text-muted">Update your name and email.</div>
+                <div className="fade-in">
+                  <div className="mb-4">
+                    <h4 className="fw-bolder mb-1" style={{ color: "var(--text-main, #0f172a)" }}>Edit Profile</h4>
+                    <div style={{ color: "var(--text-muted, #64748b)" }}>Update your personal details below.</div>
                   </div>
 
                   <Form onSubmit={handleUpdateProfile}>
-                    <div className="row g-3">
+                    <div className="row g-4">
                       <div className="col-12 col-md-6">
                         <Form.Group>
-                          <Form.Label className="fw-semibold">Name</Form.Label>
+                          <Form.Label className="fw-semibold" style={{ color: "var(--text-main, #0f172a)" }}>Full Name</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             required
-                            className="py-2 rounded-3"
+                            className="input-premium"
+                            placeholder="e.g. John Doe"
                           />
                         </Form.Group>
                       </div>
 
                       <div className="col-12 col-md-6">
                         <Form.Group>
-                          <Form.Label className="fw-semibold">Email</Form.Label>
+                          <Form.Label className="fw-semibold" style={{ color: "var(--text-main, #0f172a)" }}>Email Address</Form.Label>
                           <Form.Control
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             required
-                            className="py-2 rounded-3"
+                            className="input-premium"
+                            placeholder="admin@schooly.com"
                           />
                         </Form.Group>
                       </div>
                     </div>
 
-                    <div className="d-flex justify-content-between gap-2 mt-4">
-                      <Button
-                        variant="outline-secondary"
-                        className="rounded-pill px-4"
-                        onClick={() => setEditingProfile(false)}
-                      >
-                        Cancel
+                    <div className="d-flex align-items-center gap-3 mt-5 pt-3 border-top" style={{ borderColor: 'var(--border-color, #e2e8f0)' }}>
+                      <Button type="submit" className="btn-brand rounded-pill px-4 py-2 fw-semibold" disabled={updating}>
+                        {updating ? (
+                           <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Saving...</>
+                        ) : (
+                          "Save Changes"
+                        )}
                       </Button>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        className="rounded-pill px-4"
-                        disabled={updating}
-                      >
-                        {updating ? "Updating..." : "Save Changes"}
+                      <Button variant="light" className="rounded-pill px-4 py-2 fw-semibold border text-muted" onClick={() => setEditingProfile(false)}>
+                        Cancel
                       </Button>
                     </div>
                   </Form>
-                </>
+                </div>
               )}
 
-              {/* Change Password */}
+              {/* Change Password Mode */}
               {changingPassword && (
-                <>
-                  <div className="mb-3">
-                    <h5 className="fw-bold mb-1">Change Password</h5>
-                    <div className="text-muted">
-                      Choose a strong password and don’t share it with anyone.
+                <div className="fade-in">
+                  <div className="mb-4">
+                    <h4 className="fw-bolder mb-1" style={{ color: "var(--text-main, #0f172a)" }}>Change Password</h4>
+                    <div style={{ color: "var(--text-muted, #64748b)" }}>
+                      Ensure your account stays secure by using a strong password.
                     </div>
                   </div>
 
                   <Form onSubmit={handleChangePassword}>
-                    <div className="row g-3">
+                    <div className="row g-4">
                       <div className="col-12">
                         <Form.Group>
-                          <Form.Label className="fw-semibold">Old Password</Form.Label>
+                          <Form.Label className="fw-semibold" style={{ color: "var(--text-main, #0f172a)" }}>Current Password</Form.Label>
                           <Form.Control
                             type="password"
                             value={passwordData.oldPassword}
-                            onChange={(e) =>
-                              setPasswordData({ ...passwordData, oldPassword: e.target.value })
-                            }
+                            onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
                             required
-                            className="py-2 rounded-3"
+                            className="input-premium"
+                            placeholder="Enter your current password"
                           />
                         </Form.Group>
                       </div>
 
                       <div className="col-12">
                         <Form.Group>
-                          <Form.Label className="fw-semibold">New Password</Form.Label>
+                          <Form.Label className="fw-semibold" style={{ color: "var(--text-main, #0f172a)" }}>New Password</Form.Label>
                           <Form.Control
                             type="password"
                             value={passwordData.newPassword}
-                            onChange={(e) =>
-                              setPasswordData({ ...passwordData, newPassword: e.target.value })
-                            }
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                             required
-                            className="py-2 rounded-3"
+                            className="input-premium"
+                            placeholder="Enter your new password"
                           />
                         </Form.Group>
                       </div>
                     </div>
 
-                    <div className="d-flex justify-content-between gap-2 mt-4">
-                      <Button
-                        variant="outline-secondary"
-                        className="rounded-pill px-4"
-                        onClick={() => setChangingPassword(false)}
-                      >
-                        Cancel
+                    <div className="d-flex align-items-center gap-3 mt-5 pt-3 border-top" style={{ borderColor: 'var(--border-color, #e2e8f0)' }}>
+                      <Button type="submit" className="btn-brand rounded-pill px-4 py-2 fw-semibold" disabled={updating}>
+                         {updating ? (
+                           <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Updating...</>
+                        ) : (
+                          "Update Password"
+                        )}
                       </Button>
-                      <Button
-                        type="submit"
-                        variant="warning"
-                        className="rounded-pill px-4"
-                        disabled={updating}
-                      >
-                        {updating ? "Changing..." : "Change Password"}
+                      <Button variant="light" className="rounded-pill px-4 py-2 fw-semibold border text-muted" onClick={() => setChangingPassword(false)}>
+                        Cancel
                       </Button>
                     </div>
                   </Form>
-                </>
+                </div>
               )}
-            </Card.Body>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

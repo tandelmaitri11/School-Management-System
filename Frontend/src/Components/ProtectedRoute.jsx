@@ -12,7 +12,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   // Role mismatch
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

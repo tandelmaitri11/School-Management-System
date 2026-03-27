@@ -3,6 +3,7 @@ const { verifyToken } = require("../middleware/authMiddleware");
 const requireAdmin = require("../middleware/requireAdmin");
 const requireParent = require("../middleware/requireParent");
 const {
+  createParent,
   getAllParents,
   mapParentToStudent,
   updateParentStudentMapping,
@@ -25,6 +26,7 @@ const {
 
 const router = express.Router();
 
+router.post("/admin/create", verifyToken, requireAdmin, createParent);
 router.get("/admin/all", verifyToken, requireAdmin, getAllParents);
 router.post("/admin/map-student", verifyToken, requireAdmin, mapParentToStudent);
 router.patch("/admin/mapping/:mappingId", verifyToken, requireAdmin, updateParentStudentMapping);

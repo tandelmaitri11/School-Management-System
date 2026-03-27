@@ -31,7 +31,7 @@ function EditTeacher() {
 
   const [allClasses, setAllClasses] = useState([]);
   const [preview, setPreview] = useState(null);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState({ type: "", text: "" });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -74,7 +74,7 @@ function EditTeacher() {
           );
         }
       } catch {
-        setMessage("Failed to fetch teacher details.");
+        setMessage({ type: "danger", text: "Failed to fetch teacher details." });
       }
     };
 
@@ -130,6 +130,7 @@ function EditTeacher() {
 
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    if (!validateField(name, value)) setMessage({ type: "", text: "" });
   };
 
   const toggleClassAssignment = (classId) => {
@@ -216,7 +217,7 @@ function EditTeacher() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      if (newErrors.assignedSections) setMessage(newErrors.assignedSections);
+      setMessage({ type: "danger", text: newErrors.assignedSections || "Please fix the highlighted errors before saving." });
       return;
     }
 
@@ -237,229 +238,260 @@ function EditTeacher() {
       });
 
       await api.put(`/api/teachers/updateTeacherById/${id}`, data);
-      setMessage("Success! Redirecting...");
+      setMessage({ type: "success", text: "Profile updated successfully! Redirecting..." });
       setTimeout(() => navigate(`/teachers/viewteacher/${id}`), 1200);
     } catch (error) {
-      setMessage(error?.response?.data?.message || "Update failed.");
+      setMessage({ type: "danger", text: error?.response?.data?.message || "Update failed." });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-lg-10">
-          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div className="bg-primary p-4 text-white d-flex justify-content-between align-items-center">
-              <div>
-                <h3 className="mb-0 fw-bold">Edit Teacher Profile</h3>
-                <small className="opacity-75">Update information for {formData.teacherName || "Teacher"}</small>
-              </div>
-              <button className="btn btn-sm btn-light rounded-pill px-3" onClick={() => navigate(-1)}>
-                <i className="bi bi-arrow-left me-1"></i> Back
-              </button>
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .input-premium { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; transition: all 0.2s; font-weight: 500; color: #0f172a; }
+        .input-premium:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); background: #ffffff; outline: none; }
+        .input-premium[readonly] { background-color: #e2e8f0; opacity: 0.8; }
+        
+        .input-group-premium .input-group-text { background: #f8fafc; border: 1px solid #e2e8f0; border-right: none; border-radius: 10px 0 0 10px; color: #64748b; }
+        .input-group-premium .form-control { border-left: none; border-radius: 0 10px 10px 0; }
+        .input-group-premium .form-control:focus { border-left: none; }
+        .input-group-premium:focus-within .input-group-text { border-color: #4f46e5; background: #ffffff; color: #4f46e5; }
+        
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); color: white; }
+        .btn-brand:disabled { opacity: 0.7; transform: none; box-shadow: none; }
+        
+        .pill-btn { border-radius: 50rem; padding: 8px 16px; font-weight: 600; transition: all 0.2s; font-size: 0.85rem; border: 1px solid transparent; }
+        .pill-btn.active-primary { background: rgba(79, 70, 229, 0.1); color: #4f46e5; border-color: rgba(79, 70, 229, 0.2); }
+        .pill-btn.active-success { background: rgba(16, 185, 129, 0.1); color: #059669; border-color: rgba(16, 185, 129, 0.2); }
+        .pill-btn.inactive { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+        .pill-btn.inactive:hover { background: #f1f5f9; color: #0f172a; }
+
+        .avatar-edit-box { position: relative; display: inline-block; }
+        .avatar-edit-box img { width: 140px; height: 140px; object-fit: cover; border: 4px solid #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 50%; }
+        .avatar-edit-btn { position: absolute; bottom: 5px; right: 5px; background: #4f46e5; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .avatar-edit-btn:hover { transform: scale(1.1); background: #3730a3; }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      <div className="container" style={{ maxWidth: "1100px" }}>
+        
+        {/* Premium Header Card */}
+        <div 
+          className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+        >
+          <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          <div className="position-relative z-1 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+              <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+                <i className="bi bi-pencil-square me-1"></i> Profile Editor
+              </span>
+              <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Edit Teacher Profile</h2>
+              <p className="text-white opacity-75 fw-medium mb-0">Updating records for <span className="fw-bold">{formData.teacherName || "Faculty Member"}</span></p>
             </div>
-
-            <div className="card-body p-4 p-md-5">
-              <form onSubmit={handleSubmit}>
-                <div className="text-center mb-5">
-                  <div className="position-relative d-inline-block">
-                    <img
-                      src={preview || "https://via.placeholder.com/150"}
-                      className="rounded-circle border border-4 border-white shadow"
-                      style={{ width: "130px", height: "130px", objectFit: "cover" }}
-                      alt="Profile"
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle shadow"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <i className="bi bi-camera"></i>
-                    </button>
-                  </div>
-                  <input type="file" ref={fileInputRef} hidden name="picture" onChange={handleChange} />
-                </div>
-
-                <div className="row g-4 mb-5">
-                  <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold">
-                      <i className="bi bi-briefcase me-2"></i>Professional Details
-                    </h5>
-                  </div>
-                  <FormInput label="Registration Number" value={formData.regNumber} readOnly icon="bi-hash" bg="bg-light" />
-                  <FormInput label="Full Name *" name="teacherName" value={formData.teacherName} onChange={handleChange} error={errors.teacherName} icon="bi-person" />
-                  <FormInput label="Email Address *" name="email" value={formData.email} onChange={handleChange} error={errors.email} icon="bi-envelope" />
-                  <FormInput label="Phone Number *" name="mobile" value={formData.mobile} onChange={handleChange} error={errors.mobile} icon="bi-phone" />
-                  <FormInput label="Role" value={formData.role} readOnly icon="bi-shield-check" bg="bg-light" />
-                  <FormInput label="Monthly Salary *" name="salary" type="number" value={formData.salary} onChange={handleChange} error={errors.salary} icon="bi-cash-stack" />
-                  <FormInput label="Joining Date *" name="joiningDate" type="date" value={formData.joiningDate} onChange={handleChange} error={errors.joiningDate} icon="bi-calendar-check" />
-                </div>
-
-                <div className="row g-3 mb-5">
-                  <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold">
-                      <i className="bi bi-diagram-3 me-2"></i>Assigned Classes
-                    </h5>
-                  </div>
-                  <div className="col-12">
-                    <div className="small text-muted mb-3">
-                      Click to assign/remove classes for this teacher. Total selected: {formData.classes.length}
-                    </div>
-                    <div className="row g-2">
-                      {allClasses.map((cls) => {
-                        const clsId = String(cls._id);
-                        const isAssigned = formData.classes.includes(clsId);
-                        return (
-                          <div className="col-md-3 col-sm-4 col-6" key={clsId}>
-                            <button
-                              type="button"
-                              className={`btn w-100 rounded-3 ${isAssigned ? "btn-primary" : "btn-outline-secondary"}`}
-                              onClick={() => toggleClassAssignment(clsId)}
-                            >
-                              Class {cls.className}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="col-12">
-                    <div className="d-flex flex-wrap gap-2">
-                      {assignedClassObjects.length === 0 ? (
-                        <span className="text-muted small">No class assigned</span>
-                      ) : (
-                        assignedClassObjects.map((cls) => (
-                          <span key={String(cls._id)} className="badge bg-light text-dark border px-3 py-2">
-                            Class {cls.className}
-                            <button
-                              type="button"
-                              className="btn btn-sm p-0 ms-2 text-danger"
-                              style={{ lineHeight: 1 }}
-                              onClick={() => toggleClassAssignment(String(cls._id))}
-                            >
-                              <i className="bi bi-x-circle"></i>
-                            </button>
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="row g-3 mb-5">
-                  <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold">
-                      <i className="bi bi-grid-3x3-gap me-2"></i>Assigned Sections
-                    </h5>
-                  </div>
-                  <div className="col-12">
-                    <div className="small text-muted mb-3">
-                      Manage section responsibility for this teacher (based on selected classes). Selected: {(formData.assignedSections || []).length}
-                    </div>
-                    {errors.assignedSections && (
-                      <div className="alert alert-warning py-2 px-3 mb-3 small">
-                        {errors.assignedSections}
-                      </div>
-                    )}
-                    {sectionOptions.length === 0 ? (
-                      <div className="text-muted small">Select class first to manage sections.</div>
-                    ) : (
-                      <div className="row g-2">
-                        {sectionOptions.map((item) => {
-                          const key = sectionKey(item);
-                          const selected = assignedSectionKeySet.has(key);
-                          return (
-                            <div className="col-md-4 col-sm-6" key={key}>
-                              <button
-                                type="button"
-                                className={`btn w-100 rounded-3 ${selected ? "btn-success" : "btn-outline-secondary"}`}
-                                onClick={() => toggleSectionAssignment(item)}
-                              >
-                                Class {item.className} - {item.section}
-                                {item.stream ? ` (${item.stream})` : ""}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="row g-4 mb-4">
-                  <div className="col-12 border-bottom pb-2 mb-2">
-                    <h5 className="text-primary fw-bold">
-                      <i className="bi bi-person-lines-fill me-2"></i>Personal Details
-                    </h5>
-                  </div>
-                  <FormInput label="Father/Husband Name" name="fatherName" value={formData.fatherName} onChange={handleChange} icon="bi-people" />
-                  <div className="col-md-4">
-                    <label className="form-label fw-bold small">Gender *</label>
-                    <select name="gender" className={`form-select ${errors.gender ? "is-invalid" : ""}`} value={formData.gender} onChange={handleChange}>
-                      <option value="">Select</option>
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <FormInput label="Experience (Years)" name="experience" type="number" value={formData.experience} onChange={handleChange} icon="bi-star" />
-                  <FormInput label="Education" name="education" value={formData.education} onChange={handleChange} icon="bi-mortarboard" />
-                  <div className="col-md-4">
-                    <label className="form-label fw-bold small">Blood Group</label>
-                    <select name="bloodGroup" className="form-select" value={formData.bloodGroup} onChange={handleChange}>
-                      <option value="">Select</option>
-                      <option>A+</option>
-                      <option>B+</option>
-                      <option>O+</option>
-                      <option>AB+</option>
-                      <option>A-</option>
-                      <option>B-</option>
-                      <option>O-</option>
-                      <option>AB-</option>
-                    </select>
-                  </div>
-                  <FormInput label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} icon="bi-calendar-heart" />
-                  <div className="col-12">
-                    <label className="form-label fw-bold small">Home Address</label>
-                    <textarea name="address" className="form-control" rows="2" value={formData.address} onChange={handleChange} placeholder="Enter full address..." />
-                  </div>
-                </div>
-
-                <div className="d-flex justify-content-end gap-2 mt-5">
-                  <button type="button" className="btn btn-outline-secondary px-4 rounded-pill" onClick={() => navigate(-1)} disabled={saving}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary px-5 rounded-pill shadow-sm fw-bold" disabled={saving}>
-                    {saving ? "Updating..." : "Update Profile"}
-                  </button>
-                </div>
-
-                {message && (
-                  <div className={`alert mt-4 text-center rounded-3 border-0 shadow-sm ${message.toLowerCase().includes("success") ? "alert-success" : "alert-danger"}`}>
-                    {message}
-                  </div>
-                )}
-              </form>
-            </div>
+            <button onClick={() => navigate(-1)} className="btn bg-white rounded-circle shadow-sm d-flex justify-content-center align-items-center transition-all hover-scale" style={{ width: 48, height: 48 }}>
+              <i className="bi bi-arrow-left fs-5" style={{ color: '#4f46e5' }}></i>
+            </button>
           </div>
         </div>
+
+        {message.text && (
+          <div className={`alert ${message.type === 'danger' ? 'alert-danger border-danger' : 'alert-success border-success'} bg-white py-3 px-4 rounded-4 shadow-sm border-start border-4 mb-4 d-flex align-items-center animate-fade-in`}>
+            <i className={`bi ${message.type === 'danger' ? 'bi-exclamation-triangle-fill text-danger' : 'bi-check-circle-fill text-success'} fs-4 me-3`}></i>
+            <span className="fw-medium">{message.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          
+          {/* Avatar Upload Section */}
+          <div className="d-flex justify-content-center mb-4">
+            <div className="avatar-edit-box">
+              <img src={preview || "https://via.placeholder.com/150"} alt="Profile Preview" />
+              <div className="avatar-edit-btn" onClick={() => fileInputRef.current?.click()} title="Change Photo">
+                <i className="bi bi-camera-fill"></i>
+              </div>
+              <input type="file" ref={fileInputRef} hidden name="picture" onChange={handleChange} accept="image/*" />
+            </div>
+          </div>
+
+          {/* Identity & Professional Details */}
+          <div className="premium-card p-4 p-md-5 mb-4">
+            <h5 className="fw-bolder mb-4 d-flex align-items-center pb-3 border-bottom" style={{ color: '#0f172a' }}>
+              <div className="rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style={{ width: 36, height: 36, background: '#e0e7ff', color: '#4f46e5' }}>
+                <i className="bi bi-briefcase-fill"></i>
+              </div>
+              Professional Details
+            </h5>
+            <div className="row g-4">
+              <FormInput label="Registration Number" value={formData.regNumber} readOnly icon="bi-hash" />
+              <FormInput label="Full Name *" name="teacherName" value={formData.teacherName} onChange={handleChange} error={errors.teacherName} icon="bi-person-fill" />
+              <FormInput label="Email Address *" name="email" value={formData.email} onChange={handleChange} error={errors.email} icon="bi-envelope-fill" />
+              <FormInput label="Phone Number *" name="mobile" value={formData.mobile} onChange={handleChange} error={errors.mobile} icon="bi-telephone-fill" />
+              <FormInput label="Designation" value={formData.role} readOnly icon="bi-shield-check" />
+              <FormInput label="Monthly Salary *" name="salary" type="number" value={formData.salary} onChange={handleChange} error={errors.salary} icon="bi-currency-rupee" />
+              <FormInput label="Joining Date *" name="joiningDate" type="date" value={formData.joiningDate} onChange={handleChange} error={errors.joiningDate} icon="bi-calendar-check-fill" />
+            </div>
+          </div>
+
+          {/* Academic Assignments */}
+          <div className="premium-card p-4 p-md-5 mb-4">
+            <h5 className="fw-bolder mb-4 d-flex align-items-center pb-3 border-bottom" style={{ color: '#0f172a' }}>
+              <div className="rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style={{ width: 36, height: 36, background: '#e0e7ff', color: '#4f46e5' }}>
+                <i className="bi bi-diagram-3-fill"></i>
+              </div>
+              Academic Responsibilities
+            </h5>
+            
+            <div className="mb-4">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <label className="small fw-bold text-muted text-uppercase m-0">Assign Grades / Classes</label>
+                <span className="badge bg-light text-muted border px-2 py-1">Selected: {formData.classes.length}</span>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                {allClasses.map((cls) => {
+                  const isAssigned = formData.classes.includes(String(cls._id));
+                  return (
+                    <button 
+                      key={cls._id} 
+                      type="button" 
+                      className={`pill-btn d-flex align-items-center ${isAssigned ? "active-primary" : "inactive"}`} 
+                      onClick={() => toggleClassAssignment(cls._id)}
+                    >
+                      <i className={`bi ${isAssigned ? 'bi-check-circle-fill' : 'bi-circle'} me-2`}></i> Class {cls.className}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <label className="small fw-bold text-muted text-uppercase m-0">Assign Specific Sections</label>
+                {errors.assignedSections && <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1"><i className="bi bi-exclamation-triangle-fill me-1"></i> {errors.assignedSections}</span>}
+              </div>
+              
+              <div className="d-flex flex-wrap gap-2 p-3 bg-light rounded-4 border min-vh-25">
+                {sectionOptions.length === 0 ? (
+                   <span className="text-muted small">No sections available for selected classes.</span>
+                ) : (
+                  sectionOptions.map((item) => {
+                    const key = sectionKey(item);
+                    const selected = assignedSectionKeySet.has(key);
+                    return (
+                      <button 
+                        key={key} 
+                        type="button" 
+                        className={`pill-btn d-flex align-items-center ${selected ? "active-success" : "bg-white border"}`} 
+                        onClick={() => toggleSectionAssignment(item)}
+                      >
+                        <i className={`bi ${selected ? 'bi-check-circle-fill' : 'bi-circle'} me-2`}></i> 
+                        {item.className} - {item.section} {item.stream ? `(${item.stream})` : ""}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Info */}
+          <div className="premium-card p-4 p-md-5 mb-4">
+            <h5 className="fw-bolder mb-4 d-flex align-items-center pb-3 border-bottom" style={{ color: '#0f172a' }}>
+              <div className="rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style={{ width: 36, height: 36, background: '#e0e7ff', color: '#4f46e5' }}>
+                <i className="bi bi-person-heart"></i>
+              </div>
+              Personal Details
+            </h5>
+            <div className="row g-4">
+              <FormInput icon="bi-person-fill" label="Father/Spouse Name" name="fatherName" placeholder="Full Name" value={formData.fatherName} onChange={handleChange} />
+              
+              <div className="col-12 col-md-4">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-2">Gender *</label>
+                <div className={`input-group input-group-premium ${errors.gender ? "is-invalid" : ""}`}>
+                  <span className="input-group-text"><i className="bi bi-gender-ambiguous text-muted"></i></span>
+                  <select name="gender" className="form-select input-premium py-2 border-start-0" value={formData.gender} onChange={handleChange}>
+                    <option value="">Select Gender...</option>
+                    <option>Male</option><option>Female</option><option>Other</option>
+                  </select>
+                </div>
+                {errors.gender && <div className="text-danger small mt-1 fw-medium">{errors.gender}</div>}
+              </div>
+
+              <FormInput icon="bi-star-fill" label="Experience (Years)" name="experience" type="number" value={formData.experience} onChange={handleChange} />
+              <FormInput icon="bi-mortarboard-fill" label="Highest Education" name="education" value={formData.education} onChange={handleChange} />
+              
+              <div className="col-12 col-md-4">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-2">Blood Group</label>
+                <div className="input-group input-group-premium">
+                  <span className="input-group-text"><i className="bi bi-droplet-fill text-danger"></i></span>
+                  <select name="bloodGroup" className="form-select input-premium py-2 border-start-0" value={formData.bloodGroup} onChange={handleChange}>
+                    <option value="">Select Group...</option>
+                    <option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+                  </select>
+                </div>
+              </div>
+              
+              <FormInput icon="bi-calendar-heart-fill" label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} />
+              
+              <div className="col-12">
+                <label className="form-label small fw-bold text-muted text-uppercase mb-2">Residential Address</label>
+                <div className="input-group input-group-premium">
+                  <span className="input-group-text align-items-start pt-3"><i className="bi bi-house-door-fill text-muted"></i></span>
+                  <textarea name="address" className="form-control input-premium border-start-0" rows="3" placeholder="Full street address..." value={formData.address} onChange={handleChange} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Bottom Action Bar */}
+          <div className="premium-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-4 mb-5" style={{ position: 'sticky', bottom: '20px', zIndex: 100 }}>
+            <div className="d-flex align-items-center text-muted">
+              <i className="bi bi-info-circle-fill fs-4 text-primary me-3"></i>
+              <div>
+                <div className="fw-bold text-dark">Ready to save?</div>
+                <div className="small fw-medium">Review the details above. Required fields are marked with (*).</div>
+              </div>
+            </div>
+            <div className="d-flex gap-3 w-100 w-md-auto">
+              <button type="button" className="btn bg-light border text-dark fw-bold rounded-pill px-4 flex-grow-1 flex-md-grow-0" onClick={() => navigate(-1)} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-brand btn-lg rounded-pill px-5 fw-bold shadow-sm flex-grow-1 flex-md-grow-0" disabled={saving}>
+                {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : "Update Profile"}
+              </button>
+            </div>
+          </div>
+          
+        </form>
       </div>
     </div>
   );
 }
 
-const FormInput = ({ label, icon, error, bg = "", ...props }) => (
-  <div className="col-md-4">
-    <label className="form-label fw-bold small">{label}</label>
-    <div className="input-group">
-      <span className={`input-group-text bg-white border-end-0 ${error ? "border-danger" : ""}`}>
-        <i className={`bi ${icon} text-muted`}></i>
-      </span>
-      <input {...props} className={`form-control border-start-0 ${bg} ${error ? "is-invalid" : ""}`} />
-      {error ? <div className="invalid-feedback">{error}</div> : null}
+// Upgraded Subcomponent
+const FormInput = ({ label, icon, error, placeholder, type = "text", readOnly, ...props }) => (
+  <div className="col-12 col-md-4">
+    <label className="form-label small fw-bold text-muted text-uppercase mb-2">{label}</label>
+    <div className={`input-group input-group-premium ${error ? "is-invalid" : ""}`}>
+      {icon && <span className="input-group-text"><i className={`bi ${icon}`}></i></span>}
+      <input 
+        type={type} 
+        {...props} 
+        placeholder={placeholder} 
+        readOnly={readOnly}
+        className={`form-control input-premium py-2 border-start-0 ${error ? "is-invalid" : ""}`} 
+      />
     </div>
+    {error && <div className="text-danger small mt-1 fw-medium">{error}</div>}
   </div>
 );
 

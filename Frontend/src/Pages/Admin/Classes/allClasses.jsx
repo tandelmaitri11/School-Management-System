@@ -33,7 +33,7 @@ export default function AllClasses() {
   const [updatedTeacher, setUpdatedTeacher] = useState("");
 
   const [manageOpen, setManageOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("general"); // UI State for Tabs
+  const [activeTab, setActiveTab] = useState("general"); 
   const [manageSaving, setManageSaving] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
 
@@ -201,36 +201,61 @@ export default function AllClasses() {
   };
 
   if (loading) return (
-    <div className="d-flex flex-column align-items-center justify-content-center vh-100 bg-light">
-      <div className="spinner-grow text-primary" role="status"></div>
-      <p className="mt-3 fw-bold text-secondary">Loading your school...</p>
+    <div className="d-flex flex-column align-items-center justify-content-center vh-100" style={{ background: '#f8fafc' }}>
+      <div className="spinner-border" style={{ color: '#4f46e5', width: '3rem', height: '3rem' }} role="status"></div>
+      <p className="mt-3 fw-medium" style={{ color: '#64748b' }}>Loading directory...</p>
     </div>
   );
 
   return (
-    <div className="container-fluid py-5 px-lg-5 bg-light min-vh-100">
-      <ToastContainer theme="colored" />
+    <div className="container-fluid py-4" style={{ maxWidth: 1400, fontFamily: "'Inter', sans-serif" }}>
+      <ToastContainer theme="colored" position="bottom-right" />
+
+      {/* --- Premium Custom CSS --- */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .premium-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1); border-color: rgba(79, 70, 229, 0.3); }
+        .input-premium { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; transition: all 0.2s; }
+        .input-premium:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); background: #ffffff; outline: none; }
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); color: white; }
+        .segmented-control { background: #f1f5f9; padding: 4px; border-radius: 12px; display: inline-flex; }
+        .segmented-btn { border: none; background: transparent; padding: 8px 20px; border-radius: 8px; font-weight: 500; color: #64748b; transition: all 0.2s; }
+        .segmented-btn.active { background: #ffffff; color: #0f172a; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .table-premium th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: #64748b; border-bottom: 1px solid #e2e8f0; padding: 12px 16px; }
+        .table-premium td { padding: 16px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
 
       {/* Modern Header & Stats */}
-      <div className="row mb-5 align-items-end">
-        <div className="col-md-6">
-          <span className="badge bg-primary-subtle text-primary mb-2 px-3 py-2 rounded-pill fw-bold">ADMIN CONSOLE</span>
-          <h2 className="display-6 fw-bold text-dark">Class Directory</h2>
-          <p className="text-muted">Manage academic sections, student capacities, and stream allocations.</p>
+      <div 
+        className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 d-flex flex-column flex-md-row align-items-md-center justify-content-between p-4 p-md-5"
+        style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", position: 'relative' }}
+      >
+        <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+        
+        <div className="position-relative z-1 mb-4 mb-md-0">
+          <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+            <i className="bi bi-building me-1"></i> Admin Console
+          </span>
+          <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Class Directory</h2>
+          <p className="text-white opacity-75 fw-medium mb-0">Manage academic sections, capacities, and streams.</p>
         </div>
-        <div className="col-md-6 text-md-end">
-          <div className="d-inline-flex gap-3 bg-white p-3 rounded-4 shadow-sm border mb-3 me-3">
-             <div className="text-center px-3 border-end">
-                <div className="small text-muted">Total Students</div>
-                <div className="fw-bold h5 mb-0">{overallTotals.totalStudents}</div>
-             </div>
-             <div className="text-center px-3">
-                <div className="small text-muted">Active Classes</div>
-                <div className="fw-bold h5 mb-0">{classes.length}</div>
-             </div>
+        
+        <div className="position-relative z-1 d-flex flex-column align-items-md-end gap-3">
+          <div className="d-flex bg-white p-3 rounded-4 shadow-sm align-items-center">
+            <div className="px-3 border-end text-center">
+              <div className="small fw-bold text-muted text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Students</div>
+              <div className="fw-bolder fs-4" style={{ color: '#0f172a' }}>{overallTotals.totalStudents.toLocaleString()}</div>
+            </div>
+            <div className="px-3 text-center">
+              <div className="small fw-bold text-muted text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Classes</div>
+              <div className="fw-bolder fs-4" style={{ color: '#0f172a' }}>{classes.length}</div>
+            </div>
           </div>
-          <a href="/classes/new" className="btn btn-primary btn-lg rounded-pill shadow px-4">
-            <i className="bi bi-plus-lg me-2"></i>Add Class
+          <a href="/classes/new" className="btn btn-light rounded-pill shadow-sm px-4 py-2 fw-semibold" style={{ color: '#4f46e5' }}>
+            <i className="bi bi-plus-circle-fill me-2"></i>Add New Class
           </a>
         </div>
       </div>
@@ -238,130 +263,147 @@ export default function AllClasses() {
       {/* Class Grid */}
       <div className="row g-4">
         {classes.map((cls) => (
-          <div key={cls._id} className="col-xl-4 col-md-6">
-            <div className="card border-0 shadow-sm rounded-4 h-100 class-card">
-              <div className="card-body p-4">
-                <div className="d-flex justify-content-between align-items-start mb-4">
-                  <div className="bg-primary text-white rounded-3 p-3 shadow-sm">
-                    <h3 className="mb-0 fw-bold">{cls.className}</h3>
-                  </div>
-                  <div className="text-end">
-                    <div className="h4 fw-bold mb-0 text-primary">{classTotals[cls._id]?.totalStudents || 0}</div>
-                    <div className="small text-muted text-uppercase fw-bold">Enrollment</div>
-                  </div>
+          <div key={cls._id} className="col-12 col-md-6 col-xl-4">
+            <div className="premium-card h-100 p-4 d-flex flex-column">
+              
+              {/* Card Header */}
+              <div className="d-flex justify-content-between align-items-start mb-4">
+                <div className="d-flex align-items-center justify-content-center rounded-3 shadow-sm" style={{ width: 56, height: 56, background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5' }}>
+                  <h3 className="mb-0 fw-bolder">{cls.className}</h3>
                 </div>
+                <div className="text-end">
+                  <div className="fs-3 fw-bolder mb-0" style={{ color: '#0f172a', lineHeight: 1 }}>{classTotals[cls._id]?.totalStudents || 0}</div>
+                  <div className="small fw-bold text-muted text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Enrolled</div>
+                </div>
+              </div>
 
-                <div className="mb-4">
-                  <label className="small text-muted fw-bold text-uppercase mb-2 d-block">Class Teacher</label>
-                  {editingTeacherClassId === cls._id ? (
-                    <div className="input-group input-group-sm">
-                      <select className="form-select border-primary" value={updatedTeacher} onChange={(e) => setUpdatedTeacher(e.target.value)}>
-                        <option value="">Choose...</option>
-                        {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                      </select>
-                      <button className="btn btn-primary" onClick={() => handleUpdateTeacher(cls._id)}><i className="bi bi-check"></i></button>
-                      <button className="btn btn-light" onClick={() => setEditingTeacherClassId(null)}><i className="bi bi-x"></i></button>
+              {/* Teacher Section */}
+              <div className="mb-4">
+                <label className="small fw-bold text-muted text-uppercase mb-2 d-block" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Class Teacher</label>
+                {editingTeacherClassId === cls._id ? (
+                  <div className="input-group">
+                    <select className="form-select input-premium py-2" value={updatedTeacher} onChange={(e) => setUpdatedTeacher(e.target.value)}>
+                      <option value="">Choose...</option>
+                      {teachers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                    </select>
+                    <button className="btn btn-brand px-3" onClick={() => handleUpdateTeacher(cls._id)}><i className="bi bi-check-lg"></i></button>
+                    <button className="btn border bg-light text-muted px-3" onClick={() => setEditingTeacherClassId(null)}><i className="bi bi-x-lg"></i></button>
+                  </div>
+                ) : (
+                  <div className="d-flex align-items-center justify-content-between bg-light p-3 rounded-3 border" style={{ borderColor: '#f1f5f9' }}>
+                    <div className="d-flex align-items-center fw-medium text-dark text-truncate">
+                      <div className="rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style={{ width: 32, height: 32, background: '#fff', color: '#4f46e5' }}>
+                        <i className="bi bi-person-fill"></i>
+                      </div>
+                      <span className="text-truncate">{cls.classTeacher?.name || "Unassigned"}</span>
                     </div>
-                  ) : (
-                    <div className="d-flex align-items-center justify-content-between bg-light p-2 rounded-3 border border-dashed">
-                      <span className="fw-semibold text-dark"><i className="bi bi-person-badge me-2 text-primary"></i>{cls.classTeacher?.name || "Unassigned"}</span>
-                      <button className="btn btn-link btn-sm p-0 text-decoration-none" onClick={() => handleEditTeacher(cls)}>Change</button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mb-4">
-                  <label className="small text-muted fw-bold text-uppercase mb-2 d-block">Sections</label>
-                  <div className="d-flex flex-wrap gap-1">
-                    {cls.sections?.slice(0, 6).map(s => (
-                      <span key={s.name} className="badge bg-white text-dark border px-2 py-1 fw-medium">{s.name}</span>
-                    ))}
-                    {cls.sections?.length > 6 && <span className="badge bg-light text-muted">+{cls.sections.length - 6} more</span>}
+                    <button className="btn btn-sm text-primary fw-semibold p-0 ms-2 text-decoration-none" onClick={() => handleEditTeacher(cls)}>Edit</button>
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className="d-flex gap-2 pt-3 border-top">
-                  <button className="btn btn-outline-primary flex-grow-1 rounded-pill fw-bold" onClick={() => openManage(cls)}>
-                    <i className="bi bi-gear-fill me-2"></i>Configure
-                  </button>
-                  <button className="btn btn-light rounded-circle" onClick={() => handleDelete(cls._id)}><i className="bi bi-trash text-danger"></i></button>
+              {/* Sections Badges */}
+              <div className="mb-4 flex-grow-1">
+                <label className="small fw-bold text-muted text-uppercase mb-2 d-block" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Sections</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {cls.sections?.slice(0, 6).map(s => (
+                    <span key={s.name} className="badge fw-semibold" style={{ background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0', padding: '6px 10px' }}>
+                      {s.name}
+                    </span>
+                  ))}
+                  {cls.sections?.length > 6 && <span className="badge bg-light text-muted border border-dashed py-2">+{cls.sections.length - 6} more</span>}
+                  {(!cls.sections || cls.sections.length === 0) && <span className="small text-muted fst-italic">No sections added</span>}
                 </div>
+              </div>
+
+              {/* Actions */}
+              <div className="d-flex gap-2 pt-3 border-top" style={{ borderColor: '#e2e8f0' }}>
+                <button className="btn flex-grow-1 rounded-pill fw-semibold text-primary" style={{ background: 'rgba(79, 70, 229, 0.1)' }} onClick={() => openManage(cls)}>
+                  <i className="bi bi-sliders me-2"></i>Configure
+                </button>
+                <button className="btn rounded-circle" style={{ background: '#fff0f2', color: '#e11d48' }} onClick={() => handleDelete(cls._id)}>
+                  <i className="bi bi-trash3-fill"></i>
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Manage Modal - Redesigned with Tabs */}
+      {/* Premium Manage Modal */}
       {manageOpen && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', zIndex: 1050 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-              <div className="modal-header bg-white border-0 px-4 pt-4">
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '24px', overflow: 'hidden' }}>
+              
+              <div className="modal-header border-0 px-4 pt-4 pb-0 justify-content-between align-items-start">
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Management Console</h4>
-                  <p className="text-muted small mb-0">Configuring Class {selectedClass?.className}</p>
+                  <h4 className="fw-bolder mb-1 text-dark">Class Configuration</h4>
+                  <p className="text-muted fw-medium mb-0">Managing Class {selectedClass?.className}</p>
                 </div>
-                <button className="btn-close" onClick={closeManage}></button>
+                <button className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center" onClick={closeManage} style={{ width: 36, height: 36 }}>
+                  <i className="bi bi-x-lg text-muted"></i>
+                </button>
               </div>
 
-              {/* Navigation Tabs */}
-              <div className="px-4">
-                <ul className="nav nav-pills bg-light p-1 rounded-pill mt-3 mb-3 border d-inline-flex">
-                  <li className="nav-item">
-                    <button className={`nav-link rounded-pill px-4 ${activeTab === 'general' ? 'active shadow-sm' : ''}`} onClick={() => setActiveTab('general')}>General</button>
-                  </li>
+              <div className="px-4 mt-4">
+                <div className="segmented-control w-100 w-md-auto">
+                  <button className={`segmented-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>General</button>
                   {isSenior(selectedClass) && (
-                    <li className="nav-item">
-                      <button className={`nav-link rounded-pill px-4 ${activeTab === 'streams' ? 'active shadow-sm' : ''}`} onClick={() => setActiveTab('streams')}>Streams</button>
-                    </li>
+                    <button className={`segmented-btn ${activeTab === 'streams' ? 'active' : ''}`} onClick={() => setActiveTab('streams')}>Streams</button>
                   )}
-                  <li className="nav-item">
-                    <button className={`nav-link rounded-pill px-4 ${activeTab === 'sections' ? 'active shadow-sm' : ''}`} onClick={() => setActiveTab('sections')}>Sections</button>
-                  </li>
-                </ul>
+                  <button className={`segmented-btn ${activeTab === 'sections' ? 'active' : ''}`} onClick={() => setActiveTab('sections')}>Sections</button>
+                </div>
               </div>
 
-              <div className="modal-body px-4 py-2">
+              <div className="modal-body px-4 py-4 custom-scroll">
+                
+                {/* General Tab */}
                 {activeTab === 'general' && (
-                  <div className="p-3 bg-light rounded-4 border animate-fade-in">
-                    <label className="form-label fw-bold">Academic Year Label</label>
-                    <input className="form-control form-control-lg border-0 shadow-sm rounded-3" value={editAcademicYear} onChange={(e) => setEditAcademicYear(e.target.value)} placeholder="e.g. 2025-26" />
-                    <div className="mt-4 alert alert-warning border-0 rounded-4">
-                      <i className="bi bi-info-circle-fill me-2"></i> Changes here will update student record visibility for this class.
+                  <div className="animate-fade-in p-4 bg-light rounded-4 border">
+                    <label className="form-label fw-bold text-dark">Academic Year Label</label>
+                    <input className="form-control input-premium fs-5" value={editAcademicYear} onChange={(e) => setEditAcademicYear(e.target.value)} placeholder="e.g. 2025-26" />
+                    <div className="mt-3 text-muted small fw-medium d-flex align-items-center">
+                      <i className="bi bi-info-circle text-primary me-2 fs-5"></i> 
+                      Updates the overarching academic year identifier for this class's records.
                     </div>
                   </div>
                 )}
 
+                {/* Streams Tab */}
                 {activeTab === 'streams' && (
                   <div className="animate-fade-in">
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="fw-bold mb-0">Active Streams</h6>
+                      <h6 className="fw-bolder mb-0 text-dark">Active Streams</h6>
                       <div className="dropdown">
-                        <button className="btn btn-sm btn-primary rounded-pill dropdown-toggle" data-bs-toggle="dropdown">+ Add Stream</button>
-                        <ul className="dropdown-menu shadow border-0">
-                          {STREAM_PRESETS.map(p => <li key={p.name}><button className="dropdown-item" onClick={() => addStreamPreset(p)}>{p.name}</button></li>)}
+                        <button className="btn btn-sm btn-outline-primary rounded-pill fw-semibold dropdown-toggle px-3" data-bs-toggle="dropdown">
+                          <i className="bi bi-plus me-1"></i> Add Stream
+                        </button>
+                        <ul className="dropdown-menu shadow-sm border-0 rounded-3">
+                          {STREAM_PRESETS.map(p => <li key={p.name}><button className="dropdown-item fw-medium" onClick={() => addStreamPreset(p)}>{p.name}</button></li>)}
                         </ul>
                       </div>
                     </div>
-                    <div className="table-responsive border rounded-3 overflow-hidden">
-                      <table className="table table-hover mb-0">
-                        <thead className="bg-light"><tr><th>Name</th><th>Subject Choices</th><th className="text-end">Actions</th></tr></thead>
+                    
+                    <div className="border rounded-4 overflow-hidden bg-white">
+                      <table className="table table-premium mb-0">
+                        <thead className="bg-light"><tr><th>Stream Name</th><th>Subject Requirements</th><th className="text-end">Actions</th></tr></thead>
                         <tbody>
+                          {editStreams.length === 0 && (
+                            <tr><td colSpan="3" className="text-center text-muted py-4">No streams configured.</td></tr>
+                          )}
                           {editStreams.map((s, idx) => (
                             <tr key={idx}>
-                              <td className="fw-bold">{s.name}</td>
+                              <td className="fw-bold text-dark">{s.name}</td>
                               <td>
-                                <div className="d-flex flex-wrap gap-2 mb-2">
+                                <div className="d-flex flex-wrap gap-2 mb-3">
                                   {Array.from(new Set([...SUBJECT_CHOICE_LIBRARY, ...(s.subjectOptions || [])])).map((opt) => {
-                                    const selected = (s.subjectOptions || []).some(
-                                      (x) => String(x).toLowerCase() === String(opt).toLowerCase()
-                                    );
+                                    const selected = (s.subjectOptions || []).some((x) => String(x).toLowerCase() === String(opt).toLowerCase());
                                     return (
                                       <button
                                         key={`${s.name}-${opt}`}
                                         type="button"
-                                        className={`btn btn-sm rounded-pill ${selected ? "btn-primary" : "btn-outline-secondary"}`}
+                                        className={`badge border-0 px-3 py-2 fw-medium ${selected ? "bg-primary text-white" : "bg-light text-muted border border-secondary"}`}
                                         onClick={() => toggleStreamSubjectOption(idx, opt)}
                                       >
                                         {opt}
@@ -369,17 +411,12 @@ export default function AllClasses() {
                                     );
                                   })}
                                 </div>
-                                <div className="input-group input-group-sm">
+                                <div className="input-group">
                                   <input
-                                    className="form-control"
-                                    placeholder="Add custom choice"
+                                    className="form-control input-premium py-1"
+                                    placeholder="Add custom subject..."
                                     value={customChoiceByStream[String(s.name || "").toLowerCase()] || ""}
-                                    onChange={(e) =>
-                                      setCustomChoiceByStream((prev) => ({
-                                        ...prev,
-                                        [String(s.name || "").toLowerCase()]: e.target.value,
-                                      }))
-                                    }
+                                    onChange={(e) => setCustomChoiceByStream((prev) => ({ ...prev, [String(s.name || "").toLowerCase()]: e.target.value }))}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
@@ -387,16 +424,16 @@ export default function AllClasses() {
                                       }
                                     }}
                                   />
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-dark"
-                                    onClick={() => addCustomStreamChoice(idx, s.name)}
-                                  >
+                                  <button type="button" className="btn border bg-light fw-medium text-dark px-3" onClick={() => addCustomStreamChoice(idx, s.name)}>
                                     Add
                                   </button>
                                 </div>
                               </td>
-                              <td className="text-end"><button className="btn btn-sm btn-link text-danger" onClick={() => removeStream(idx)}><i className="bi bi-trash"></i></button></td>
+                              <td className="text-end">
+                                <button className="btn btn-sm text-danger bg-light rounded-circle p-2" onClick={() => removeStream(idx)}>
+                                  <i className="bi bi-trash3-fill"></i>
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -405,48 +442,72 @@ export default function AllClasses() {
                   </div>
                 )}
 
+                {/* Sections Tab */}
                 {activeTab === 'sections' && (
                   <div className="animate-fade-in">
-                    <div className="card border-0 bg-light rounded-4 mb-4">
-                      <div className="card-body p-3">
-                        <h6 className="fw-bold mb-3 small">QUICK GENERATE</h6>
-                        <div className="row g-2">
-                          <div className="col-3"><input className="form-control form-control-sm" placeholder="From" value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} /></div>
-                          <div className="col-3"><input className="form-control form-control-sm" placeholder="To" value={rangeTo} onChange={e => setRangeTo(e.target.value)} /></div>
-                          <div className="col-4">
-                            <select className="form-select form-select-sm" value={rangeStream} onChange={e => setRangeStream(e.target.value)} disabled={!isSenior(selectedClass)}>
-                              <option value="">General</option>
-                              {streamDropdownOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                            </select>
-                          </div>
-                          <div className="col-2"><button className="btn btn-dark btn-sm w-100" onClick={() => generateRangeLocal(rangeFrom, rangeTo, rangeCap, rangeStream)}>Go</button></div>
+                    
+                    {/* Quick Gen Card */}
+                    <div className="bg-light border p-4 rounded-4 mb-4">
+                      <h6 className="fw-bolder mb-3 text-dark small text-uppercase" style={{ letterSpacing: '0.5px' }}><i className="bi bi-lightning-charge-fill text-warning me-2"></i>Quick Generate Sections</h6>
+                      <div className="row g-2 align-items-center">
+                        <div className="col-6 col-md-2">
+                          <label className="small text-muted fw-bold mb-1">From</label>
+                          <input className="form-control input-premium py-2 text-center text-uppercase fw-bold" placeholder="A" value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} maxLength={1}/>
+                        </div>
+                        <div className="col-6 col-md-2">
+                          <label className="small text-muted fw-bold mb-1">To</label>
+                          <input className="form-control input-premium py-2 text-center text-uppercase fw-bold" placeholder="Z" value={rangeTo} onChange={e => setRangeTo(e.target.value)} maxLength={1}/>
+                        </div>
+                        <div className="col-12 col-md-3">
+                          <label className="small text-muted fw-bold mb-1">Capacity</label>
+                          <input type="number" className="form-control input-premium py-2 text-center" value={rangeCap} onChange={e => setRangeCap(e.target.value)} />
+                        </div>
+                        <div className="col-12 col-md-3">
+                          <label className="small text-muted fw-bold mb-1">Stream</label>
+                          <select className="form-select input-premium py-2" value={rangeStream} onChange={e => setRangeStream(e.target.value)} disabled={!isSenior(selectedClass)}>
+                            <option value="">General</option>
+                            {streamDropdownOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                          </select>
+                        </div>
+                        <div className="col-12 col-md-2 mt-auto">
+                          <button className="btn btn-dark w-100 rounded-3 py-2 fw-semibold" onClick={() => generateRangeLocal(rangeFrom, rangeTo, rangeCap, rangeStream)}>Generate</button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="table-responsive border rounded-4 overflow-hidden">
-                      <table className="table table-hover align-middle mb-0">
+                    {/* Sections Table */}
+                    <div className="border rounded-4 overflow-hidden bg-white">
+                      <table className="table table-premium align-middle mb-0">
                         <thead className="bg-light">
-                          <tr className="small text-muted text-uppercase">
-                            <th className="px-3">Sec</th>
-                            <th>Cap</th>
+                          <tr>
+                            <th className="px-4">Section ID</th>
+                            <th>Capacity Limit</th>
                             <th>Stream Mapping</th>
-                            <th className="text-end px-3">Status</th>
+                            <th className="text-end px-4">Remove</th>
                           </tr>
                         </thead>
                         <tbody>
+                          {editSections.length === 0 && (
+                            <tr><td colSpan="4" className="text-center text-muted py-4">No sections generated yet.</td></tr>
+                          )}
                           {editSections.sort((a,b) => a.name.localeCompare(b.name)).map((s) => (
                             <tr key={s.name}>
-                              <td className="px-3 fw-bold">{s.name}</td>
-                              <td><input type="number" className="form-control form-control-sm w-75 border-0 bg-light" value={s.capacity} onChange={e => updateSectionField(s.name, { capacity: e.target.value })} /></td>
+                              <td className="px-4 fw-bolder text-dark fs-5">{s.name}</td>
                               <td>
-                                <select className="form-select form-select-sm border-0 bg-light" value={s.stream} onChange={e => updateSectionField(s.name, { stream: e.target.value })} disabled={!isSenior(selectedClass)}>
-                                  <option value="">N/A</option>
+                                <div className="input-group" style={{ width: '120px' }}>
+                                  <input type="number" className="form-control bg-light border-0 fw-semibold text-center rounded-3" value={s.capacity} onChange={e => updateSectionField(s.name, { capacity: e.target.value })} />
+                                </div>
+                              </td>
+                              <td>
+                                <select className="form-select bg-light border-0 fw-medium rounded-3" style={{ width: '150px' }} value={s.stream} onChange={e => updateSectionField(s.name, { stream: e.target.value })} disabled={!isSenior(selectedClass)}>
+                                  <option value="">General</option>
                                   {streamDropdownOptions.map(st => <option key={st} value={st}>{st}</option>)}
                                 </select>
                               </td>
-                              <td className="text-end px-3">
-                                <button className="btn btn-sm btn-outline-danger border-0" onClick={() => removeSectionLocal(s.name)}><i className="bi bi-trash"></i></button>
+                              <td className="text-end px-4">
+                                <button className="btn btn-sm text-danger bg-light rounded-circle p-2" onClick={() => removeSectionLocal(s.name)}>
+                                  <i className="bi bi-trash3-fill"></i>
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -457,25 +518,20 @@ export default function AllClasses() {
                 )}
               </div>
 
-              <div className="modal-footer bg-light border-0 px-4 py-3 mt-3">
-                <button className="btn btn-white rounded-pill px-4" onClick={closeManage}>Discard</button>
-                <button className="btn btn-primary rounded-pill px-5 shadow" onClick={saveManage} disabled={manageSaving}>
-                  {manageSaving ? "Updating..." : "Commit Changes"}
+              <div className="modal-footer border-top bg-light px-4 py-3 justify-content-between">
+                <button className="btn text-muted fw-semibold px-4" onClick={closeManage}>Discard Changes</button>
+                <button className="btn btn-brand rounded-pill px-5 py-2 fw-semibold shadow-sm" onClick={saveManage} disabled={manageSaving}>
+                  {manageSaving ? (
+                    <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...</>
+                  ) : "Commit Changes"}
                 </button>
               </div>
+
             </div>
           </div>
         </div>
       )}
 
-      <style>{`
-        .class-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .class-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; }
-        .nav-pills .nav-link { color: #6c757d; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
-        .nav-pills .nav-link.active { background-color: #fff; color: #0d6efd; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 }

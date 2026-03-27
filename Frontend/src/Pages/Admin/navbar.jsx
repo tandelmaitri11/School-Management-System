@@ -1,32 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { useDashboardSettings } from "../../context/dashboardSettingsContext";
 import NotificationBell from "../../Components/NotificationBell";
 
-const sidebarScrollStyles = `
-  .sidebar-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-  .sidebar-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  .sidebar-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .sidebar-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-  }
-  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-  }
-`;
-
 function Navbar({ children }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { settings } = useDashboardSettings();
   const isDark = settings.theme === "dark";
 
@@ -47,10 +28,21 @@ function Navbar({ children }) {
     setOpenMenu(openMenu === menu ? null : menu);
   };
 
-  // Optional: close submenu when collapsing
   useEffect(() => {
     if (sidebarCollapsed) setOpenMenu(null);
   }, [sidebarCollapsed]);
+
+  // Auto-expand submenu if a child route is active on load
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const activeParent = menuItems.find(item => 
+      item.submenu && item.submenu.some(sub => currentPath.startsWith(sub.path))
+    );
+    if (activeParent && !sidebarCollapsed) {
+      setOpenMenu(activeParent.label);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, sidebarCollapsed]);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 991.98px)");
@@ -69,10 +61,10 @@ function Navbar({ children }) {
   }, []);
 
   const menuItems = [
-    { label: "Dashboard", icon: "bi-speedometer2", path: "/Dashboard" },
+    { label: "Dashboard", icon: "bi-grid-1x2-fill", path: "/Dashboard" },
     {
       label: "Classes",
-      icon: "bi-easel",
+      icon: "bi-easel2-fill",
       submenu: [
         { label: "All Classes", path: "/classes/all" },
         { label: "Add New", path: "/classes/new" },
@@ -80,7 +72,7 @@ function Navbar({ children }) {
     },
     {
       label: "Subject",
-      icon: "bi-journal-bookmark",
+      icon: "bi-journal-bookmark-fill",
       submenu: [
         { label: "All Subject", path: "/subject/allsubject" },
         { label: "Add New Subject", path: "/subject/newsubject" },
@@ -88,7 +80,7 @@ function Navbar({ children }) {
     },
     {
       label: "TimeTable",
-      icon: "bi-calendar2-week",
+      icon: "bi-calendar-week-fill",
       submenu: [
         { label: "Manage TimeTable", path: "/admin/timetable" },
         { label: "View Class TimeTable", path: "/admin/view/timetable" },
@@ -96,7 +88,7 @@ function Navbar({ children }) {
     },
     {
       label: "Students",
-      icon: "bi-people",
+      icon: "bi-mortarboard-fill",
       submenu: [
         { label: "All Students", path: "/Students/allstudents" },
       ],
@@ -106,11 +98,12 @@ function Navbar({ children }) {
       icon: "bi-people-fill",
       submenu: [
         { label: "All Parents", path: "/admin/parents/all" },
+        { label: "Add New Parent", path: "/admin/parents/add" },
       ],
     },
     {
       label: "Teacher",
-      icon: "bi-person-badge-fill",
+      icon: "bi-person-video3",
       submenu: [
         { label: "All Teachers", path: "/teacher/allteacher" },
         { label: "Add New", path: "/teacher/addteacher" },
@@ -120,7 +113,7 @@ function Navbar({ children }) {
     },
     {
       label: "Attendance",
-      icon: "bi-card-checklist",
+      icon: "bi-clipboard2-check-fill",
       submenu: [
         { label: "Student Attendance", path: "/attendance/student_attendance" },
         { label: "Teacher Attendance", path: "/attendance/teacher_attendance" },
@@ -128,7 +121,7 @@ function Navbar({ children }) {
     },
     {
       label: "Fees",
-      icon: "bi-wallet2",
+      icon: "bi-wallet-fill",
       submenu: [
         { label: "Fees Structure", path: "/admin/fees" },
         { label: "Student Fees", path: "/studentfees" },
@@ -137,7 +130,7 @@ function Navbar({ children }) {
     },
     {
       label: "Salary",
-      icon: "bi-cash-coin",
+      icon: "bi-cash-stack",
       submenu: [
         { label: "Teacher Salary", path: "/approve-salary" },
         { label: "Teacher Salary Record", path: "/teacher-salary-record" },
@@ -146,22 +139,22 @@ function Navbar({ children }) {
     },
     {
       label: "LMS",
-      icon: "bi-collection-play",
+      icon: "bi-play-btn-fill",
       submenu: [{ label: "LMS Control", path: "/admin/lms" }],
     },
     {
       label: "Contact",
-      icon: "bi-chat-dots",
+      icon: "bi-chat-left-dots-fill",
       submenu: [{ label: "Contact Messages", path: "/admin/contact/messages" }],
     },
     {
       label: "Announcements",
-      icon: "bi-megaphone",
+      icon: "bi-megaphone-fill",
       submenu: [{ label: "Announcements / Notifications", path: "/admin/announcements" }],
     },
     {
       label: "Settings",
-      icon: "bi-gear",
+      icon: "bi-gear-fill",
       submenu: [
         { label: "Appearance", path: "/settings/preferences" },
         { label: "Logout", action: handleLogout },
@@ -169,212 +162,216 @@ function Navbar({ children }) {
     },
   ];
 
-  const shellStyle = {
-    minHeight: "100vh",
-    background: "var(--dash-bg)",
-    color: "var(--dash-text)",
-  };
-
-  const headerStyle = {
-    height: "70px",
-    position: "sticky",
-    top: 0,
-    zIndex: 1030,
-    background: isDark
-      ? "linear-gradient(90deg, #111 0%, #2a2a2a 100%)"
-      : "linear-gradient(90deg, #0d6efd 0%, #6f42c1 100%)",
-    color: "white",
-  };
-
-  const sidebarWidth = isMobile ? 280 : sidebarCollapsed ? 84 : 280;
-
-  const sidebarStyle = {
-    width: sidebarWidth,
-    transition: "width .2s ease",
-    background: "var(--dash-card-bg)",
-    borderRight: "1px solid var(--dash-border)",
-    position: isMobile ? "fixed" : "sticky",
-    top: 70,
-    left: 0,
-    height: "calc(100vh - 70px)",
-    overflowY: "auto",
-    zIndex: 1040,
-    transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
-    transitionProperty: "transform, width",
-    boxShadow: isMobile ? "0 16px 40px rgba(0,0,0,0.18)" : "none",
-  };
-
-  const mainStyle = {
-    minHeight: "calc(100vh - 70px - 44px)",
-    padding: "1.25rem",
-    overflow: "auto",
-  };
-
-  const footerStyle = {
-    height: "44px",
-    background: "var(--dash-card-bg)",
-    borderTop: "1px solid var(--dash-border)",
-    color: "var(--dash-muted)",
-  };
-
-  const navItemBase = {
-    borderRadius: 12,
-    padding: "10px 12px",
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    textDecoration: "none",
-    transition: "all .15s ease",
-    border: "1px solid transparent",
-  };
-
-  const navItemInactive = {
-    color: "var(--dash-text)",
-  };
-
-  const navItemActive = {
-    color: "#0d6efd",
-    background: "rgba(13,110,253,.10)",
-    border: "1px solid rgba(13,110,253,.20)",
-    fontWeight: 600,
-  };
-
-  const navIconStyle = {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#f1f3f5",
-    color: "var(--dash-text)",
-    flex: "0 0 auto",
-  };
-
-  const sectionTitleStyle = {
-    fontSize: 11,
-    letterSpacing: ".08em",
-    color: "var(--dash-muted)",
-    fontWeight: 700,
-    padding: sidebarCollapsed ? "10px 12px" : "12px 18px 6px",
-    textTransform: "uppercase",
-  };
-
-  const submenuWrapStyle = {
-    marginLeft: sidebarCollapsed ? 0 : 44,
-    paddingLeft: sidebarCollapsed ? 0 : 10,
-    borderLeft: sidebarCollapsed ? "none" : "1px dashed #dee2e6",
-  };
-
-  const submenuLinkBase = (isActive) => ({
-    display: "block",
-    textDecoration: "none",
-    borderRadius: 10,
-    padding: sidebarCollapsed ? "8px 10px" : "8px 12px",
-    margin: "6px 0",
-    color: isActive ? "#0d6efd" : "#6c757d",
-    background: isActive ? "rgba(13,110,253,.10)" : "transparent",
-    border: isActive ? "1px solid rgba(13,110,253,.20)" : "1px solid transparent",
-    fontWeight: isActive ? 600 : 500,
-    transition: "all .15s ease",
-    textAlign: sidebarCollapsed ? "center" : "left",
-  });
-
-  const chevronBtnStyle = {
-    marginLeft: "auto",
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    display: sidebarCollapsed ? "none" : "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "var(--dash-soft-bg)",
-    border: "1px solid var(--dash-border)",
-    color: "var(--dash-text)",
-  };
-
   const handleNavClick = () => {
     if (isMobile) setSidebarOpen(false);
   };
 
+  const sidebarWidth = isMobile ? 280 : sidebarCollapsed ? 88 : 280;
+
   return (
-    <div style={{ ...shellStyle, fontSize: "var(--dash-font-size)" }} className="dashboard-shell">
-      <style>{sidebarScrollStyles}</style>
+    <div className={`dashboard-shell ${isDark ? 'theme-dark' : 'theme-light'}`} style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Dynamic CSS Variables & Global Styles */}
+      <style>{`
+        :root {
+          --brand-primary: #4f46e5;
+          --brand-primary-light: rgba(79, 70, 229, 0.1);
+          --brand-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        
+        .theme-light {
+          --bg-body: #f8fafc;
+          --bg-surface: #ffffff;
+          --bg-surface-hover: #f1f5f9;
+          --text-main: #0f172a;
+          --text-muted: #64748b;
+          --border-color: #e2e8f0;
+          --glass-bg: rgba(255, 255, 255, 0.85);
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+          --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .theme-dark {
+          --bg-body: #0f172a;
+          --bg-surface: #1e293b;
+          --bg-surface-hover: #334155;
+          --text-main: #f8fafc;
+          --text-muted: #94a3b8;
+          --border-color: #334155;
+          --glass-bg: rgba(30, 41, 59, 0.85);
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+          --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-shell {
+          min-height: 100vh;
+          background: var(--bg-body);
+          color: var(--text-main);
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: var(--border-color) transparent;
+        }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+
+        /* Smooth Transitions */
+        .sidebar-transition {
+          transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .nav-item-base {
+          border-radius: 12px;
+          padding: 10px 14px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          text-decoration: none;
+          color: var(--text-muted);
+          transition: all 0.2s ease;
+          border: 1px solid transparent;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .nav-item-base:hover {
+          background: var(--bg-surface-hover);
+          color: var(--text-main);
+        }
+
+        .nav-item-active {
+          color: var(--brand-primary) !important;
+          background: var(--brand-primary-light);
+          font-weight: 600;
+        }
+
+        .nav-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.1rem;
+          transition: all 0.2s ease;
+        }
+
+        .nav-item-active .nav-icon {
+          color: var(--brand-primary);
+        }
+
+        .submenu-link {
+          display: block;
+          text-decoration: none;
+          border-radius: 8px;
+          padding: 8px 12px 8px 46px; /* Indented to align with text */
+          color: var(--text-muted);
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          margin-bottom: 2px;
+        }
+        
+        .submenu-link-collapsed {
+          padding: 10px;
+          text-align: center;
+          font-size: 1.2rem;
+        }
+
+        .submenu-link:hover {
+          color: var(--text-main);
+          background: var(--bg-surface-hover);
+        }
+
+        .submenu-link.active {
+          color: var(--brand-primary);
+          font-weight: 600;
+          background: transparent;
+        }
+        
+        .submenu-link-collapsed.active {
+          background: var(--brand-primary-light);
+        }
+
+        .glass-header {
+          background: var(--glass-bg);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border-color);
+        }
+      `}</style>
+
       {/* HEADER */}
-      <header style={headerStyle} className="d-flex align-items-center px-3 px-md-4 shadow-sm">
-        <div className="d-flex align-items-center gap-2">
+      <header className="glass-header d-flex align-items-center justify-content-between px-3 px-md-4 shadow-sm" style={{ height: 72, position: "sticky", top: 0, zIndex: 1030 }}>
+        
+        {/* Left: Logo & Toggles */}
+        <div className="d-flex align-items-center gap-3">
           <button
-            className="btn btn-light btn-sm rounded-pill d-lg-none"
+            className="btn d-lg-none d-flex align-items-center justify-content-center"
             onClick={() => setSidebarOpen((s) => !s)}
-            title="Menu"
-            style={{ border: "1px solid rgba(255,255,255,.35)" }}
+            style={{ width: 40, height: 40, background: 'var(--bg-surface-hover)', border: 'none', color: 'var(--text-main)', borderRadius: '10px' }}
           >
-            <i className="bi bi-list" />
+            <i className="bi bi-list fs-5" />
           </button>
+          
           <button
-            className="btn btn-light btn-sm rounded-pill d-none d-lg-inline-flex"
+            className="btn d-none d-lg-flex align-items-center justify-content-center"
             onClick={() => setSidebarCollapsed((s) => !s)}
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            style={{ border: "1px solid rgba(255,255,255,.35)" }}
+            style={{ width: 40, height: 40, background: 'var(--bg-surface-hover)', border: 'none', color: 'var(--text-muted)', borderRadius: '10px' }}
           >
-            <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-inset" : "bi-layout-sidebar"}`} />
+            <i className={`bi ${sidebarCollapsed ? "bi-layout-sidebar-inset" : "bi-layout-sidebar"} fs-5`} />
           </button>
 
-          <div className="d-flex align-items-center gap-2">
-            <div
-              className="d-flex align-items-center justify-content-center rounded-3"
-              style={{
-                width: 38,
-                height: 38,
-                background: "rgba(255,255,255,.18)",
-                border: "1px solid rgba(255,255,255,.22)",
-              }}
-            >
-              <i className="bi bi-mortarboard-fill text-white" />
+          <div className="d-flex align-items-center gap-2 ms-1">
+            <div className="d-flex align-items-center justify-content-center shadow-sm" style={{ width: 40, height: 40, background: 'var(--brand-gradient)', borderRadius: '12px' }}>
+              <i className="bi bi-mortarboard-fill text-white fs-5" />
             </div>
-            <div className="text-white">
-              <div className="fw-bold" style={{ lineHeight: 1.1 }}>
-                SchoolY Admin
-              </div>
-              <div className="small opacity-75" style={{ lineHeight: 1.1 }}>
-                Smart Education Management
-              </div>
+            <div className="d-none d-sm-block">
+              <h1 className="h6 mb-0 fw-bold text-dark" style={{ color: 'var(--text-main)' }}>SchoolY</h1>
+              <span className="small text-muted d-block" style={{ fontSize: '0.75rem', marginTop: '-2px' }}>Workspace</span>
             </div>
           </div>
         </div>
 
-        <div className="ms-auto d-flex align-items-center gap-2">
+        {/* Right: Profile & Notifications */}
+        <div className="d-flex align-items-center gap-2 gap-md-3">
           <NotificationBell />
 
           <div className="dropdown">
             <button
-              className="btn btn-light btn-sm rounded-pill dropdown-toggle"
+              className="btn d-flex align-items-center gap-2 p-1 pe-2 shadow-sm"
               data-bs-toggle="dropdown"
-              style={{ border: "1px solid rgba(255,255,255,.35)" }}
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '100px' }}
             >
-              <span className="fw-semibold">{userName}</span>
-              <span className="opacity-75 ms-2 d-none d-md-inline">({userRole})</span>
+              <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 32, height: 32, background: 'var(--brand-primary-light)', color: 'var(--brand-primary)', fontWeight: 700 }}>
+                {(userName || "A").slice(0, 1).toUpperCase()}
+              </div>
+              <div className="d-none d-md-block text-start" style={{ lineHeight: 1.2 }}>
+                <div className="fw-semibold" style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{userName}</div>
+                <div className="text-muted" style={{ fontSize: '0.7rem' }}>{userRole}</div>
+              </div>
+              <i className="bi bi-chevron-down text-muted ms-1 d-none d-md-block" style={{ fontSize: '0.8rem' }} />
             </button>
-            <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 overflow-hidden">
+            <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 p-2" style={{ borderRadius: '12px', minWidth: '200px', background: 'var(--bg-surface)' }}>
               <li>
-                <NavLink className="dropdown-item py-2" to="/profile">
-                  <i className="bi bi-person me-2" />
-                  Profile
+                <NavLink className="dropdown-item rounded-3 py-2 d-flex align-items-center text-muted" to="/profile">
+                  <i className="bi bi-person fs-5 me-3" /> Profile
                 </NavLink>
               </li>
               <li>
-                <NavLink className="dropdown-item py-2" to="/settings/preferences">
-                  <i className="bi bi-gear me-2" />
-                  Settings
+                <NavLink className="dropdown-item rounded-3 py-2 d-flex align-items-center text-muted" to="/settings/preferences">
+                  <i className="bi bi-gear fs-5 me-3" /> Settings
                 </NavLink>
               </li>
+              <li><hr className="dropdown-divider my-2 border-secondary opacity-25" /></li>
               <li>
-                <hr className="dropdown-divider my-1" />
-              </li>
-              <li>
-                <button className="dropdown-item py-2 text-danger" onClick={handleLogout}>
-                  <i className="bi bi-box-arrow-right me-2" />
-                  Logout
+                <button className="dropdown-item rounded-3 py-2 d-flex align-items-center text-danger fw-medium" onClick={handleLogout}>
+                  <i className="bi bi-box-arrow-right fs-5 me-3" /> Logout
                 </button>
               </li>
             </ul>
@@ -382,161 +379,114 @@ function Navbar({ children }) {
         </div>
       </header>
 
-      {/* Mobile overlay */}
+      {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          style={{
-            position: "fixed",
-            top: 70,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.35)",
-            zIndex: 1035,
-          }}
+          style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(2px)", zIndex: 1035 }}
         />
       )}
 
-      {/* BODY */}
-      <div className="d-flex">
+      {/* BODY CONFIGURATION */}
+      <div className="d-flex flex-grow-1 overflow-hidden">
+        
         {/* SIDEBAR */}
-        <aside style={sidebarStyle} className="shadow-sm sidebar-scroll">
+        <aside
+          className="sidebar-transition custom-scroll"
+          style={{
+            width: sidebarWidth,
+            background: "var(--bg-surface)",
+            borderRight: "1px solid var(--border-color)",
+            position: isMobile ? "fixed" : "relative",
+            height: "calc(100vh - 72px)",
+            overflowY: "auto",
+            zIndex: 1040,
+            transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
+            boxShadow: isMobile ? "var(--shadow-md)" : "none",
+          }}
+        >
           <div className="p-3">
-            <div
-              className="d-flex align-items-center justify-content-between"
-              style={{
-                padding: sidebarCollapsed ? "6px 6px" : "10px 12px",
-                borderRadius: 14,
-                background: "#f8f9fa",
-                border: "1px solid #e9ecef",
-              }}
-            >
-              <div className="d-flex align-items-center gap-2">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{
-                    width: 34,
-                    height: 34,
-                    background: "linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%)",
-                    color: "#fff",
-                    fontWeight: 800,
-                  }}
-                  title={userName}
-                >
-                  {(userName || "A").slice(0, 1).toUpperCase()}
-                </div>
-                {!sidebarCollapsed && (
-                  <div>
-                    <div className="fw-semibold" style={{ lineHeight: 1.1 }}>
-                      {userName}
-                    </div>
-                    <div className="small text-muted" style={{ lineHeight: 1.1 }}>
-                      {userRole}
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="text-muted fw-bold mb-2 ps-2" style={{ fontSize: "0.7rem", letterSpacing: "1px", marginTop: "10px" }}>
+              {sidebarCollapsed ? "---" : "MAIN MENU"}
             </div>
-          </div>
 
-          <div style={sectionTitleStyle}>{sidebarCollapsed ? "MENU" : "Main Menu"}</div>
+            <div className="d-flex flex-column gap-1">
+              {menuItems.map((item, idx) => (
+                <div key={idx}>
+                  {item.submenu ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`w-100 bg-transparent text-start nav-item-base ${openMenu === item.label ? 'nav-item-active' : ''}`}
+                        onClick={() => toggleMenu(item.label)}
+                        title={sidebarCollapsed ? item.label : undefined}
+                      >
+                        <span className="nav-icon"><i className={`bi ${item.icon}`} /></span>
+                        {!sidebarCollapsed && (
+                          <>
+                            <span className="flex-grow-1">{item.label}</span>
+                            <i className={`bi bi-chevron-${openMenu === item.label ? "up" : "down"} text-muted`} style={{ fontSize: '0.8rem' }} />
+                          </>
+                        )}
+                      </button>
 
-          <div className="px-2 pb-3">
-            {menuItems.map((item, idx) => (
-              <div key={idx} className="mb-1">
-                {/* SUBMENU ITEM */}
-                {item.submenu ? (
-                  <>
-                    <button
-                      type="button"
-                      className="w-100 bg-transparent border-0 text-start"
-                      onClick={() => toggleMenu(item.label)}
-                      style={{
-                        ...navItemBase,
-                        ...(openMenu === item.label ? navItemActive : navItemInactive),
-                      }}
+                      {/* Submenu Items */}
+                      {openMenu === item.label && (
+                        <div className="mt-1 mb-2">
+                          {item.submenu.map((sub, i) => (
+                            <div key={i}>
+                              {sub.action ? (
+                                <button
+                                  onClick={() => { sub.action(); handleNavClick(); }}
+                                  className={`w-100 bg-transparent border-0 text-start ${sidebarCollapsed ? 'submenu-link-collapsed' : 'submenu-link'}`}
+                                  title={sidebarCollapsed ? sub.label : undefined}
+                                >
+                                  {sidebarCollapsed ? <i className="bi bi-box-arrow-right text-danger" /> : sub.label}
+                                </button>
+                              ) : (
+                                <NavLink
+                                  to={sub.path}
+                                  onClick={handleNavClick}
+                                  className={({ isActive }) => `${sidebarCollapsed ? 'submenu-link-collapsed' : 'submenu-link'} ${isActive ? 'active' : ''}`}
+                                  title={sidebarCollapsed ? sub.label : undefined}
+                                >
+                                  {sidebarCollapsed ? <i className="bi bi-dot" /> : sub.label}
+                                </NavLink>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <NavLink
+                      to={item.path}
+                      onClick={handleNavClick}
+                      className={({ isActive }) => `nav-item-base ${isActive ? 'nav-item-active' : ''}`}
                       title={sidebarCollapsed ? item.label : undefined}
                     >
-                      <span style={navIconStyle}>
-                        <i className={`bi ${item.icon}`} />
-                      </span>
-
-                      {!sidebarCollapsed && (
-                        <>
-                          <span className="flex-grow-1">{item.label}</span>
-                          <span style={chevronBtnStyle}>
-                            <i className={`bi ${openMenu === item.label ? "bi-chevron-up" : "bi-chevron-down"}`} />
-                          </span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* submenu */}
-                    {openMenu === item.label && (
-                      <div style={{ ...submenuWrapStyle, marginTop: 6 }}>
-                        {item.submenu.map((sub, i) => (
-                          <div key={i}>
-                            {sub.action ? (
-                              <button
-                                onClick={() => {
-                                  sub.action();
-                                  handleNavClick();
-                                }}
-                                className="w-100 bg-transparent border-0"
-                                style={submenuLinkBase(false)}
-                                title={sidebarCollapsed ? sub.label : undefined}
-                              >
-                                {sidebarCollapsed ? <i className="bi bi-box-arrow-right" /> : sub.label}
-                              </button>
-                            ) : (
-                              <NavLink
-                                to={sub.path}
-                                onClick={handleNavClick}
-                                style={({ isActive }) => submenuLinkBase(isActive)}
-                                title={sidebarCollapsed ? sub.label : undefined}
-                              >
-                                {sidebarCollapsed ? <i className="bi bi-dot" /> : sub.label}
-                              </NavLink>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  /* SINGLE LINK ITEM */
-                  <NavLink
-                    to={item.path}
-                    onClick={handleNavClick}
-                    style={({ isActive }) => ({
-                      ...navItemBase,
-                      ...(isActive ? navItemActive : navItemInactive),
-                    })}
-                    title={sidebarCollapsed ? item.label : undefined}
-                  >
-                    <span style={navIconStyle}>
-                      <i className={`bi ${item.icon}`} />
-                    </span>
-                    {!sidebarCollapsed && <span className="flex-grow-1">{item.label}</span>}
-                    {!sidebarCollapsed && <i className="bi bi-arrow-right-short opacity-50" />}
-                  </NavLink>
-                )}
-              </div>
-            ))}
+                      <span className="nav-icon"><i className={`bi ${item.icon}`} /></span>
+                      {!sidebarCollapsed && <span className="flex-grow-1">{item.label}</span>}
+                    </NavLink>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <main style={mainStyle} className="flex-grow-1">
-          <div className="container-fluid">{children}</div>
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-grow-1 d-flex flex-column" style={{ height: "calc(100vh - 72px)", overflowY: "auto" }}>
+          <div className="container-fluid flex-grow-1 p-4">
+            {children}
+          </div>
+          
+          {/* FOOTER */}
+          <footer className="py-3 px-4 text-center text-muted border-top mt-auto" style={{ background: 'transparent', borderColor: 'var(--border-color)', fontSize: '0.85rem' }}>
+            © {new Date().getFullYear()} <strong className="text-dark" style={{ color: 'var(--text-main)' }}>SchoolY</strong> — Smart Education Management
+          </footer>
         </main>
       </div>
-
-      {/* FOOTER */}
-      <footer style={footerStyle} className="d-flex align-items-center justify-content-center small">
-        © 2025 <strong className="ms-1 me-1">SchoolY</strong> — Smart Education Management System
-      </footer>
     </div>
   );
 }

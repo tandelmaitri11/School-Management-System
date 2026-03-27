@@ -1,7 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const STATUS_OPTIONS = ["New", "Responded", "Closed"];
+
+// Generate a consistent pastel color based on a string (for avatars)
+const stringToColor = (string) => {
+  if (!string) return "hsl(0, 0%, 85%)";
+  let hash = 0;
+  for (let i = 0; i < string.length; i++) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 70%, 85%)`; 
+};
+
+const getInitials = (firstName, lastName) => {
+  const f = firstName ? firstName.charAt(0) : "?";
+  const l = lastName ? lastName.charAt(0) : "";
+  return (f + l).toUpperCase();
+};
 
 export default function ContactMessages() {
   const [rows, setRows] = useState([]);
@@ -71,106 +90,180 @@ export default function ContactMessages() {
     }
   };
 
-  // Logic for dynamic Bootstrap classes
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case "New": return "bg-primary-subtle text-primary border border-primary-subtle";
-      case "Responded": return "bg-success-subtle text-success border border-success-subtle";
-      case "Closed": return "bg-secondary-subtle text-secondary border border-secondary-subtle";
-      default: return "bg-light text-dark";
+      case "New": return "bg-primary bg-opacity-10 text-primary border-primary border-opacity-25";
+      case "Responded": return "bg-success bg-opacity-10 text-success border-success border-opacity-25";
+      case "Closed": return "bg-secondary bg-opacity-10 text-secondary border-secondary border-opacity-25";
+      default: return "bg-light text-dark border-secondary";
     }
   };
 
   return (
-    <div className="bg-light min-vh-100 py-5">
-      <div className="container">
+    <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Premium Custom CSS */}
+      <style>{`
+        .premium-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: all 0.2s; }
+        .premium-card:hover { box-shadow: 0 12px 24px -8px rgba(79, 70, 229, 0.15); border-color: rgba(79, 70, 229, 0.3); }
         
-        {/* Header Area */}
-        <div className="row align-items-center mb-4">
-          <div className="col">
-            <h1 className="h3 fw-bold mb-1 text-dark">
-              <i className="bi bi-envelope-paper-heart me-2 text-primary"></i>Support Inbox
-            </h1>
-            <p className="text-muted mb-0">Review and reply to client inquiries.</p>
-          </div>
-          <div className="col-auto">
-            <button className="btn btn-white border shadow-sm px-3" onClick={loadMessages}>
-              <i className={`bi bi-arrow-clockwise ${loading ? 'spin' : ''}`}></i>
-            </button>
-          </div>
-        </div>
+        .input-premium { background: #ffffff; border: 1px solid transparent; border-radius: 10px; padding: 10px 16px; font-weight: 500; color: #0f172a; transition: all 0.2s; }
+        .input-premium:focus { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2); outline: none; }
+        
+        .btn-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; color: white; transition: all 0.2s; font-weight: 600; }
+        .btn-brand:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); color: white; }
+        .btn-brand:disabled { opacity: 0.7; transform: none; box-shadow: none; cursor: not-allowed; }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        .message-item { border-left: 4px solid transparent; transition: all 0.2s ease; }
+        .message-item:hover { background-color: #f8fafc; }
+        .message-item.active-msg { background-color: #f8fafc; border-left-color: #4f46e5; }
+      `}</style>
+
+      <div className="container" style={{ maxWidth: "1400px" }}>
+        
         {/* Feedback Alert */}
         {message && (
-          <div className="alert alert-primary border-0 shadow-sm rounded-3 d-flex align-items-center mb-4 fade show">
-            <i className="bi bi-info-circle-fill me-2"></i>
-            <div>{message}</div>
+          <div className="alert alert-primary border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 animate-fade-in">
+            <i className="bi bi-info-circle-fill me-3 fs-5"></i>
+            <div className="fw-medium">{message}</div>
             <button type="button" className="btn-close ms-auto shadow-none" onClick={() => setMessage("")}></button>
           </div>
         )}
 
-        {/* Search & Filters Card */}
-        <div className="card border-0 shadow-sm rounded-4 mb-4">
-          <div className="card-body p-3">
-            <div className="row g-2">
-              <div className="col-md-3">
-                <select className="form-select bg-light border-0 py-2 shadow-none" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="">Filter: All Messages</option>
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+        {/* Premium Header Card */}
+        <div 
+          className="rounded-4 overflow-hidden mb-4 shadow-sm border-0 position-relative p-4 p-md-5"
+          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}
+        >
+          <div style={{ position: 'absolute', top: '-50%', right: '-5%', width: '300px', height: '300px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}></div>
+          
+          <div className="position-relative z-1 mb-4">
+            <span className="badge px-3 py-2 rounded-pill fw-semibold mb-3" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>
+              <i className="bi bi-envelope-paper-heart me-1"></i> Client Relations
+            </span>
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+              <div>
+                <h2 className="display-6 fw-bolder text-white mb-1" style={{ letterSpacing: '-1px' }}>Support Inbox</h2>
+                <p className="text-white opacity-75 fw-medium mb-0">Review client inquiries, provide assistance, and track communication.</p>
               </div>
-              <div className="col-md-7">
-                <div className="input-group">
-                  <span className="input-group-text bg-light border-0"><i className="bi bi-search"></i></span>
-                  <input
-                    className="form-control bg-light border-0 py-2 shadow-none"
-                    placeholder="Search by name, email, or message keyword..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="col-md-2">
-                <button className="btn btn-primary w-100 py-2 fw-semibold" onClick={handleFilter} disabled={loading}>
-                  {loading ? "Searching..." : "Apply"}
-                </button>
-              </div>
+              <button className="btn bg-white text-primary rounded-pill px-4 py-2 fw-bold shadow-sm transition-all" onClick={loadMessages} disabled={loading}>
+                <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin' : ''}`}></i> 
+                {loading ? "Syncing Inbox..." : "Refresh Inbox"}
+              </button>
             </div>
+          </div>
+          
+          {/* Glassmorphism Control Panel */}
+          <div className="position-relative z-1 d-flex flex-column flex-lg-row gap-3 p-3 rounded-4 shadow-sm align-items-center" style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+            
+            <div className="d-flex align-items-center bg-white bg-opacity-25 rounded-3 px-3 py-1 flex-grow-1" style={{ minWidth: '200px' }}>
+              <span className="small fw-bold text-white me-2 text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Status:</span>
+              <select
+                className="form-select input-premium py-2 bg-transparent text-white border-0 shadow-none fw-semibold"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ colorScheme: 'dark' }}
+              >
+                <option value="" className="text-dark">All Messages</option>
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s} className="text-dark">{s}</option>)}
+              </select>
+            </div>
+
+            <div className="position-relative flex-grow-1" style={{ minWidth: "300px" }}>
+              <i className="bi bi-search position-absolute text-white" style={{ top: '50%', transform: 'translateY(-50%)', left: '16px' }}></i>
+              <input
+                type="text"
+                className="form-control input-premium w-100 bg-white bg-opacity-25 border-0 text-white placeholder-white"
+                style={{ paddingLeft: '44px' }}
+                placeholder="Search by name, email, or keyword..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
+              />
+            </div>
+
+            <button 
+              className="btn btn-brand rounded-pill px-4 py-2 fw-bold shadow-sm" 
+              onClick={handleFilter}
+              style={{ minWidth: '120px' }}
+              disabled={loading}
+            >
+              Search
+            </button>
           </div>
         </div>
 
         {/* Main Interface */}
-        <div className="row g-4">
+        <div className="row g-4 animate-fade-in">
           
           {/* Inbox Column */}
           <div className="col-lg-4">
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden" style={{ minHeight: '600px' }}>
-              <div className="card-header bg-white border-bottom py-3">
-                <h6 className="fw-bold mb-0">Recent Messages</h6>
+            <div className="premium-card overflow-hidden d-flex flex-column" style={{ height: '700px' }}>
+              <div className="bg-light px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 className="fw-bolder mb-0 text-dark text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>
+                  Inbox Directory
+                </h6>
+                <span className="badge bg-primary rounded-pill px-2 py-1">{rows.length} Total</span>
               </div>
-              <div className="list-group list-group-flush" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                {rows.length === 0 ? (
-                  <div className="p-5 text-center text-muted">
-                    <i className="bi bi-mailbox fs-1 d-block mb-2"></i>
-                    <small>No inquiries found</small>
+              
+              <div className="list-group list-group-flush custom-scroll flex-grow-1" style={{ overflowY: 'auto' }}>
+                {loading && rows.length === 0 ? (
+                   <div className="p-5 text-center text-muted">
+                     <div className="spinner-border text-primary mb-3" role="status"></div>
+                     <div className="fw-medium small">Loading messages...</div>
+                   </div>
+                ) : rows.length === 0 ? (
+                  <div className="p-5 text-center text-muted h-100 d-flex flex-column align-items-center justify-content-center">
+                    <div className="rounded-circle bg-light d-flex align-items-center justify-content-center mb-3" style={{ width: 64, height: 64 }}>
+                      <i className="bi bi-mailbox fs-2"></i>
+                    </div>
+                    <h6 className="fw-bold text-dark mb-1">Inbox Zero</h6>
+                    <small>No inquiries match your filters.</small>
                   </div>
                 ) : (
-                  rows.map((row) => (
-                    <button
-                      key={row._id}
-                      onClick={() => { setSelectedId(row._id); setResponseText(row.adminResponse || ""); }}
-                      className={`list-group-item list-group-item-action border-0 p-3 mb-1 transition-all ${selectedId === row._id ? 'bg-primary-subtle border-start border-primary border-4 shadow-sm' : ''}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-start mb-1">
-                        <span className="fw-bold text-dark">{row.firstName}</span>
-                        <span className={`badge rounded-pill px-2 ${getStatusBadgeClass(row.status)}`} style={{ fontSize: '0.65rem' }}>
-                          {row.status}
-                        </span>
-                      </div>
-                      <div className="text-muted small text-truncate mb-1">{row.email}</div>
-                      <div className="text-secondary small text-truncate">{row.message}</div>
-                    </button>
-                  ))
+                  rows.map((row) => {
+                    const avatarColor = stringToColor(row.firstName);
+                    const isActive = selectedId === row._id;
+
+                    return (
+                      <button
+                        key={row._id}
+                        onClick={() => { setSelectedId(row._id); setResponseText(row.adminResponse || ""); }}
+                        className={`list-group-item list-group-item-action border-bottom py-3 px-4 message-item ${isActive ? 'active-msg' : 'border-0'}`}
+                      >
+                        <div className="d-flex align-items-start gap-3">
+                          <div 
+                            className="rounded-circle d-flex align-items-center justify-content-center fw-bolder text-dark shadow-sm flex-shrink-0"
+                            style={{ width: '40px', height: '40px', fontSize: '0.9rem', backgroundColor: avatarColor }}
+                          >
+                            {getInitials(row.firstName, row.lastName)}
+                          </div>
+                          <div className="flex-grow-1 overflow-hidden">
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-bold text-dark text-truncate d-block" style={{ maxWidth: '65%' }}>
+                                {row.firstName} {row.lastName}
+                              </span>
+                              <span className={`badge rounded-pill border ${getStatusBadgeClass(row.status)}`} style={{ fontSize: '0.65rem' }}>
+                                {row.status}
+                              </span>
+                            </div>
+                            <div className="text-muted fw-medium text-truncate mb-1" style={{ fontSize: '0.75rem' }}>
+                              {row.email}
+                            </div>
+                            <div className="text-secondary small text-truncate" style={{ fontSize: '0.8rem' }}>
+                              {row.message}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -178,76 +271,91 @@ export default function ContactMessages() {
 
           {/* Reading Pane Column */}
           <div className="col-lg-8">
-            <div className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden" style={{ minHeight: '600px' }}>
+            <div className="premium-card h-100 overflow-hidden d-flex flex-column" style={{ height: '700px' }}>
               {!selected ? (
-                <div className="card-body d-flex flex-column align-items-center justify-content-center text-center opacity-75">
-                  <div className="bg-light rounded-pill p-4 mb-3">
-                    <i className="bi bi-chat-left-dots text-primary fs-1"></i>
+                <div className="card-body d-flex flex-column align-items-center justify-content-center text-center opacity-75 h-100">
+                  <div className="rounded-circle bg-light d-flex align-items-center justify-content-center mb-4 shadow-sm" style={{ width: 80, height: 80 }}>
+                    <i className="bi bi-chat-left-dots text-primary display-6"></i>
                   </div>
-                  <h5 className="fw-bold">Welcome to Support</h5>
-                  <p className="text-muted px-5">Select a customer message from the sidebar to view full details and provide a response.</p>
+                  <h4 className="fw-bolder text-dark">Welcome to Support Desk</h4>
+                  <p className="text-muted px-5" style={{ maxWidth: '500px' }}>Select a customer message from the sidebar directory to view its full contents and draft a response.</p>
                 </div>
               ) : (
                 <div className="d-flex flex-column h-100">
                   
                   {/* Message Detail Header */}
-                  <div className="p-4 border-bottom bg-white d-flex align-items-center">
+                  <div className="p-4 border-bottom bg-white d-flex align-items-center flex-wrap gap-3">
                     <div className="flex-shrink-0">
-                      <div className="bg-primary text-white rounded-4 d-flex align-items-center justify-content-center fw-bold" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
-                        {selected.firstName.charAt(0)}
+                      <div 
+                        className="rounded-circle d-flex align-items-center justify-content-center fw-bolder text-dark shadow-sm"
+                        style={{ width: '56px', height: '56px', fontSize: '1.2rem', backgroundColor: stringToColor(selected.firstName) }}
+                      >
+                        {getInitials(selected.firstName, selected.lastName)}
                       </div>
                     </div>
-                    <div className="ms-3 flex-grow-1">
-                      <h5 className="fw-bold mb-0">{selected.firstName} {selected.lastName}</h5>
-                      <span className="text-muted small">
-                        <i className="bi bi-clock me-1"></i> {new Date(selected.createdAt).toLocaleString()}
-                      </span>
+                    <div className="flex-grow-1">
+                      <h4 className="fw-bolder mb-1 text-dark">{selected.firstName} {selected.lastName}</h4>
+                      <div className="d-flex align-items-center gap-3">
+                        <span className="text-muted small fw-medium">
+                          <i className="bi bi-envelope me-1"></i> {selected.email}
+                        </span>
+                        <span className="text-muted small fw-medium border-start ps-3">
+                          <i className="bi bi-clock me-1"></i> {new Date(selected.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      </div>
                     </div>
                     <div className="ms-auto">
                       <select 
-                        className="form-select form-select-sm fw-bold border-0 bg-light text-primary" 
+                        className="form-select form-select-sm fw-bold border bg-light text-dark rounded-pill px-3 py-2 shadow-sm" 
                         value={selected.status} 
                         onChange={(e) => updateStatus(selected._id, e.target.value)}
+                        style={{ cursor: 'pointer' }}
                       >
-                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s} Status</option>)}
                       </select>
                     </div>
                   </div>
 
                   {/* Message Body */}
-                  <div className="p-4 flex-grow-1 bg-light-subtle">
-                    <label className="text-uppercase text-muted fw-bold small mb-3 d-block tracking-wider">User Message</label>
-                    <div className="bg-white p-4 rounded-4 shadow-sm border border-light">
-                      <p className="mb-0 text-dark lh-lg" style={{ whiteSpace: 'pre-line' }}>{selected.message}</p>
-                    </div>
-                    <div className="mt-3 text-muted small">
-                      <i className="bi bi-info-circle me-1"></i> Received via Contact Form from <strong>{selected.email}</strong>
+                  <div className="p-4 flex-grow-1 bg-light custom-scroll" style={{ overflowY: 'auto' }}>
+                    <label className="text-uppercase text-muted fw-bold small mb-3 d-flex align-items-center tracking-wider" style={{ letterSpacing: '1px' }}>
+                      <i className="bi bi-text-paragraph me-2"></i> Client Inquiry
+                    </label>
+                    <div className="bg-white p-4 p-md-5 rounded-4 shadow-sm border border-light">
+                      <p className="mb-0 text-dark" style={{ whiteSpace: 'pre-line', fontSize: '1.05rem', lineHeight: '1.7' }}>
+                        {selected.message}
+                      </p>
                     </div>
                   </div>
 
                   {/* Reply Area */}
                   <div className="p-4 border-top bg-white">
-                    <label className="text-uppercase text-muted fw-bold small mb-3 d-block tracking-wider">Compose Response</label>
-                    <div className="bg-light rounded-4 p-2 shadow-inner border border-light">
+                    <label className="text-uppercase text-muted fw-bold small mb-3 d-flex align-items-center tracking-wider" style={{ letterSpacing: '1px' }}>
+                      <i className="bi bi-reply-fill me-2 fs-5 text-primary"></i> Compose Response
+                    </label>
+                    <div className="bg-light rounded-4 p-2 border border-secondary border-opacity-10 focus-ring-primary transition-all">
                       <textarea
-                        className="form-control border-0 bg-transparent shadow-none"
-                        rows="5"
-                        placeholder="Type your reply here... (User will receive this via email)"
+                        className="form-control border-0 bg-transparent shadow-none custom-scroll"
+                        rows="4"
+                        placeholder="Draft your reply here. The client will receive this response via email..."
                         value={responseText}
                         onChange={(e) => setResponseText(e.target.value)}
-                        style={{ resize: 'none' }}
+                        style={{ resize: 'none', fontWeight: '500' }}
                       />
                     </div>
-                    <div className="d-flex justify-content-end mt-3">
+                    <div className="d-flex justify-content-between align-items-center mt-3">
+                      <div className="text-muted small fw-medium">
+                        {responseText.length > 0 ? `${responseText.length} characters` : ""}
+                      </div>
                       <button 
-                        className="btn btn-primary px-4 py-2 fw-bold rounded-pill shadow-sm" 
+                        className="btn btn-brand px-4 py-2 fw-bold rounded-pill shadow-sm d-flex align-items-center" 
                         onClick={sendResponse} 
-                        disabled={sending}
+                        disabled={sending || !responseText.trim()}
                       >
                         {sending ? (
-                          <><span className="spinner-border spinner-border-sm me-2"></span>Sending...</>
+                          <><span className="spinner-border spinner-border-sm me-2"></span>Transmitting...</>
                         ) : (
-                          <><i className="bi bi-send-fill me-2"></i>Send Response</>
+                          <><i className="bi bi-send-fill me-2"></i> Send Official Reply</>
                         )}
                       </button>
                     </div>

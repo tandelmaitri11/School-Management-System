@@ -46,6 +46,7 @@ import AdminLmsProgress from "./Pages/Admin/LMS/AdminLmsProgress";
 import ContactMessages from "./Pages/Admin/Contact/ContactMessages";
 import AnnouncementPage from "./Pages/Admin/Announcement/AnnouncementPage";
 import ViewParents from "./Pages/Admin/Parent/ViewParents";
+import AddParent from "./Pages/Admin/Parent/AddParent";
 
 // ================= TEACHER =================
 import TeacherNavbar from "./Pages/Teacher/teacher_navbar";
@@ -67,6 +68,7 @@ import AddExam from "./Pages/Teacher/Exam/AddExam";
 import ManageExams from "./Pages/Teacher/Exam/ManageExams";
 import TeacherExamResults from "./Pages/Teacher/Exam/TeacherExamResults";
 import TeacherLms from "./Pages/Teacher/LMS/TeacherLms";
+import StudentLMSProgress from "./Pages/Teacher/LMS/StudentLMSProgress";
 import TeacherAnnouncements from "./Pages/Teacher/Announcement/TeacherAnnouncements";
 import ParentLeaveRequests from "./Pages/Teacher/Parent/ParentLeaveRequests";
 import ParentMessages from "./Pages/Teacher/Parent/ParentMessages";
@@ -147,7 +149,9 @@ function App() {
         <Route path="/admin/view/timetable" element={<Navbar><ViewClassTimetable /></Navbar>} />
         <Route path="/admin/contact/messages" element={<Navbar><ContactMessages /></Navbar>} />
         <Route path="/admin/announcements" element={<Navbar><AnnouncementPage /></Navbar>} />
+        <Route path="/admin/announcements" element={<Navbar><AnnouncementPage /></Navbar>} />
         <Route path="/admin/parents/all" element={<Navbar><ViewParents /></Navbar>} />
+        <Route path="/admin/parents/add" element={<Navbar><AddParent /></Navbar>} />
         <Route path="/admin/reports/student/:studentId" element={<Navbar><StudentReport /></Navbar>} />
         <Route path="/settings/preferences" element={<Navbar><DashboardSettings /></Navbar>} />
         <Route path="/Settings/account" element={<Navbar><DashboardSettings /></Navbar>} />
@@ -185,6 +189,7 @@ function App() {
         <Route path="/teacher/mangeexam" element={<TeacherNavbar><ManageExams /></TeacherNavbar>} />
         <Route path="/teacher/exam-results/:examId" element={<TeacherNavbar><TeacherExamResults /></TeacherNavbar>} />
         <Route path="/teacher/lms" element={<TeacherNavbar><TeacherLms /></TeacherNavbar>} />
+        <Route path="/teacher/lms/student-progress" element={<TeacherNavbar><StudentLMSProgress /></TeacherNavbar>} />
         <Route path="/teacher/announcements" element={<TeacherNavbar><TeacherAnnouncements /></TeacherNavbar>} />
         <Route path="/teacher/settings" element={<TeacherNavbar><DashboardSettings /></TeacherNavbar>} />
 

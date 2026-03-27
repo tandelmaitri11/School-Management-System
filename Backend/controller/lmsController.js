@@ -4,6 +4,8 @@ const LmsMaterial = require("../models/lmsMaterial");
 const LmsProgress = require("../models/lmsProgress");
 const Student = require("../models/studentregister");
 const Class = require("../models/class");
+const TeacherRegister = require("../models/techerregister");
+const TeacherInfo = require("../models/teacherinfo");
 
 const normalizeClass = (value) => {
   const parsed = Number(value);
@@ -286,6 +288,7 @@ exports.updateMaterial = async (req, res) => {
     res.status(500).json({ message: "Error updating material", error });
   }
 };
+
 exports.deleteMaterial = async (req, res) => {
   try {
     const { id } = req.params;
@@ -448,7 +451,7 @@ exports.updateMaterialProgress = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    if (pct >= 70) {
+    if (pct >= 100) {
       progress.progressPct = 100;
       if (!progress.completedAt) progress.completedAt = new Date();
       await progress.save();
@@ -473,7 +476,7 @@ exports.getStudentProgress = async (req, res) => {
       studentId,
       courseId,
       materialId: { $in: materialIds },
-      $or: [{ progressPct: { $gte: 70 } }, { completedAt: { $exists: true } }],
+      progressPct: { $gte: 100 },
     });
 
     const total = materialIds.length;
@@ -503,6 +506,15 @@ exports.getStudentProgress = async (req, res) => {
     const totalNotes = noteIds.length;
     const completedNotesCount = noteIds.filter((id) => completedSet.has(id)).length;
 
+    const allProgress = await LmsProgress.find({ studentId, courseId }).select("materialId progressPct watchedSeconds").lean();
+    const materialProgress = allProgress.reduce((acc, item) => {
+      acc[String(item.materialId)] = {
+        progressPct: item.progressPct || 0,
+        watchedSeconds: item.watchedSeconds || 0,
+      };
+      return acc;
+    }, {});
+
     res.status(200).json({
       totalMaterials: total,
       completedMaterials: completedCount,
@@ -514,6 +526,7 @@ exports.getStudentProgress = async (req, res) => {
       totalNotes,
       completedNotesCount,
       completedMaterialIds: completed.map((c) => String(c.materialId)),
+      materialProgress,
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching progress", error });
@@ -555,7 +568,7 @@ const buildProgressRows = async (courses, students) => {
   const lastCompletedAt = {};
 
   progress.forEach((p) => {
-    const progressKey = `${p.studentId}:${String(p.courseId)}`;
+    const progressKey = `${String(p.studentId)}:${String(p.courseId)}`;
     if (!progressPctByStudentCourse[progressKey]) progressPctByStudentCourse[progressKey] = {};
     progressPctByStudentCourse[progressKey][String(p.materialId)] = Math.max(
       progressPctByStudentCourse[progressKey][String(p.materialId)] || 0,
@@ -564,7 +577,8 @@ const buildProgressRows = async (courses, students) => {
 
     const isCompleted = (p.progressPct ?? 0) >= 70 || p.completedAt;
     if (!isCompleted) return;
-    const key = `${p.studentId}:${String(p.courseId)}`;
+    
+    const key = `${String(p.studentId)}:${String(p.courseId)}`;
     if (!completedByStudentCourse[key]) completedByStudentCourse[key] = new Set();
     completedByStudentCourse[key].add(String(p.materialId));
     const prev = lastCompletedAt[key];
@@ -574,7 +588,7 @@ const buildProgressRows = async (courses, students) => {
   });
 
   const studentById = students.reduce((acc, s) => {
-    acc[s.studentId] = s;
+    acc[String(s._id)] = s;
     return acc;
   }, {});
 
@@ -587,7 +601,7 @@ const buildProgressRows = async (courses, students) => {
   courses.forEach((course) => {
     const total = totalByCourse[String(course._id)] || 0;
     students.forEach((student) => {
-      const key = `${student.studentId}:${String(course._id)}`;
+      const key = `${String(student._id)}:${String(course._id)}`;
       const completedSet = completedByStudentCourse[key] || new Set();
       const completedCount = completedSet.size;
       const completionPct = total ? Math.round((completedCount / total) * 100) : 0;
@@ -617,7 +631,7 @@ const buildProgressRows = async (courses, students) => {
       if (total === 0 && completedCount === 0) return;
 
       rows.push({
-        studentId: student.studentId,
+        studentId: student.studentId || String(student._id),
         studentName: student.name,
         studentEmail: student.email,
         studentClass: student.studentClass,
@@ -641,16 +655,276 @@ const buildProgressRows = async (courses, students) => {
   return rows;
 };
 
+exports.getTeacherProgressSanity = async (req, res) => {
+  try {
+    const teacherId = req.user?.teacherId;
+    if (!teacherId) {
+      return res.status(400).json({ message: "Teacher ID is required" });
+    }
+
+    let teacherInfo = await TeacherInfo.findOne({ regNumber: teacherId })
+      .select("classes assignedSections")
+      .lean();
+
+    if (!teacherInfo) {
+      teacherInfo = await TeacherInfo.findOne({ _id: teacherId })
+        .select("classes assignedSections")
+        .lean();
+    }
+
+    if (!teacherInfo) {
+      return res.status(404).json({ message: "Teacher info not found" });
+    }
+
+    const assignedClasses = Array.isArray(teacherInfo.classes)
+      ? teacherInfo.classes.map((c) => String(c))
+      : [];
+
+    const assignedSections = Array.isArray(teacherInfo.assignedSections)
+      ? teacherInfo.assignedSections.filter((s) => assignedClasses.includes(String(s.classId)))
+      : [];
+
+    if (assignedClasses.length === 0 || assignedSections.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const courses = await LmsCourse.find({ teacherId }).lean();
+    if (courses.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const courseIds = courses.map((course) => course._id);
+    const progressRows = await LmsProgress.find({ courseId: { $in: courseIds } })
+      .populate({ path: "courseId", select: "title subject classAssigned section stream" })
+      .lean();
+
+    const studentIds = [...new Set(progressRows.map((row) => String(row.studentId)))];
+    const students = await Student.find({ _id: { $in: studentIds } })
+      .select("_id studentId name email studentClass section stream")
+      .lean();
+      
+    const studentMap = students.reduce((acc, student) => {
+      acc[String(student._id)] = student;
+      return acc;
+    }, {});
+
+    const sanityData = progressRows.map((row) => ({
+      studentId: studentMap[String(row.studentId)]?.studentId || String(row.studentId),
+      studentName: studentMap[String(row.studentId)]?.name || "-",
+      studentEmail: studentMap[String(row.studentId)]?.email || "-",
+      courseId: row.courseId?._id || "-",
+      courseTitle: row.courseId?.title || "-",
+      subject: row.courseId?.subject || "-",
+      classAssigned: row.courseId?.classAssigned || "-",
+      section: row.courseId?.section || "-",
+      stream: row.courseId?.stream || "-",
+      materialId: row.materialId,
+      progressPct: row.progressPct,
+      watchedSeconds: row.watchedSeconds,
+      completedAt: row.completedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+
+    res.status(200).json(sanityData);
+  } catch (error) {
+    console.error("Error fetching teacher progress sanity:", error);
+    res.status(500).json({ message: "Error fetching sanity data", error });
+  }
+};
+
 exports.getTeacherProgress = async (req, res) => {
   try {
     const teacherId = req.user?.teacherId;
+    if (!teacherId) {
+      return res.status(400).json({ message: "Teacher ID is required" });
+    }
+
+    let teacherInfo = await TeacherInfo.findOne({ regNumber: teacherId })
+      .select("classes assignedSections")
+      .lean();
+
+    if (!teacherInfo) {
+      teacherInfo = await TeacherInfo.findOne({ _id: teacherId })
+        .select("classes assignedSections")
+        .lean();
+    }
+
+    if (!teacherInfo) {
+      return res.status(404).json({ message: "Teacher info not found" });
+    }
+
+    const assignedClasses = Array.isArray(teacherInfo?.classes)
+      ? teacherInfo.classes.map((c) => String(c))
+      : [];
+
+    const assignedSections = Array.isArray(teacherInfo?.assignedSections)
+      ? teacherInfo.assignedSections.filter((s) => assignedClasses.includes(String(s.classId)))
+      : [];
+
     const courses = await LmsCourse.find({ teacherId }).lean();
-    const students = await Student.find().select("studentId name email studentClass").lean();
+    if (courses.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    let students = [];
+    if (assignedClasses.length === 0 || assignedSections.length === 0) {
+      const courseIds = courses.map((course) => course._id);
+      const progressRows = await LmsProgress.find({ courseId: { $in: courseIds } }).lean();
+
+      const studentIds = [...new Set(progressRows.map((r) => String(r.studentId)))];
+      if (studentIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      students = await Student.find({ _id: { $in: studentIds } })
+        .select("_id studentId name email studentClass section stream")
+        .lean();
+    } else {
+      const classMap = {};
+      const classIds = assignedSections.map((s) => s.classId);
+      const classes = await Class.find({ _id: { $in: classIds } })
+        .select("_id className")
+        .lean();
+
+      classes.forEach((c) => {
+        classMap[String(c._id)] = c.className;
+      });
+
+      for (const section of assignedSections) {
+        const classId = section.classId;
+        const className = classMap[String(classId)];
+
+        const sectionStr = normalizeUpper(section.section || "");
+        const streamStr = normalize(section.stream || "");
+
+        const query = {
+          $or: [{ classId }, { studentClass: className }],
+          section: new RegExp(`^${sectionStr}$`, "i"),
+        };
+
+        if (streamStr) {
+          query.stream = new RegExp(`^${streamStr}$`, "i");
+        }
+
+        const sectionStudents = await Student.find(query)
+          .select("_id studentId name email studentClass section stream")
+          .lean();
+
+        students.push(...sectionStudents);
+      }
+    }
+
+    const uniqueStudents = Array.from(
+      new Map(students.map((s) => [String(s._id), s])).values()
+    );
+
+    const rows = await buildProgressRows(courses, uniqueStudents);
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching teacher progress:", error);
+    res.status(500).json({ message: "Error fetching progress", error });
+  }
+};
+
+exports.getTeacherProgressAnalysis = async (req, res) => {
+  try {
+    const teacherId = req.user?.teacherId;
+    if (!teacherId) {
+      return res.status(400).json({ message: "Teacher ID is required" });
+    }
+
+    const courses = await LmsCourse.find({ teacherId }).lean();
+    if (courses.length === 0) {
+      return res.status(200).json({ students: [], summary: {} });
+    }
+
+    const courseIds = courses.map((course) => course._id);
+    const progressRows = await LmsProgress.find({ courseId: { $in: courseIds } }).lean();
+    const studentIds = [...new Set(progressRows.map((row) => String(row.studentId)))];
+    const students = await Student.find({ _id: { $in: studentIds } })
+      .select("_id studentId name email studentClass section stream")
+      .lean();
 
     const rows = await buildProgressRows(courses, students);
-    res.status(200).json(rows);
+
+    const studentGroups = rows.reduce((acc, row) => {
+      if (!acc[row.studentId]) {
+        acc[row.studentId] = {
+          studentId: row.studentId,
+          studentName: row.studentName,
+          studentEmail: row.studentEmail,
+          class: row.studentClass,
+          section: row.section,
+          stream: row.stream,
+          courseProgress: [],
+          averageCompletion: 0,
+          averageMaterialProgress: 0,
+          averageTopicCompletion: 0,
+        };
+      }
+      acc[row.studentId].courseProgress.push({
+        courseId: row.courseId,
+        courseTitle: row.courseTitle,
+        subject: row.subject,
+        completionPct: row.completionPct,
+        avgProgressPct: row.avgProgressPct,
+        topicCompletionPct: row.topicCompletionPct,
+        completedMaterials: row.completedMaterials,
+        totalMaterials: row.totalMaterials,
+      });
+      return acc;
+    }, {});
+
+    const studentsAnalysis = Object.values(studentGroups).map((stu) => {
+      const count = stu.courseProgress.length;
+      stu.averageCompletion = count
+        ? Math.round(
+            stu.courseProgress.reduce((sum, c) => sum + (c.completionPct || 0), 0) / count
+          )
+        : 0;
+      stu.averageMaterialProgress = count
+        ? Math.round(
+            stu.courseProgress.reduce((sum, c) => sum + (c.avgProgressPct || 0), 0) / count
+          )
+        : 0;
+      stu.averageTopicCompletion = count
+        ? Math.round(
+            stu.courseProgress.reduce((sum, c) => sum + (c.topicCompletionPct || 0), 0) / count
+          )
+        : 0;
+      stu.bestCourse = stu.courseProgress.slice().sort((a, b) => b.completionPct - a.completionPct)[0] || null;
+      stu.lowestCourse = stu.courseProgress.slice().sort((a, b) => a.completionPct - b.completionPct)[0] || null;
+      return stu;
+    });
+
+    const summary = {
+      totalStudents: studentsAnalysis.length,
+      totalCourses: courses.length,
+      classAverageCompletion: studentsAnalysis.length
+        ? Math.round(
+            studentsAnalysis.reduce((sum, s) => sum + (s.averageCompletion || 0), 0) /
+              studentsAnalysis.length
+          )
+        : 0,
+      classAverageMaterialProgress: studentsAnalysis.length
+        ? Math.round(
+            studentsAnalysis.reduce((sum, s) => sum + (s.averageMaterialProgress || 0), 0) /
+              studentsAnalysis.length
+          )
+        : 0,
+      classAverageTopicCompletion: studentsAnalysis.length
+        ? Math.round(
+            studentsAnalysis.reduce((sum, s) => sum + (s.averageTopicCompletion || 0), 0) /
+              studentsAnalysis.length
+          )
+        : 0,
+    };
+
+    return res.status(200).json({ students: studentsAnalysis, summary });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching progress", error });
+    console.error("Error fetching teacher progress analysis:", error);
+    res.status(500).json({ message: "Error fetching teacher progress analysis", error });
   }
 };
 
@@ -661,7 +935,8 @@ exports.getAdminProgress = async (req, res) => {
     const studentFilter = classAssigned ? { studentClass: classAssigned } : {};
 
     const courses = await LmsCourse.find(courseFilter).lean();
-    const students = await Student.find(studentFilter).select("studentId name email studentClass").lean();
+    // Added _id to the select statement to ensure buildProgressRows handles mapping correctly
+    const students = await Student.find(studentFilter).select("_id studentId name email studentClass").lean();
 
     const rows = await buildProgressRows(courses, students);
     res.status(200).json(rows);
@@ -669,6 +944,3 @@ exports.getAdminProgress = async (req, res) => {
     res.status(500).json({ message: "Error fetching progress", error });
   }
 };
-
-
-
