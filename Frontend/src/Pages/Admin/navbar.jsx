@@ -147,6 +147,11 @@ function Navbar({ children }) {
       icon: "bi-chat-left-dots-fill",
       submenu: [{ label: "Contact Messages", path: "/admin/contact/messages" }],
     },
+     {
+      label: "Analytics",
+      icon: "bi-graph-up",
+      submenu: [{ label: "Analytics", path: "/admin/analytics" }],
+    },
     {
       label: "Announcements",
       icon: "bi-megaphone-fill",

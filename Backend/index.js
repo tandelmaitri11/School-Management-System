@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./cron/analyticsCron");
 const express=require('express');
 const http = require("http");
 const connDB = require("./config/db");
@@ -38,12 +39,16 @@ const holidayRoutes = require("./routes/holidayRoutes");
 const announcementRoutes = require("./routes/announcementRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 
+
+const analyticsRoutes = require("./routes/analyticsRoutes");
+
 const { startAssignmentReminderCron } = require("./services/assignmentEmailService");
 const { startExamReminderJob } = require("./services/examNotificationService");
 const { startFeesAutoReminderCron } = require("./services/feesReminderService");
 const { startMessageQueueWorker } = require("./services/messageQueueService");
 const { registerCoreEventHandlers } = require("./events/registerCoreEventHandlers");
 const { initSocketServer } = require("./socket/socketServer");
+
 
 const path = require("path");
 const cors = require("cors");
@@ -96,6 +101,8 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+app.use("/api/analytics", analyticsRoutes);
 
 startAssignmentReminderCron();
 startExamReminderJob();

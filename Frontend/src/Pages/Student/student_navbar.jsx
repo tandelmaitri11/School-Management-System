@@ -87,6 +87,7 @@ export default function StudentNavbar({ children }) {
     { to: "/timetable", label: "TimeTable", icon: "bi-calendar-week-fill" },
     { to: "/student/attendance/view", label: "Attendance", icon: "bi-check-circle-fill" },
     { to: "/student/report", label: "Progress Report", icon: "bi-bar-chart-line-fill" },
+    { to: "/student/analytics", label: "Analytics", icon: "bi-graph-up" },
     { to: "/student/fees", label: "Fees", icon: "bi-wallet-fill" },
     { to: "/student/announcements", label: "Announcements / Notifications", icon: "bi-megaphone-fill" },
   ];

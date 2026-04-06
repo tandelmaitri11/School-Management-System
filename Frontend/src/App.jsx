@@ -104,6 +104,11 @@ import ParentTeacherCommunication from "./Pages/Parent/TeacherCommunication";
 // ================= SETTINGS =================
 import DashboardSettings from "./Pages/Settings/DashboardSettings";
 
+// ================= REPORTS =================
+import StudentAnalysis from "./Pages/Student/Report/StudentAnalyticsProfile";
+import TeacherAnalysis from "./Pages/Teacher/Report/TeacherAnalyticsProfile";
+import AdminAnalysis from "./Pages/Admin/Analytics/SchoolYDashboard";
+
 function App() {
   return (
     <>
@@ -162,6 +167,10 @@ function App() {
         <Route path="/teachers/editteacher/:id" element={<Navbar><EditTeacher /></Navbar>} />
         <Route path="/teacher/attendance" element={<Navbar><TeacherAttendance /></Navbar>} />
         <Route path="/teacher/assignments" element={<Navbar><TeacherAssignmentList /></Navbar>} />
+        
+        <Route path="/admin/analytics" element={<Navbar><AdminAnalysis /></Navbar>} />
+
+
 
         </Route>
 
@@ -192,6 +201,8 @@ function App() {
         <Route path="/teacher/lms/student-progress" element={<TeacherNavbar><StudentLMSProgress /></TeacherNavbar>} />
         <Route path="/teacher/announcements" element={<TeacherNavbar><TeacherAnnouncements /></TeacherNavbar>} />
         <Route path="/teacher/settings" element={<TeacherNavbar><DashboardSettings /></TeacherNavbar>} />
+        
+        <Route path="/teacher/analytics" element={<TeacherNavbar><TeacherAnalysis /></TeacherNavbar>} />
 
         </Route>
 
@@ -211,6 +222,8 @@ function App() {
         <Route path="/student/lms" element={<StudentNavbar><StudentLms /></StudentNavbar>} />
         <Route path="/student/announcements" element={<StudentNavbar><StudentAnnouncements /></StudentNavbar>} />
         <Route path="/student/settings" element={<StudentNavbar><DashboardSettings /></StudentNavbar>} />
+        
+        <Route path="/student/analytics" element={<StudentNavbar><StudentAnalysis /></StudentNavbar>} />
 
         </Route>
 

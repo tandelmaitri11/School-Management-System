@@ -266,6 +266,13 @@ export default function TeacherNavbar({ children }) {
         { label: "Performance Report", path: "/teacher/reports/performance" },
       ],
     },
+     {
+      label: "Analytics",
+      icon: "bi-graph-up",
+      submenu: [
+        { label: "Attendance Report", path: "/teacher/analytics" },
+      ],
+    },
     {
       label: "Learning",
       icon: "bi-collection-play",
