@@ -1,5 +1,4 @@
 require("dotenv").config();
-require("./cron/analyticsCron");
 const express=require('express');
 const http = require("http");
 const connDB = require("./config/db");
