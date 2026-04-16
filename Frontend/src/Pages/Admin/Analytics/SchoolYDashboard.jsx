@@ -36,6 +36,28 @@ export default function AdminAnalysis() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const downloadReport = async (format) => {
+    try {
+      const res = await api.get("/api/analytics/admin/report", {
+        params: { studentClass, section, search, format },
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], {
+        type: format === "pdf" ? "application/pdf" : "text/csv",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `admin_analytics.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  };
+
   // 🔄 FETCH DATA
   const fetchData = async () => {
     try {
@@ -177,6 +199,14 @@ export default function AdminAnalysis() {
             <button className="btn btn-light rounded-3 px-4 fw-bold" onClick={fetchData} style={{ height: '48px' }}>
               <i className="bi bi-lightning-charge-fill me-2"></i>Apply Analytics
             </button>
+            <div className="d-flex gap-2">
+              <button className="btn btn-outline-light rounded-3 px-3 fw-bold" onClick={() => downloadReport("pdf")} style={{ height: '48px' }}>
+                <i className="bi bi-file-earmark-pdf me-2"></i>PDF
+              </button>
+              <button className="btn btn-outline-light rounded-3 px-3 fw-bold" onClick={() => downloadReport("csv")} style={{ height: '48px' }}>
+                <i className="bi bi-filetype-csv me-2"></i>CSV
+              </button>
+            </div>
           </div>
         </div>
 

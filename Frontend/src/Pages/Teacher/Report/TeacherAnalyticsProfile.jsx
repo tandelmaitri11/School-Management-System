@@ -28,10 +28,39 @@ ChartJS.register(
 export default function TeacherAnalysis() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const teacherId = localStorage.getItem("teacherId");
+
+  const downloadReport = async (format) => {
+    if (!teacherId) return;
+    try {
+      const res = await api.get(`/api/analytics/teacher/report`, {
+        params: { teacherId, format },
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], {
+        type: format === "pdf" ? "application/pdf" : "text/csv",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `teacher_analytics_${teacherId}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
-    api.get("/api/analytics/teacher")
+    if (!teacherId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    api.get(`/api/analytics/teacher?teacherId=${teacherId}`)
       .then((res) => {
         setData(Array.isArray(res.data) ? res.data : []);
         setLoading(false);
@@ -40,7 +69,7 @@ export default function TeacherAnalysis() {
         console.error("Teacher Analytics Error:", err);
         setLoading(false);
       });
-  }, []);
+  }, [teacherId]);
 
   // Compute Aggregates for KPIs
   const stats = useMemo(() => {
@@ -109,9 +138,17 @@ export default function TeacherAnalysis() {
               <p className="opacity-75 mb-0">Track student progress, identify learning gaps, and manage performance trends.</p>
             </div>
             <div className="col-md-4 text-md-end mt-4 mt-md-0 position-relative z-1">
-               <button className="btn btn-light rounded-pill px-4 py-2 fw-bold shadow-sm" onClick={() => window.location.reload()}>
-                 <i className="bi bi-arrow-clockwise me-2"></i>Refresh Data
-               </button>
+               <div className="d-flex gap-2 justify-content-md-end flex-wrap">
+                 <button className="btn btn-light rounded-pill px-4 py-2 fw-bold shadow-sm" onClick={() => window.location.reload()}>
+                   <i className="bi bi-arrow-clockwise me-2"></i>Refresh Data
+                 </button>
+                 <button className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold shadow-sm" onClick={() => downloadReport("pdf")}>
+                   <i className="bi bi-file-earmark-pdf me-2"></i>PDF
+                 </button>
+                 <button className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold shadow-sm" onClick={() => downloadReport("csv")}>
+                   <i className="bi bi-filetype-csv me-2"></i>CSV
+                 </button>
+               </div>
             </div>
           </div>
           {/* Decorative Background Element */}

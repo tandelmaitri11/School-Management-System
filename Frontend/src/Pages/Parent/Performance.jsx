@@ -8,6 +8,7 @@ export default function ParentPerformance() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const formatDate = (value) => (value ? new Date(value).toLocaleDateString("en-IN") : "-");
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -301,6 +302,178 @@ export default function ParentPerformance() {
                   ) : (
                     <div className="text-muted small">No specific areas for improvement highlighted.</div>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Attendance Details */}
+          <div className="card border-0 shadow-sm rounded-4 mt-4">
+            <div className="card-body p-4">
+              <h5 className="fw-bold text-dark mb-3">Attendance Details</h5>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr className="small text-uppercase text-muted">
+                      <th>Date</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.attendance?.details?.length ? (
+                      report.attendance.details.map((row, idx) => (
+                        <tr key={idx}>
+                          <td>{formatDate(row.date)}</td>
+                          <td>
+                            <span className={`badge ${row.status === "Present" ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger"}`}>
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={2} className="text-muted text-center py-3">No attendance records.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Exam Results */}
+          <div className="card border-0 shadow-sm rounded-4 mt-4">
+            <div className="card-body p-4">
+              <h5 className="fw-bold text-dark mb-3">Exam Results</h5>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr className="small text-uppercase text-muted">
+                      <th>Date</th>
+                      <th>Exam</th>
+                      <th>Subject</th>
+                      <th>Marks</th>
+                      <th>Percentage</th>
+                      <th>Grade</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.academicPerformance?.details?.length ? (
+                      report.academicPerformance.details.map((row, idx) => (
+                        <tr key={idx}>
+                          <td>{formatDate(row.date)}</td>
+                          <td>{row.title}</td>
+                          <td>{row.subject}</td>
+                          <td>{row.obtainedMarks || 0} / {row.totalMarks || 0}</td>
+                          <td>{row.percentage || 0}%</td>
+                          <td>{row.grade || "-"}</td>
+                          <td>
+                            <span className={`badge ${row.resultStatus === "PASS" ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger"}`}>
+                              {row.resultStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="text-muted text-center py-3">No exam results found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Assignment Details */}
+          <div className="card border-0 shadow-sm rounded-4 mt-4">
+            <div className="card-body p-4">
+              <h5 className="fw-bold text-dark mb-3">Assignments</h5>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr className="small text-uppercase text-muted">
+                      <th>Title</th>
+                      <th>Subject</th>
+                      <th>Due Date</th>
+                      <th>Submitted At</th>
+                      <th>Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.assignments?.details?.length ? (
+                      report.assignments.details.map((row, idx) => (
+                        <tr key={idx}>
+                          <td>{row.title}</td>
+                          <td>{row.subject || "-"}</td>
+                          <td>{formatDate(row.dueDate)}</td>
+                          <td>{formatDate(row.submittedAt)}</td>
+                          <td>{row.grade || "Not Graded"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="text-muted text-center py-3">No assignments found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* LMS Progress & Fees */}
+          <div className="row g-4 mt-1">
+            <div className="col-lg-6">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <h5 className="fw-bold text-dark mb-3">LMS Progress</h5>
+                  <div className="d-flex flex-wrap gap-3">
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Completion Rate</div>
+                      <div className="fw-bold fs-4">{report.lms?.completionRate || 0}%</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Average Progress</div>
+                      <div className="fw-bold fs-4">{report.lms?.averageProgress || 0}%</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Materials Completed</div>
+                      <div className="fw-bold fs-4">{report.lms?.completedMaterials || 0} / {report.lms?.totalMaterials || 0}</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Watch Time (sec)</div>
+                      <div className="fw-bold fs-4">{report.lms?.totalWatchSeconds || 0}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-lg-6">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <h5 className="fw-bold text-dark mb-3">Fee Status</h5>
+                  <div className="d-flex flex-wrap gap-3">
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Total Fees</div>
+                      <div className="fw-bold fs-4">₹{report.feeStatus?.totalFees || 0}</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Paid</div>
+                      <div className="fw-bold fs-4">₹{report.feeStatus?.paidAmount || 0}</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Pending</div>
+                      <div className="fw-bold fs-4">₹{report.feeStatus?.pendingAmount || 0}</div>
+                    </div>
+                    <div className="bg-light rounded-3 p-3 flex-grow-1">
+                      <div className="text-muted small">Status</div>
+                      <div className="fw-bold fs-4">{report.feeStatus?.status || "N/A"}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

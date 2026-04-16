@@ -35,6 +35,29 @@ export default function StudentAnalysis() {
       });
   }, [studentId]);
 
+  const downloadReport = async (format) => {
+    if (!studentId) return;
+    try {
+      const res = await api.get(`/api/analytics/student/${studentId}/report`, {
+        params: { format },
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], {
+        type: format === "pdf" ? "application/pdf" : "text/csv",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `student_analytics_${studentId}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  };
+
   // Chart Logic
   const attendanceChartData = useMemo(() => {
     if (!data) return null;
@@ -71,7 +94,7 @@ export default function StudentAnalysis() {
 
   return (
     <div className="container-fluid py-4 min-vh-100" style={{ backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
-      
+
       <style>{`
         .glass-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
         .hero-banner { background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); border-radius: 24px; color: white; position: relative; overflow: hidden; }
@@ -83,7 +106,7 @@ export default function StudentAnalysis() {
       `}</style>
 
       <div className="container" style={{ maxWidth: "1200px" }}>
-        
+
         {/* --- HERO HEADER --- */}
         <div className="hero-banner p-4 p-md-5 mb-4 shadow-lg animate-up">
           <div className="row align-items-center">
@@ -95,10 +118,18 @@ export default function StudentAnalysis() {
               <p className="opacity-75 fs-5">Here is your current academic standing and AI-driven predictions for the semester.</p>
             </div>
             <div className="col-lg-4 text-center mt-4 mt-lg-0">
-               <div className={`prediction-badge shadow-lg d-inline-block ${data.prediction === 'Fail' ? 'bg-danger' : 'bg-success'}`}>
-                  <i className={`bi ${data.prediction === 'Fail' ? 'bi-exclamation-octagon' : 'bi-check-circle'} me-2`}></i>
-                  Predicted Outcome: {data.prediction?.toUpperCase()}
-               </div>
+              <div className={`prediction-badge shadow-lg d-inline-block ${data.prediction === 'Fail' ? 'bg-danger' : 'bg-success'}`}>
+                <i className={`bi ${data.prediction === 'Fail' ? 'bi-exclamation-octagon' : 'bi-check-circle'} me-2`}></i>
+                Predicted Outcome: {data.prediction?.toUpperCase()}
+              </div>
+              <div className="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                <button className="btn btn-light btn-sm fw-bold rounded-pill" onClick={() => downloadReport("pdf")}>
+                  <i className="bi bi-file-earmark-pdf me-2"></i>PDF
+                </button>
+                <button className="btn btn-outline-light btn-sm fw-bold rounded-pill" onClick={() => downloadReport("csv")}>
+                  <i className="bi bi-filetype-csv me-2"></i>CSV
+                </button>
+              </div>
             </div>
           </div>
           {/* Decorative Circles */}
@@ -106,7 +137,7 @@ export default function StudentAnalysis() {
         </div>
 
         <div className="row g-4 mb-4 animate-up" style={{ animationDelay: '0.1s' }}>
-          
+
           {/* --- KPI GAUGES --- */}
           <div className="col-md-6 col-xl-3">
             <div className="glass-card p-4 text-center h-100">
@@ -139,17 +170,18 @@ export default function StudentAnalysis() {
             <div className="glass-card p-4 h-100">
               <h6 className="text-muted fw-bold text-uppercase mb-3"><i className="bi bi-lightning-charge text-warning me-2"></i>Areas for Improvement</h6>
               <p className="text-muted small">Our AI identified these subjects as your current weak spots based on recent assessments.</p>
-              <div className="mt-3">
-                {data.weakSubjects.length === 0 ? (
-                  <div className="alert alert-success border-0 rounded-4 fw-bold">🚀 You are excelling in all subjects!</div>
-                ) : (
-                  data.weakSubjects.map((w, i) => (
-                    <span key={i} className="subject-tag border shadow-sm">
-                      <i className="bi bi-book me-2 text-primary"></i>{w}
-                    </span>
-                  ))
-                )}
-              </div>
+              {data.weakSubjects.length === 0 ? (
+                <div className="alert alert-success border-0 rounded-4 fw-bold">
+                  🚀 You are excelling in all subjects!
+                </div>
+              ) : (
+                data.weakSubjects.map((w, i) => (
+                  <span key={i} className="subject-tag border shadow-sm">
+                    <i className="bi bi-book me-2 text-primary"></i>
+                    {w.subject} ({w.avg.toFixed(0)}%)
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -189,18 +221,43 @@ export default function StudentAnalysis() {
                 <div>
                   <h5 className="fw-bold mb-1 text-white">AI Learning Tip</h5>
                   <p className="mb-0 opacity-75 small text-white">
-                    {data.attendancePercentage < 75 
-                      ? "Your attendance is dropping. Regular presence increases your chances of passing by 40%." 
-                      : "Consistency is key! Maintain your current pace to secure an 'A' grade."}
+                    {data.attendancePercentage < 75
+                      ? "Your attendance is dropping. Regular presence increases your chances of passing by 40%."
+                      : "Consistency is key! Maintain your current pace to secure an A grade."}
                   </p>
                 </div>
               </div>
               <button className="btn btn-outline-light rounded-pill px-4 btn-sm fw-bold">Get Study Plan</button>
             </div>
           </div>
+
+          {/* --- AI STUDY RECOMMENDATION --- */}
+          <div className="col-12">
+            <div className="glass-card p-4 mt-3">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <i className="bi bi-lightbulb-fill text-warning fs-5"></i>
+                <h6 className="mb-0 fw-black text-dark text-uppercase">AI Study Recommendation</h6>
+              </div>
+              <p className="text-muted mb-0">
+                {data.suggestion || "Keep a steady study schedule and focus on weak areas for improvement."}
+              </p>
+              {Array.isArray(data.aiStudyPlan) && data.aiStudyPlan.length > 0 && (
+                <ul className="mt-3 mb-0">
+                  {data.aiStudyPlan.map((item, idx) => (
+                    <li key={idx} className="text-muted small">
+                      <span className="fw-bold text-dark">{item.title}:</span> {item.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
         </div>
 
       </div>
-    </div>
   );
 }
+
+
+

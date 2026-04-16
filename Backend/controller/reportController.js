@@ -136,12 +136,18 @@ exports.getStudentReport = async (req, res) => {
     let presentDays = 0;
     let absentDays = 0;
 
+    const attendanceDetails = [];
     const attendanceChart = attendanceRecords.map((rec) => {
       const record = (rec.attendance || []).find((a) => String(a.studentId) === studentMongoId);
       if (record) {
         totalDays += 1;
         if (record.status === "Present") presentDays += 1;
         else absentDays += 1;
+
+        attendanceDetails.push({
+          date: rec.date,
+          status: record.status || "Absent",
+        });
       }
 
       return {
@@ -157,6 +163,7 @@ exports.getStudentReport = async (req, res) => {
       absentDays,
       percentage: totalDays ? round2((presentDays / totalDays) * 100) : 0,
       chart: attendanceChart,
+      details: attendanceDetails,
     };
 
     const gradedSubmissions = allSubmissions.filter((s) => s.grade);
@@ -197,6 +204,8 @@ exports.getStudentReport = async (req, res) => {
         return {
           title: exam.title,
           subject: exam.subjectName,
+          totalMarks: Number(exam.totalMarks || 0),
+          obtainedMarks: Number(submission.obtainedMarks || 0),
           percentage: round2(submission.percentage || 0),
           grade: submission.grade || "",
           resultStatus: submission.resultStatus || "FAIL",
