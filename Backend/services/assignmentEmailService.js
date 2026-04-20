@@ -1,6 +1,9 @@
 const cron = require("node-cron");
 const Assignment = require("../models/assignment");
 const Student = require("../models/studentregister");
+const Submission = require("../models/submission");
+const Notification = require("../models/Notification");
+const ParentStudentMap = require("../models/parentStudentMap");
 const { sendEmail } = require("../utils/mailer");
 const path = require("path");
 const fs = require("fs/promises");
@@ -9,6 +12,11 @@ const toUpper = (v) => String(v || "").trim().toUpperCase();
 const toTrim = (v) => String(v || "").trim();
 
 const getRecipientsForAssignment = async (assignment) => {
+  const students = await getStudentsForAssignment(assignment);
+  return students.filter((s) => String(s.email || "").trim());
+};
+
+const getStudentsForAssignment = async (assignment) => {
   const query = {
     studentClass: Number(assignment.classAssigned),
   };
@@ -21,8 +29,7 @@ const getRecipientsForAssignment = async (assignment) => {
   const subjectChoice = toTrim(assignment.subjectChoiceAssigned);
   if (subjectChoice) query.subjectChoice = subjectChoice;
 
-  const students = await Student.find(query).select("name email studentId");
-  return students.filter((s) => String(s.email || "").trim());
+  return Student.find(query).select("name email studentId");
 };
 
 const formatDue = (dueDate) => {
@@ -261,11 +268,99 @@ const sendDueTomorrowReminders = async () => {
   }
 };
 
+const createParentDueTomorrowNotifications = async () => {
+  const now = new Date();
+  const tomorrowStart = new Date(now);
+  tomorrowStart.setDate(now.getDate() + 1);
+  tomorrowStart.setHours(0, 0, 0, 0);
+
+  const tomorrowEnd = new Date(tomorrowStart);
+  tomorrowEnd.setDate(tomorrowStart.getDate() + 1);
+
+  const assignments = await Assignment.find({
+    dueDate: { $gte: tomorrowStart, $lt: tomorrowEnd },
+    "notification.parentReminderSentAt": null,
+  }).lean();
+
+  for (const assignment of assignments) {
+    const students = await getStudentsForAssignment(assignment);
+    const studentIds = students.map((student) => String(student._id));
+
+    if (!studentIds.length) {
+      await Assignment.updateOne(
+        { _id: assignment._id },
+        { $set: { "notification.parentReminderSentAt": new Date() } }
+      );
+      continue;
+    }
+
+    const submissions = await Submission.find({
+      assignmentId: assignment._id,
+      studentId: { $in: studentIds },
+    })
+      .select("studentId")
+      .lean();
+
+    const submittedStudentIds = new Set(submissions.map((row) => String(row.studentId)));
+    const pendingStudents = students.filter((student) => !submittedStudentIds.has(String(student._id)));
+
+    if (pendingStudents.length) {
+      const mappings = await ParentStudentMap.find({
+        studentId: { $in: pendingStudents.map((student) => student._id) },
+        isActive: true,
+      })
+        .select("parentId studentId")
+        .lean();
+
+      const parentDocs = mappings
+        .map((mapping) => {
+          const student = pendingStudents.find(
+            (row) => String(row._id) === String(mapping.studentId)
+          );
+          if (!student) return null;
+
+          return {
+            type: "ASSIGNMENT",
+            title: `Assignment Not Submitted: ${assignment.title || "Assignment"}`,
+            message: `${student.name || "Student"} has not submitted the ${assignment.subject || ""} assignment yet. Submission is due tomorrow.`,
+            recipientRole: "Parent",
+            targetUserId: String(mapping.parentId),
+            className: Number(assignment.classAssigned) || null,
+            section: toUpper(assignment.sectionAssigned),
+            stream: toTrim(assignment.streamAssigned),
+            subjectChoice: toTrim(assignment.subjectChoiceAssigned),
+            data: {
+              assignmentId: assignment._id,
+              studentId: String(student._id),
+              studentName: student.name || "",
+              admissionId: student.studentId || "",
+              subject: assignment.subject || "",
+              title: assignment.title || "Assignment",
+              dueDate: assignment.dueDate || null,
+              reminderType: "NOT_SUBMITTED_DUE_TOMORROW",
+            },
+          };
+        })
+        .filter(Boolean);
+
+      if (parentDocs.length) {
+        await Notification.insertMany(parentDocs, { ordered: false });
+      }
+    }
+
+    await Assignment.updateOne(
+      { _id: assignment._id },
+      { $set: { "notification.parentReminderSentAt": new Date() } }
+    );
+  }
+};
+
 const startAssignmentReminderCron = () => {
   // Run daily at 08:00 server time.
   cron.schedule("0 8 * * *", async () => {
     try {
       await sendDueTomorrowReminders();
+      await createParentDueTomorrowNotifications();
     } catch (err) {
       console.error("assignment reminder cron error:", err);
     }
@@ -275,5 +370,6 @@ const startAssignmentReminderCron = () => {
 module.exports = {
   sendCreatedAssignmentEmails,
   sendDueTomorrowReminders,
+  createParentDueTomorrowNotifications,
   startAssignmentReminderCron,
 };

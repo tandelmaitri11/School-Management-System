@@ -50,6 +50,7 @@ const assignmentSchema = new mongoose.Schema(
     notification: {
       createdSentAt: { type: Date, default: null },
       reminderSentAt: { type: Date, default: null },
+      parentReminderSentAt: { type: Date, default: null },
     },
   },
   { timestamps: true }

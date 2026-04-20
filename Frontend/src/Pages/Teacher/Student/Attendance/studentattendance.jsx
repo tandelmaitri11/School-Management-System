@@ -59,6 +59,8 @@ export default function StudentAttendance() {
   const classHasStreams = classStreams.length > 0;
   const hasAssignedStreams = streamOptions.length > 0;
   const isDateBlocked = !datePolicy.allowed;
+  const presentCount = students.filter((stu) => attendance[stu._id] === "Present").length;
+  const absentCount = students.filter((stu) => attendance[stu._id] === "Absent").length;
 
   const sectionOptions = useMemo(() => {
     if (!selectedClassDoc?._id) return [];
@@ -226,6 +228,16 @@ export default function StudentAttendance() {
     setAttendance((prev) => ({ ...prev, [studentId]: status }));
   };
 
+  const handleBulkAttendance = (status) => {
+    setAttendance((prev) => {
+      const next = { ...prev };
+      students.forEach((stu) => {
+        next[stu._id] = status;
+      });
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     if (isDateBlocked) {
       showToast(datePolicy.reason || "Attendance cannot be submitted for selected date", "warning");
@@ -352,49 +364,86 @@ export default function StudentAttendance() {
           ) : students.length === 0 ? (
             <div className="alert alert-warning text-center">No students found for selected scope.</div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-bordered align-middle text-nowrap">
-                <thead className="table-primary text-center">
-                  <tr>
-                    <th>#</th>
-                    <th>Student Name</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((stu, index) => (
-                    <tr key={stu._id}>
-                      <td className="text-center">{index + 1}</td>
-                      <td className="fw-medium">{stu.name}</td>
-                      <td className="small">{stu.email}</td>
-                      <td className="text-center">
-                        <div className="btn-group btn-group-sm flex-wrap">
-                          <button
-                            className={`btn ${
-                              attendance[stu._id] === "Present" ? "btn-success" : "btn-outline-success"
-                            }`}
-                            onClick={() => handleAttendanceChange(stu._id, "Present")}
-                            disabled={alreadySubmitted}
-                          >
-                            Present
-                          </button>
-                          <button
-                            className={`btn ${
-                              attendance[stu._id] === "Absent" ? "btn-danger" : "btn-outline-danger"
-                            }`}
-                            onClick={() => handleAttendanceChange(stu._id, "Absent")}
-                            disabled={alreadySubmitted}
-                          >
-                            Absent
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+                <div className="d-flex flex-wrap gap-2">
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                    Present: {presentCount}
+                  </span>
+                  <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
+                    Absent: {absentCount}
+                  </span>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                    Total: {students.length}
+                  </span>
+                </div>
+
+                <div className="d-flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-success fw-semibold"
+                    onClick={() => handleBulkAttendance("Present")}
+                    disabled={alreadySubmitted || checkingSubmitted}
+                  >
+                    <i className="bi bi-check2-all me-1"></i>
+                    All Present
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger fw-semibold"
+                    onClick={() => handleBulkAttendance("Absent")}
+                    disabled={alreadySubmitted || checkingSubmitted}
+                  >
+                    <i className="bi bi-x-circle me-1"></i>
+                    All Absent
+                  </button>
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-bordered align-middle text-nowrap">
+                  <thead className="table-primary text-center">
+                    <tr>
+                      <th>#</th>
+                      <th>Student Name</th>
+                      <th>Email</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {students.map((stu, index) => (
+                      <tr key={stu._id}>
+                        <td className="text-center">{index + 1}</td>
+                        <td className="fw-medium">{stu.name}</td>
+                        <td className="small">{stu.email}</td>
+                        <td className="text-center">
+                          <div className="btn-group btn-group-sm flex-wrap">
+                            <button
+                              className={`btn ${
+                                attendance[stu._id] === "Present" ? "btn-success" : "btn-outline-success"
+                              }`}
+                              onClick={() => handleAttendanceChange(stu._id, "Present")}
+                              disabled={alreadySubmitted}
+                            >
+                              Present
+                            </button>
+                            <button
+                              className={`btn ${
+                                attendance[stu._id] === "Absent" ? "btn-danger" : "btn-outline-danger"
+                              }`}
+                              onClick={() => handleAttendanceChange(stu._id, "Absent")}
+                              disabled={alreadySubmitted}
+                            >
+                              Absent
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="text-center mt-4">

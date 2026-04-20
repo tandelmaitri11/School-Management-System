@@ -234,4 +234,3 @@ const TeacherExamResults = () => {
 };
 
 export default TeacherExamResults;
-
