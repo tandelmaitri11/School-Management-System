@@ -10,6 +10,7 @@ yarn-error.log*
 # 🔹 Environment Files (IMPORTANT 🔐)
 # ======================
 .env
+dist
 
 .env.local
 .env.development.local
