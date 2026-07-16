@@ -9,6 +9,7 @@ const {
   updateStudentInfo,
   getStudentsByClassId,
   getAllStudentsForAdmin,
+  getCompletedStudentsByBatch,
   searchStudents,
   getTimetableForStudent,
   getStudentsForAssignment,
@@ -20,6 +21,7 @@ const {
 
 // ✅ Get all students grouped by class (Admin)
 router.get("/admin/all", getAllStudentsForAdmin);
+router.get("/admin/completed-batches", getCompletedStudentsByBatch);
 
 // Add new student (by teacher)
 router.post("/", addStudent);

@@ -2,10 +2,28 @@ const Assignment = require("../models/assignment");
 const Attendance = require("../models/attendance");
 const Submission = require("../models/submission");
 const Student = require("../models/studentregister");
+const PROMOTION_TAG_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const clearExpiredPromotionTags = async () => {
+const cutoff = new Date(Date.now() - PROMOTION_TAG_TTL_MS);
+await Student.updateMany(
+  {
+    isNewPromotion: true,
+    promotedAt: { $lt: cutoff },
+  },
+  {
+    $set: {
+      isNewPromotion: false,
+      promotedAt: null,
+    },
+  }
+);
+};
 
 
 exports.getProfile = async (req, res) => {
 try {
+await clearExpiredPromotionTags();
 const student = await Student.findById(req.params.studentId);
 if (!student) return res.status(404).json({ message: "Student not found" });
 res.json(student);

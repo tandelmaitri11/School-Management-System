@@ -3,43 +3,43 @@ import api from "../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-// --- MODERN ENTERPRISE STYLES ---
+// --- MODERN ENTERPRISE LIGHT STYLES ---
 const styles = {
   page: {
     backgroundColor: "#f8fafc",
     minHeight: "100vh",
-    padding: "2rem 1rem",
+    padding: "2rem 0", // Removed side padding here, relying on container-fluid padding
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   },
   card: {
     backgroundColor: "#ffffff",
     borderRadius: "20px",
-    border: "1px solid #f1f5f9",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.03)",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.02)",
     overflow: "hidden",
   },
   banner: {
-    background: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
-    height: "140px",
+    background: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)", // Soft Indigo Gradient
+    height: "130px",
     position: "relative",
   },
   avatarWrapper: {
-    marginTop: "-70px",
+    marginTop: "-65px",
     display: "flex",
     justifyContent: "center",
     position: "relative",
   },
   avatar: {
-    width: "140px",
-    height: "140px",
+    width: "130px",
+    height: "130px",
     border: "6px solid #ffffff",
     borderRadius: "50%",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#ffffff",
     objectFit: "cover",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+    boxShadow: "0 8px 16px rgba(0,0,0,0.06)",
   },
   sectionHeader: {
-    fontSize: "1.1rem",
+    fontSize: "1.15rem",
     fontWeight: "700",
     color: "#0f172a",
     display: "flex",
@@ -52,19 +52,19 @@ const styles = {
   infoLabel: {
     fontSize: "0.75rem",
     fontWeight: "600",
-    color: "#64748b",
+    color: "#94a3b8",
     textTransform: "uppercase",
-    letterSpacing: "0.5px",
+    letterSpacing: "0.05em",
     marginBottom: "4px",
   },
   infoValue: {
-    fontSize: "1rem",
+    fontSize: "0.95rem",
     fontWeight: "600",
     color: "#1e293b",
   },
   iconBox: {
-    width: "40px",
-    height: "40px",
+    width: "42px",
+    height: "42px",
     borderRadius: "12px",
     display: "flex",
     alignItems: "center",
@@ -78,7 +78,7 @@ export default function StudentProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- API LOGIC (UNCHANGED) ---
+  // --- API LOGIC ---
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -98,7 +98,7 @@ export default function StudentProfile() {
   if (loading) {
     return (
       <div className="d-flex flex-column justify-content-center align-items-center min-vh-100" style={{ backgroundColor: "#f8fafc" }}>
-        <div className="spinner-border text-primary mb-3" style={{ width: "2.5rem", height: "2.5rem", borderWidth: "0.2em" }}></div>
+        <div className="spinner-border mb-3" style={{ color: "#4f46e5", width: "2.5rem", height: "2.5rem", borderWidth: "0.2em" }}></div>
         <div className="text-muted fw-semibold tracking-wider text-uppercase small" style={{ letterSpacing: "1px" }}>Loading Profile...</div>
       </div>
     );
@@ -107,44 +107,50 @@ export default function StudentProfile() {
   if (!profile) {
     return (
       <div className="d-flex justify-content-center align-items-center min-vh-100" style={{ backgroundColor: "#f8fafc" }}>
-        <div className="text-center bg-white p-5 rounded-4 shadow-sm border border-light-subtle">
-          <i className="bi bi-person-x fs-1 text-secondary opacity-50 mb-3 d-block"></i>
-          <h4 className="fw-bold text-dark">Profile Not Found</h4>
-          <p className="text-muted mb-0">We couldn't retrieve your student data.</p>
+        <div className="text-center bg-white p-5 rounded-4 border" style={{ borderColor: '#e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+          <div className="d-flex align-items-center justify-content-center mx-auto mb-3 rounded-circle bg-light" style={{ width: '80px', height: '80px' }}>
+            <i className="bi bi-person-x fs-1 text-secondary opacity-50"></i>
+          </div>
+          <h4 className="fw-bold" style={{ color: '#0f172a' }}>Profile Not Found</h4>
+          <p className="mb-0" style={{ color: '#64748b' }}>We couldn't retrieve your student data.</p>
         </div>
       </div>
     );
   }
 
   const { student, info } = profile;
+  
+  // Dynamic avatar based on student name if no image exists
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=e0e7ff&color=4f46e5&size=256&bold=true`;
 
   return (
     <div style={styles.page}>
-      <div className="container-fluid" style={{ maxWidth: "1200px" }}>
+      {/* Full width container with responsive horizontal padding */}
+      <div className="container-fluid px-4 px-xl-5">
         
         {/* --- PAGE HEADER --- */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-3 border-bottom border-secondary border-opacity-10 gap-3">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-3 gap-3">
           <div>
-            <div className="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill fw-bold border border-primary border-opacity-25 shadow-sm" style={{ letterSpacing: "0.5px" }}>
+            <div className="badge mb-2 px-3 py-2 rounded-pill fw-semibold shadow-sm" style={{ backgroundColor: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe', letterSpacing: "0.5px" }}>
               <i className="bi bi-person-badge me-2"></i> Student Portal
             </div>
-            <h2 className="fw-bolder text-dark mb-0 display-6" style={{ letterSpacing: "-1px" }}>My Profile</h2>
+            <h2 className="fw-bolder mb-0 display-6" style={{ color: '#0f172a', letterSpacing: "-1px" }}>My Profile</h2>
           </div>
           <div className="text-md-end">
-            <p className="text-secondary mb-0 fw-medium small">Manage and review your personal academic records.</p>
+            <p className="mb-0 fw-medium small" style={{ color: '#64748b' }}>Manage and review your personal academic records.</p>
           </div>
         </div>
 
         <div className="row g-4">
           
           {/* --- LEFT COLUMN: Digital Identity Card --- */}
-          <div className="col-12 col-lg-4">
+          <div className="col-12 col-lg-4 col-xxl-3">
             <div style={styles.card} className="position-relative h-100">
               {/* Banner */}
               <div style={styles.banner}>
                  <div className="position-absolute top-0 end-0 p-3">
-                    <span className="badge bg-white text-dark bg-opacity-75 border px-3 py-2 rounded-pill shadow-sm fw-bold backdrop-blur">
-                       <i className="bi bi-patch-check-fill text-success me-1"></i> Active
+                    <span className="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-sm fw-semibold d-flex align-items-center gap-1">
+                       <span className="bg-success rounded-circle" style={{ width: '8px', height: '8px' }}></span> Active
                     </span>
                  </div>
               </div>
@@ -153,51 +159,57 @@ export default function StudentProfile() {
                 {/* Avatar */}
                 <div style={styles.avatarWrapper}>
                   <img
-                    src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" // Replace with actual profile image
+                    src={avatarUrl}
                     alt="Student Avatar"
                     style={styles.avatar}
                   />
                 </div>
 
                 {/* Core Identity */}
-                <h3 className="fw-bolder mt-4 mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>{student.name}</h3>
-                <div className="d-flex justify-content-center align-items-center gap-2 mb-3">
-                  <span className="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-semibold shadow-sm">
-                    ID: <span className="text-dark">{student.studentId || "N/A"}</span>
+                <h3 className="fw-bolder mt-4 mb-1" style={{ color: '#0f172a', letterSpacing: "-0.5px" }}>{student.name}</h3>
+                <div className="d-flex justify-content-center align-items-center gap-2 mb-4">
+                  <span className="badge bg-light border px-3 py-2 rounded-pill fw-semibold" style={{ color: '#64748b' }}>
+                    ID: <span style={{ color: '#0f172a' }}>{student.studentId || "N/A"}</span>
                   </span>
                 </div>
 
                 {/* Academic Placement */}
-                <div className="bg-light rounded-4 p-3 mb-4 border border-light-subtle">
+                <div className="rounded-4 p-3 mb-4" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                    <div className="d-flex justify-content-center gap-4 text-dark fw-bold" style={{ fontSize: "0.9rem" }}>
-                      <div className="d-flex flex-column">
-                         <span className="text-muted small text-uppercase mb-1" style={{ fontSize: "0.65rem", letterSpacing: "0.5px" }}>Class</span>
-                         <span>{student.studentClass || "N/A"} {student.section ? `(${student.section})` : ""}</span>
+                      <div className="d-flex flex-column w-50">
+                         <span style={styles.infoLabel}>Class</span>
+                         <span style={{ color: '#0f172a' }}>{student.studentClass || "N/A"} {student.section ? `(${student.section})` : ""}</span>
                       </div>
-                      <div className="border-start border-secondary opacity-25"></div>
-                      <div className="d-flex flex-column">
-                         <span className="text-muted small text-uppercase mb-1" style={{ fontSize: "0.65rem", letterSpacing: "0.5px" }}>Stream</span>
-                         <span>{student.stream || "General"}</span>
+                      <div style={{ width: '1px', backgroundColor: '#cbd5e1' }}></div>
+                      <div className="d-flex flex-column w-50">
+                         <span style={styles.infoLabel}>Stream</span>
+                         <span style={{ color: '#0f172a' }}>{student.stream || "General"}</span>
                       </div>
                    </div>
                 </div>
 
-                <hr className="my-4 border-secondary opacity-10" />
+                <hr className="my-4" style={{ borderColor: '#e2e8f0' }} />
 
                 {/* Contact quick actions */}
-                <div className="d-flex flex-column gap-2 text-start">
-                   <div className="text-muted small fw-bold text-uppercase mb-2" style={{ fontSize: "0.7rem", letterSpacing: "1px" }}>Contact Info</div>
-                   <a href={`mailto:${student.email}`} className="btn btn-light border w-100 text-start px-3 py-2 fw-medium text-dark btn-hover-lift d-flex align-items-center gap-3">
-                     <div className="bg-primary bg-opacity-10 text-primary rounded p-2 d-flex align-items-center justify-content-center">
+                <div className="d-flex flex-column gap-3 text-start">
+                   <div style={styles.infoLabel}>Contact Info</div>
+                   <a href={`mailto:${student.email}`} className="text-decoration-none contact-card p-3 rounded-4 border d-flex align-items-center gap-3 w-100 transition-all" style={{ borderColor: '#e2e8f0', backgroundColor: '#ffffff' }}>
+                     <div className="rounded-3 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', backgroundColor: '#eef2ff', color: '#4f46e5' }}>
                         <i className="bi bi-envelope-fill"></i>
                      </div>
-                     <span className="text-truncate">{student.email || "No Email Provided"}</span>
+                     <div className="text-truncate flex-grow-1">
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Email Address</div>
+                        <div className="fw-semibold text-truncate" style={{ color: '#0f172a', fontSize: '0.9rem' }}>{student.email || "No Email Provided"}</div>
+                     </div>
                    </a>
-                   <div className="btn btn-light border w-100 text-start px-3 py-2 fw-medium text-dark d-flex align-items-center gap-3">
-                     <div className="bg-success bg-opacity-10 text-success rounded p-2 d-flex align-items-center justify-content-center">
+                   <div className="contact-card p-3 rounded-4 border d-flex align-items-center gap-3 w-100 transition-all" style={{ borderColor: '#e2e8f0', backgroundColor: '#ffffff' }}>
+                     <div className="rounded-3 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', backgroundColor: '#ecfdf5', color: '#10b981' }}>
                         <i className="bi bi-telephone-fill"></i>
                      </div>
-                     <span className="text-truncate">{info?.fatherMobile || info?.motherMobile || "No Phone Provided"}</span>
+                     <div className="text-truncate flex-grow-1">
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Phone Number</div>
+                        <div className="fw-semibold text-truncate" style={{ color: '#0f172a', fontSize: '0.9rem' }}>{info?.fatherMobile || info?.motherMobile || "No Phone Provided"}</div>
+                     </div>
                    </div>
                 </div>
               </div>
@@ -205,46 +217,47 @@ export default function StudentProfile() {
           </div>
 
           {/* --- RIGHT COLUMN: Dossier Details --- */}
-          <div className="col-12 col-lg-8 d-flex flex-column gap-4">
+          <div className="col-12 col-lg-8 col-xxl-9 d-flex flex-column gap-4">
             
             {/* Section 1: Personal Information */}
             <div style={styles.card}>
-              <div className="px-2">
+              <div className="p-4 p-md-5">
                  <div style={styles.sectionHeader}>
-                   <div style={{...styles.iconBox, backgroundColor: "rgba(13, 110, 253, 0.1)", color: "#0d6efd"}}>
-                     <i className="bi bi-file-person-fill"></i>
+                   <div style={{...styles.iconBox, backgroundColor: "#eff6ff", color: "#3b82f6"}}>
+                     <i className="bi bi-file-person"></i>
                    </div>
                    Personal Details
                  </div>
                  
-                 <div className="row g-4">
-                   <InfoItem label="Date of Birth" value={info?.dob ? new Date(info.dob).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric'}) : null} icon="bi-calendar2-event" tone="primary" />
-                   <InfoItem label="Gender" value={info?.gender} icon="bi-gender-ambiguous" tone="info" />
-                   <InfoItem label="Blood Group" value={info?.bloodGroup} icon="bi-droplet-fill" tone="danger" />
-                   <InfoItem label="Caste / Category" value={info?.cast} icon="bi-people-fill" tone="warning" />
-                   <InfoItem label="Subject Choice" value={student?.subjectChoice} icon="bi-journal-bookmark-fill" tone="success" />
-                   <InfoItem label="Academic Year" value="2024-2025" icon="bi-mortarboard-fill" tone="dark" />
-                   <div className="col-12 mt-2">
-                     <div className="p-3 bg-light rounded-4 border border-light-subtle d-flex align-items-start gap-3">
-                        <div style={{...styles.iconBox, backgroundColor: "rgba(108, 117, 125, 0.1)", color: "#6c757d"}}>
-                           <i className="bi bi-geo-alt-fill"></i>
-                        </div>
-                        <div>
-                           <div style={styles.infoLabel}>Residential Address</div>
-                           <div style={{...styles.infoValue, lineHeight: "1.5"}}>{info?.address || <span className="text-muted fst-italic fw-normal">Not Provided</span>}</div>
-                        </div>
-                     </div>
-                   </div>
+                 <div className="row g-4 mb-4">
+                   <InfoItem label="Date of Birth" value={info?.dob ? new Date(info.dob).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric'}) : null} icon="bi-calendar2-event" bg="#f1f5f9" color="#475569" col="4" />
+                   <InfoItem label="Gender" value={info?.gender} icon="bi-gender-ambiguous" bg="#e0f2fe" color="#0284c7" col="4" />
+                   <InfoItem label="Blood Group" value={info?.bloodGroup} icon="bi-droplet" bg="#ffe4e6" color="#e11d48" col="4" />
+                   <InfoItem label="Caste / Category" value={info?.cast} icon="bi-people" bg="#fef3c7" color="#d97706" col="4" />
+                   <InfoItem label="Subject Choice" value={student?.subjectChoice} icon="bi-journal-bookmark" bg="#ecfdf5" color="#059669" col="4" />
+                   <InfoItem label="Academic Year" value="2024-2025" icon="bi-mortarboard" bg="#f3f4f6" color="#374151" col="4" />
+                 </div>
+
+                 <div className="p-4 rounded-4 d-flex align-items-start gap-3" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{...styles.iconBox, backgroundColor: "#ffffff", color: "#64748b", border: '1px solid #e2e8f0'}}>
+                       <i className="bi bi-geo-alt"></i>
+                    </div>
+                    <div>
+                       <div style={styles.infoLabel}>Residential Address</div>
+                       <div style={{...styles.infoValue, lineHeight: "1.6", marginTop: '4px'}}>
+                         {info?.address || <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>Not Provided</span>}
+                       </div>
+                    </div>
                  </div>
               </div>
             </div>
 
             {/* Section 2: Guardian Information */}
             <div style={styles.card}>
-              <div className="px-2">
+              <div className="p-4 p-md-5">
                  <div style={styles.sectionHeader}>
-                   <div style={{...styles.iconBox, backgroundColor: "rgba(111, 66, 193, 0.1)", color: "#6f42c1"}}>
-                     <i className="bi bi-people-fill"></i>
+                   <div style={{...styles.iconBox, backgroundColor: "#f5f3ff", color: "#8b5cf6"}}>
+                     <i className="bi bi-house-door"></i>
                    </div>
                    Guardian Information
                  </div>
@@ -252,10 +265,12 @@ export default function StudentProfile() {
                  <div className="row g-4">
                    {/* Father's Info */}
                    <div className="col-md-6">
-                     <div className="h-100 border border-light-subtle rounded-4 overflow-hidden">
-                       <div className="bg-light px-4 py-3 border-bottom d-flex align-items-center gap-2">
-                         <i className="bi bi-person-standing text-secondary"></i>
-                         <h6 className="fw-bolder m-0 text-dark">Father's Details</h6>
+                     <div className="h-100 rounded-4 overflow-hidden" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                       <div className="px-4 py-3 d-flex align-items-center gap-3" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                         <div className="rounded-circle d-flex justify-content-center align-items-center" style={{ width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#475569' }}>
+                            <i className="bi bi-person-standing"></i>
+                         </div>
+                         <h6 className="fw-semibold m-0" style={{ color: '#0f172a' }}>Father's Details</h6>
                        </div>
                        <div className="p-4 d-flex flex-column gap-3">
                          <SmallInfo label="Name" value={info?.fatherName} />
@@ -268,10 +283,12 @@ export default function StudentProfile() {
 
                    {/* Mother's Info */}
                    <div className="col-md-6">
-                     <div className="h-100 border border-light-subtle rounded-4 overflow-hidden">
-                       <div className="bg-light px-4 py-3 border-bottom d-flex align-items-center gap-2">
-                         <i className="bi bi-person-standing-dress text-secondary"></i>
-                         <h6 className="fw-bolder m-0 text-dark">Mother's Details</h6>
+                     <div className="h-100 rounded-4 overflow-hidden" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                       <div className="px-4 py-3 d-flex align-items-center gap-3" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                         <div className="rounded-circle d-flex justify-content-center align-items-center" style={{ width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#475569' }}>
+                            <i className="bi bi-person-standing-dress"></i>
+                         </div>
+                         <h6 className="fw-semibold m-0" style={{ color: '#0f172a' }}>Mother's Details</h6>
                        </div>
                        <div className="p-4 d-flex flex-column gap-3">
                          <SmallInfo label="Name" value={info?.motherName} />
@@ -291,17 +308,14 @@ export default function StudentProfile() {
 
       {/* --- CUSTOM CSS STYLES --- */}
       <style>{`
-        .btn-hover-lift {
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-hover-lift:hover {
+        .contact-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-          background-color: #f8fafc !important;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+          border-color: #cbd5e1 !important;
         }
-        .backdrop-blur {
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+        .info-row-border:not(:last-child) {
+          border-bottom: 1px solid #e2e8f0;
+          padding-bottom: 0.75rem;
         }
       `}</style>
     </div>
@@ -310,19 +324,19 @@ export default function StudentProfile() {
 
 // --- SUB-COMPONENTS FOR CLEAN LAYOUT ---
 
-function InfoItem({ label, value, col = "6", icon, tone = "primary" }) {
+function InfoItem({ label, value, col = "6", icon, bg, color }) {
   return (
-    <div className={`col-sm-6 col-md-${col}`}>
+    <div className={`col-sm-6 col-lg-${col}`}>
       <div className="d-flex align-items-start gap-3">
         {icon && (
-          <div style={{...styles.iconBox, backgroundColor: `var(--bs-${tone}-bg-subtle)`, color: `var(--bs-${tone})`}}>
+          <div style={{...styles.iconBox, backgroundColor: bg, color: color}}>
             <i className={`bi ${icon}`}></i>
           </div>
         )}
         <div>
           <div style={styles.infoLabel}>{label}</div>
           <div style={styles.infoValue} className="text-truncate" title={typeof value === 'string' ? value : ''}>
-            {value || <span className="text-muted fst-italic fw-normal">Not Provided</span>}
+            {value || <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>Not Provided</span>}
           </div>
         </div>
       </div>
@@ -332,13 +346,13 @@ function InfoItem({ label, value, col = "6", icon, tone = "primary" }) {
 
 function SmallInfo({ label, value, isLink }) {
   return (
-    <div className="d-flex justify-content-between align-items-center border-bottom border-light-subtle pb-2 last-child-no-border">
-      <span className="text-muted small fw-medium">{label}</span>
-      <span className="fw-bold text-dark text-end">
+    <div className="d-flex justify-content-between align-items-center info-row-border">
+      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>{label}</span>
+      <span className="fw-semibold text-end" style={{ color: '#0f172a', fontSize: '0.9rem' }}>
         {value ? (
-           isLink ? <a href={`tel:${value}`} className="text-decoration-none text-primary">{value}</a> : value
+           isLink ? <a href={`tel:${value}`} className="text-decoration-none" style={{ color: '#4f46e5' }}>{value}</a> : value
         ) : (
-          <span className="text-muted small fw-normal fst-italic">N/A</span>
+          <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontWeight: 400, fontSize: '0.85rem' }}>N/A</span>
         )}
       </span>
     </div>

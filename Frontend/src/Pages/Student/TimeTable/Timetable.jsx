@@ -1,8 +1,137 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../../../api/api";
-import { Spinner, Table, Badge, Container, Card } from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+
+// --- SAAS COLOR PALETTE ---
+const colors = {
+  primary: "#4f46e5", // Indigo
+  primaryLight: "#eef2ff",
+  success: "#10b981", // Emerald
+  successLight: "#ecfdf5",
+  warning: "#f59e0b", // Amber
+  warningLight: "#fffbeb",
+  danger: "#ef4444", // Red
+  dangerLight: "#fef2f2",
+  info: "#3b82f6", // Blue
+  infoLight: "#eff6ff",
+  bg: "#f8fafc", // Slate 50
+  surface: "#ffffff",
+  textMain: "#0f172a", // Slate 900
+  textMuted: "#64748b", // Slate 500
+  border: "#e2e8f0" // Slate 200
+};
+
+// --- SAAS UI STYLES ---
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: ${colors.bg};
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SaaS Cards */
+  .saas-card {
+    background: ${colors.surface};
+    border-radius: 16px;
+    border: 1px solid ${colors.border};
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+  }
+
+  /* Seamless Tables */
+  .saas-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .saas-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: ${colors.textMuted};
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid ${colors.border};
+    border-right: 1px solid ${colors.border};
+    background-color: #fcfcfd;
+    vertical-align: middle;
+  }
+  .saas-table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid ${colors.border};
+    border-right: 1px solid ${colors.border};
+    color: ${colors.textMain};
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+  }
+  .saas-table th:last-child, .saas-table td:last-child {
+    border-right: none;
+  }
+  .saas-table tr:last-child td { 
+    border-bottom: none; 
+  }
+  .saas-table tbody td:hover { 
+    background-color: #f1f5f9; 
+  }
+
+  /* Class Card styling inside table */
+  .class-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 10px;
+    border: 1px solid ${colors.border};
+    border-left: 4px solid ${colors.primary}; /* Accent line */
+    background-color: ${colors.surface};
+  }
+  .class-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  
+  /* Highlighted Today Column */
+  .col-today {
+    background-color: ${colors.primaryLight} !important;
+  }
+  .class-card.today-card {
+    border-color: rgba(79, 70, 229, 0.3);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.05);
+  }
+
+  /* Break Row Styling */
+  .break-row {
+    background: repeating-linear-gradient(
+      45deg,
+      ${colors.warningLight},
+      ${colors.warningLight} 10px,
+      #fef3c7 10px,
+      #fef3c7 20px
+    );
+    color: #b45309;
+    border-top: 1px solid #fde68a !important;
+    border-bottom: 1px solid #fde68a !important;
+  }
+
+  /* Custom Scrollbar for the table wrapper */
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+`;
 
 const TeacherTimeTable = () => {
   const [data, setData] = useState({});
@@ -78,46 +207,49 @@ const TeacherTimeTable = () => {
 
   if (loading) {
     return (
-      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
-        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
-        <p className="mt-3 fw-semibold text-muted tracking-wide">Loading Timetable...</p>
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100" style={{ backgroundColor: colors.bg }}>
+        <Spinner animation="border" style={{ color: colors.primary, width: '3rem', height: '3rem', borderWidth: '0.2em' }} />
+        <p className="mt-3 fw-medium text-uppercase" style={{ color: colors.textMuted, letterSpacing: '1px', fontSize: '0.85rem' }}>Loading Timetable...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-light min-vh-100 py-4 py-md-5">
-      <Container fluid="xl">
+    <div className="pb-5 pt-3 fade-in" style={{ backgroundColor: colors.bg, minHeight: '100vh' }}>
+      <style>{styles}</style>
+      
+      {/* Full width container with responsive horizontal padding */}
+      <div className="container-fluid px-4 px-xl-5">
         
         {/* ---------- HEADER SECTION ---------- */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
+        <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end mb-5 gap-4">
           <div>
-            <Badge bg="primary" className="bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill border border-primary border-opacity-25">
+            <div className="badge mb-2 px-3 py-2 rounded-pill fw-semibold shadow-sm" style={{ backgroundColor: colors.primaryLight, color: colors.primary, border: `1px solid rgba(79,70,229,0.2)`, letterSpacing: "0.5px" }}>
               <i className="bi bi-calendar-week me-2"></i>Academic Schedule
-            </Badge>
-            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>
+            </div>
+            <h2 className="fw-bolder mb-1" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>
               Weekly Timetable
             </h2>
-            <p className="text-secondary mb-0 small">
+            <p className="mb-0 small fw-medium" style={{ color: colors.textMuted }}>
               View your classes, teachers, and daily periods all in one place.
             </p>
           </div>
 
-          <div className="bg-white border shadow-sm px-4 py-2 rounded-4 text-center">
-            <span className="d-block text-muted small fw-bold text-uppercase tracking-wider">Today is</span>
-            <span className="fs-5 fw-bolder text-primary">{currentDay}</span>
+          <div className="saas-card px-4 py-3 text-center d-flex flex-column justify-content-center min-w-120">
+            <span className="d-block small fw-bold text-uppercase" style={{ color: colors.textMuted, letterSpacing: '0.05em', fontSize: '0.7rem' }}>Today is</span>
+            <span className="fs-4 fw-bolder mt-1" style={{ color: colors.primary, letterSpacing: '-0.5px' }}>{currentDay}</span>
           </div>
         </div>
 
         {/* ---------- TIMETABLE CARD ---------- */}
-        <Card className="border-0 shadow-sm rounded-4 overflow-hidden bg-white">
-          <div className="table-responsive timetable-scroll">
-            <Table bordered hover className="align-middle mb-0 custom-timetable border-light">
-              <thead className="bg-light">
+        <div className="saas-card overflow-hidden">
+          <div className="table-responsive custom-scrollbar">
+            <table className="saas-table m-0">
+              <thead>
                 <tr>
                   {/* Empty Corner Header */}
-                  <th className="py-3 text-center bg-light border-end-0" style={{ width: '100px' }}>
-                    <i className="bi bi-clock-history fs-5 text-secondary opacity-50"></i>
+                  <th className="text-center" style={{ width: '100px', backgroundColor: '#f8fafc' }}>
+                    <i className="bi bi-clock-history fs-5" style={{ color: colors.textMuted, opacity: 0.5 }}></i>
                   </th>
                   
                   {/* Days Headers */}
@@ -126,13 +258,15 @@ const TeacherTimeTable = () => {
                     return (
                       <th 
                         key={day} 
-                        className={`py-3 text-center text-uppercase fw-bold tracking-wide border-light ${
-                          isToday ? 'bg-primary bg-opacity-10 text-primary border-bottom border-primary border-2' : 'bg-light text-secondary'
-                        }`}
-                        style={{ minWidth: '160px', fontSize: '0.8rem' }}
+                        className={`text-center ${isToday ? 'col-today' : ''}`}
+                        style={{ 
+                          minWidth: '180px', 
+                          borderBottom: isToday ? `3px solid ${colors.primary}` : `1px solid ${colors.border}`,
+                          color: isToday ? colors.primary : colors.textMuted
+                        }}
                       >
                         {day}
-                        {isToday && <span className="ms-2 badge bg-primary rounded-pill" style={{ fontSize: "0.6rem" }}>TODAY</span>}
+                        {isToday && <span className="ms-2 badge rounded-pill" style={{ backgroundColor: colors.primary, color: '#fff', fontSize: "0.6rem", padding: "0.25em 0.6em" }}>TODAY</span>}
                       </th>
                     );
                   })}
@@ -145,11 +279,11 @@ const TeacherTimeTable = () => {
                     <React.Fragment key={period}>
                       <tr>
                         {/* Period Row Header (Left Column) */}
-                        <td className="text-center bg-light border-light py-3">
-                          <div className="fw-bolder fs-5 text-dark">{period}</div>
-                          <Badge bg="white" text="secondary" className="border shadow-sm mt-1 d-block mx-auto fw-medium" style={{ fontSize: '0.65rem', maxWidth: '80px' }}>
+                        <td className="text-center" style={{ backgroundColor: '#fcfcfd' }}>
+                          <div className="fw-bolder fs-5" style={{ color: colors.textMain }}>{period}</div>
+                          <div className="badge mt-1 d-block mx-auto fw-medium" style={{ backgroundColor: colors.surface, color: colors.textMuted, border: `1px solid ${colors.border}`, fontSize: '0.65rem', maxWidth: '90px' }}>
                             {timeMap?.[period] || "N/A"}
-                          </Badge>
+                          </div>
                         </td>
 
                         {/* Day Cells */}
@@ -165,27 +299,23 @@ const TeacherTimeTable = () => {
                           return (
                             <td 
                               key={day} 
-                              className={`p-2 border-light position-relative cell-hover transition-all ${
-                                isToday ? 'bg-primary bg-opacity-10' : 'bg-white'
-                              }`}
-                              style={{ height: '120px' }}
+                              className={isToday ? 'col-today' : ''}
+                              style={{ height: '130px', backgroundColor: isToday ? 'rgba(79, 70, 229, 0.02)' : 'transparent' }}
                             >
                               {entries.length ? (
                                 <div className="d-flex flex-column gap-2 h-100 justify-content-center">
                                   {entries.map((entry, idx) => (
                                     <div 
                                       key={`${day}-${period}-${idx}`} 
-                                      className={`p-2 rounded-3 border shadow-sm d-flex flex-column justify-content-center class-card ${
-                                        isToday ? 'bg-white border-primary border-opacity-25' : 'bg-light border-light-subtle'
-                                      }`}
+                                      className={`p-3 d-flex flex-column justify-content-center class-card ${isToday ? 'today-card' : ''}`}
                                     >
-                                      <div className="fw-bold text-dark text-truncate mb-1" style={{ fontSize: '0.85rem' }} title={entry.subject}>
-                                        <i className={`bi bi-book-half me-2 ${isToday ? 'text-primary' : 'text-secondary'}`}></i>
+                                      <div className="fw-semibold text-truncate mb-1" style={{ color: colors.textMain, fontSize: '0.9rem' }} title={entry.subject}>
+                                        <i className="bi bi-book-half me-2" style={{ color: isToday ? colors.primary : colors.textMuted, opacity: isToday ? 1 : 0.7 }}></i>
                                         {entry.subject}
                                       </div>
                                       <div className="d-flex align-items-center">
-                                        <i className="bi bi-person-video3 text-muted me-1" style={{ fontSize: '0.75rem' }}></i>
-                                        <span className="text-muted fw-medium text-truncate" style={{ fontSize: '0.75rem' }}>
+                                        <i className="bi bi-person-video3 me-2" style={{ color: colors.textMuted, fontSize: '0.8rem' }}></i>
+                                        <span className="fw-medium text-truncate" style={{ color: colors.textMuted, fontSize: '0.8rem' }}>
                                           {entry.teacher || "TBD"}
                                         </span>
                                       </div>
@@ -194,7 +324,7 @@ const TeacherTimeTable = () => {
                                 </div>
                               ) : (
                                 <div className="d-flex h-100 align-items-center justify-content-center opacity-25">
-                                  <i className="bi bi-dash-lg fs-4 text-secondary"></i>
+                                  <i className="bi bi-dash-lg fs-4" style={{ color: colors.textMuted }}></i>
                                 </div>
                               )}
                             </td>
@@ -205,10 +335,10 @@ const TeacherTimeTable = () => {
                       {/* Lunch Break Row */}
                       {period === 3 && (
                         <tr>
-                          <td colSpan={7} className="p-0 border-light">
-                            <div className="break-row py-2 d-flex justify-content-center align-items-center gap-2">
+                          <td colSpan={7} className="p-0 border-0">
+                            <div className="break-row py-3 d-flex justify-content-center align-items-center gap-3">
                               <i className="bi bi-cup-hot-fill fs-5"></i>
-                              <span className="fw-bolder tracking-wider text-uppercase" style={{ fontSize: '0.85rem' }}>
+                              <span className="fw-bold text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.1em' }}>
                                 Lunch Break • 12:15 PM - 02:00 PM
                               </span>
                               <i className="bi bi-cup-hot-fill fs-5"></i>
@@ -220,81 +350,20 @@ const TeacherTimeTable = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center py-5 bg-white">
-                      <div className="d-flex flex-column align-items-center justify-content-center opacity-50 py-4">
-                        <i className="bi bi-calendar-x fs-1 text-secondary mb-3"></i>
-                        <h5 className="fw-bold text-dark mb-1">No Schedule Available</h5>
-                        <p className="text-muted mb-0 small">Your timetable has not been generated yet.</p>
+                    <td colSpan={7} className="text-center py-5">
+                      <div className="d-flex flex-column align-items-center justify-content-center opacity-50 py-5">
+                        <i className="bi bi-calendar-x fs-1 mb-3" style={{ color: colors.textMuted }}></i>
+                        <h5 className="fw-semibold mb-1" style={{ color: colors.textMain }}>No Schedule Available</h5>
+                        <p className="mb-0 small" style={{ color: colors.textMuted }}>Your timetable has not been generated yet.</p>
                       </div>
                     </td>
                   </tr>
                 )}
               </tbody>
-            </Table>
+            </table>
           </div>
-        </Card>
-      </Container>
-
-      {/* ---------- CUSTOM CSS ---------- */}
-      <style>{`
-        .tracking-wide {
-          letter-spacing: 0.5px;
-        }
-        .tracking-wider {
-          letter-spacing: 1.5px;
-        }
-        .transition-all {
-          transition: all 0.2s ease;
-        }
-        
-        /* Table Styling */
-        .custom-timetable th, .custom-timetable td {
-          vertical-align: middle;
-        }
-        .cell-hover:hover {
-          background-color: #f8f9fa !important;
-        }
-        
-        /* Class Card styling inside table */
-        .class-card {
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          border-left: 3px solid #0d6efd !important; /* Left accent line */
-        }
-        .class-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.05) !important;
-        }
-        
-        /* Break Row Styling */
-        .break-row {
-          background: repeating-linear-gradient(
-            45deg,
-            #fffbeb,
-            #fffbeb 10px,
-            #fef3c7 10px,
-            #fef3c7 20px
-          );
-          color: #b45309;
-          border-top: 1px solid #fde68a;
-          border-bottom: 1px solid #fde68a;
-        }
-
-        /* Custom Scrollbar for the table wrapper */
-        .timetable-scroll::-webkit-scrollbar {
-          height: 8px;
-          width: 8px;
-        }
-        .timetable-scroll::-webkit-scrollbar-track {
-          background: #f1f5f9;
-        }
-        .timetable-scroll::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
-        }
-        .timetable-scroll::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-      `}</style>
+        </div>
+      </div>
     </div>
   );
 };

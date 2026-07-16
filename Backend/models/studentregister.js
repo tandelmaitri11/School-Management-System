@@ -39,17 +39,48 @@ const studentSchema = new mongoose.Schema(
     },
 
     role: { type: String, default: "Student" },
+    isActive: { type: Boolean, default: true, index: true },
+    isNewPromotion: { type: Boolean, default: false, index: true },
+    promotedAt: { type: Date, default: null },
+    completionStatus: { type: String, default: "", trim: true },
+    completedAt: { type: Date, default: null },
+
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+      default: null,
+      index: true,
+    },
+
+    academicYear: { type: String, default: "", trim: true },
 
     studentClass: { type: Number, required: true, min: 1, max: 12 },
 
-    // ✅ common section A/B/C for all classes
+    // common section A/B/C for all classes
     section: { type: String, default: "", trim: true, uppercase: true }, // "A"
 
-    // ✅ only for 11-12
+    //  only for 11-12
     stream: { type: String, default: "", trim: true }, // "Science"
 
-    // ✅ optional (like Maths/Biology) from Class.streams.subjectOptions
+    //  optional (like Maths/Biology) from Class.streams.subjectOptions
     subjectChoice: { type: String, default: "", trim: true },
+
+    sectionChangeLog: [
+      {
+        fromClassId: { type: mongoose.Schema.Types.ObjectId, ref: "Class", default: null },
+        fromClassName: { type: Number, default: null },
+        fromSection: { type: String, default: "", trim: true, uppercase: true },
+        toClassId: { type: mongoose.Schema.Types.ObjectId, ref: "Class", default: null },
+        toClassName: { type: Number, default: null },
+        toSection: { type: String, default: "", trim: true, uppercase: true },
+        fromAcademicYear: { type: String, default: "", trim: true },
+        toAcademicYear: { type: String, default: "", trim: true },
+        action: { type: String, default: "Changed", trim: true },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
+        note: { type: String, default: "", trim: true },
+        changedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -86,6 +117,7 @@ studentSchema.pre("save", async function (next) {
 });
 // add after schema
 studentSchema.index({ studentClass: 1, section: 1 });
+studentSchema.index({ classId: 1, section: 1 });
 
 
 module.exports = mongoose.model("Student", studentSchema);

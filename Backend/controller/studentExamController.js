@@ -451,9 +451,34 @@ exports.getExamResult = async (req, res) => {
       return res.status(400).json({ success: false, message: "Exam not submitted yet" });
     }
 
+    const shuffledQuestions = seededShuffle(exam.questions || [], `${studentId}_${examId}`);
+    const answerMap = new Map(
+      (submission.answers || []).map((item) => [String(item.questionId), item])
+    );
+    const reviewQuestions = shuffledQuestions.map((question, index) => {
+      const submittedAnswer = answerMap.get(String(question._id));
+
+      return {
+        questionId: question._id,
+        order: index + 1,
+        questionText: question.questionText,
+        options: question.options || [],
+        correctAnswer: question.correctAnswer,
+        selectedAnswer: submittedAnswer?.selectedAnswer || "",
+        isCorrect: Boolean(submittedAnswer?.isCorrect),
+        marks: Number(question.marks || 0),
+        marksAwarded: Number(submittedAnswer?.marksAwarded || 0),
+      };
+    });
+
     return res.json({
       success: true,
-      exam: { title: exam.title, subjectName: exam.subjectName, totalMarks: exam.totalMarks },
+      exam: {
+        title: exam.title,
+        subjectName: exam.subjectName,
+        totalMarks: exam.totalMarks,
+        totalQuestions: reviewQuestions.length,
+      },
       result: {
         obtainedMarks: submission.obtainedMarks,
         percentage: submission.percentage,
@@ -461,8 +486,10 @@ exports.getExamResult = async (req, res) => {
         resultStatus:
           submission.resultStatus ||
           (Number(submission.percentage || 0) >= 40 ? "PASS" : "FAIL"),
+        attendanceStatus: submission.status,
         submittedAt: submission.submittedAt,
       },
+      questions: reviewQuestions,
     });
   } catch (err) {
     console.error("getExamResult ERROR:", err);

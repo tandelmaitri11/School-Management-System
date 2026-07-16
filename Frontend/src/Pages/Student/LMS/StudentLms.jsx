@@ -1,6 +1,133 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../../api/api";
-import { Alert, Badge, Button, Card, Col, Form, InputGroup, ListGroup, ProgressBar, Row, Spinner } from "react-bootstrap";
+import { Alert, Row, Col, Spinner, Form, InputGroup } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
+
+// --- SAAS COLOR PALETTE ---
+const colors = {
+  primary: "#4f46e5", // Indigo
+  primaryLight: "#eef2ff",
+  primaryGradient: "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)",
+  success: "#10b981", // Emerald
+  successLight: "#ecfdf5",
+  warning: "#f59e0b", // Amber
+  warningLight: "#fffbeb",
+  danger: "#ef4444", // Red
+  dangerLight: "#fef2f2",
+  info: "#3b82f6", // Blue
+  infoLight: "#eff6ff",
+  bg: "#f8fafc", // Slate 50
+  surface: "#ffffff",
+  textMain: "#0f172a", // Slate 900
+  textMuted: "#64748b", // Slate 500
+  border: "#e2e8f0" // Slate 200
+};
+
+// --- SAAS UI STYLES ---
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: ${colors.bg};
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SaaS Cards */
+  .saas-card {
+    background: ${colors.surface};
+    border-radius: 16px;
+    border: 1px solid ${colors.border};
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    border-color: #cbd5e1;
+  }
+
+  /* Form Controls */
+  .saas-input {
+    border: 1px solid ${colors.border};
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    font-size: 0.9rem;
+    color: ${colors.textMain};
+    transition: all 0.2s ease;
+  }
+  .saas-input:focus, .saas-input:focus-within {
+    border-color: #cbd5e1;
+    box-shadow: 0 0 0 3px ${colors.infoLight};
+  }
+
+  /* Progress Bar */
+  .saas-progress-bg {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .saas-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background-color: #ffffff;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Outline Items */
+  .outline-item {
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+  .outline-item:hover:not(:disabled) {
+    background-color: ${colors.bg};
+    border-color: ${colors.border};
+    transform: scale(1.01);
+  }
+  .outline-item.active {
+    background-color: ${colors.primaryLight};
+    border-color: ${colors.primary};
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+  }
+
+  /* Custom Scrollbar for Sidebar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+
+  /* Buttons */
+  .btn-saas {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    font-weight: 600;
+  }
+  .btn-saas:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  }
+  .btn-saas-outline {
+    background-color: ${colors.surface};
+    color: ${colors.textMain};
+    border: 1px solid ${colors.border};
+  }
+  .btn-saas-outline:hover:not(:disabled) {
+    background-color: ${colors.bg};
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+  }
+`;
 
 export default function StudentLms() {
   const studentId = localStorage.getItem("studentId");
@@ -24,12 +151,13 @@ export default function StudentLms() {
   const [lastProgressSentAt, setLastProgressSentAt] = useState({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // UI-only state (no data/logic change)
+  // UI-only state
   const [outlineQuery, setOutlineQuery] = useState("");
-  const [collapsedChapters, setCollapsedChapters] = useState({}); // { [chapterId]: boolean }
+  const [collapsedChapters, setCollapsedChapters] = useState({});
 
   const showMessage = (type, text) => setMessage({ type, text });
 
+  // --- LOGIC REMAINS UNCHANGED ---
   const fetchCourses = async () => {
     setLoading(true);
     try {
@@ -137,7 +265,7 @@ export default function StudentLms() {
         watchedSeconds: seconds,
       });
     } catch (err) {
-      // silent to avoid spamming user
+      // silent
     }
   };
 
@@ -157,7 +285,6 @@ export default function StudentLms() {
   const handleAutoComplete = async (materialId) => {
     if (completedSet.has(materialId)) return;
 
-    // Optimistic local state update so UI reflects completion right away.
     setVideoProgress((prev) => ({ ...prev, [materialId]: 100 }));
     setProgressByMaterial((prev) => ({
       ...prev,
@@ -192,31 +319,12 @@ export default function StudentLms() {
       ? lessons[currentLessonIndex + 1]
       : null;
 
-  // UI-only: progress text + quick numbers
   const progressMeta = useMemo(() => {
     const pct = Number(displayCompletionPct || 0);
     const pctSafe = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
+    return { pctSafe };
+  }, [displayCompletionPct]);
 
-    const lessonsText = `${completedCount}/${totalLessons} lessons`;
-    const topicsText = progress.totalTopics
-      ? `${progress.completedTopicsCount}/${progress.totalTopics} topics`
-      : "";
-    const notesText = progress.totalNotes
-      ? `Notes: ${progress.completedNotesCount}/${progress.totalNotes}`
-      : "";
-
-    return { pctSafe, lessonsText, topicsText, notesText };
-  }, [
-    displayCompletionPct,
-    completedCount,
-    totalLessons,
-    progress.totalTopics,
-    progress.completedTopicsCount,
-    progress.totalNotes,
-    progress.completedNotesCount,
-  ]);
-
-  // UI-only: filter outline
   const filteredContent = useMemo(() => {
     const q = String(outlineQuery || "").trim().toLowerCase();
     if (!q) return content;
@@ -229,36 +337,40 @@ export default function StudentLms() {
       })
       .filter((ch) => {
         const chapterMatch = String(ch.title || "").toLowerCase().includes(q);
-        return (
-          chapterMatch ||
-          (ch.materials || []).length > 0
-        );
+        return chapterMatch || (ch.materials || []).length > 0;
       });
   }, [content, outlineQuery]);
 
+  // --- SAAS SIDEBAR / OUTLINE RENDERER ---
   const renderOutlinePanel = () => (
-    <Card className="shadow-sm border-0 h-100 rounded-4">
-      <Card.Header className="bg-white border-0 pt-4 pb-0 px-4">
-        <div className="fw-bolder fs-5 d-flex align-items-center gap-2 mb-1">
-          <i className="bi bi-list-columns-reverse text-primary" />
+    <div className="saas-card h-100 d-flex flex-column">
+      
+      <div className="p-4 border-bottom" style={{ borderColor: colors.border }}>
+        <div className="fw-bolder fs-5 d-flex align-items-center gap-2 mb-1" style={{ color: colors.textMain }}>
+          <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', backgroundColor: colors.primaryLight, color: colors.primary }}>
+            <i className="bi bi-list-columns-reverse" />
+          </div>
           Course Outline
         </div>
-        <div className="text-muted small">Search lessons and continue where you left off.</div>
-      </Card.Header>
+        <div className="small" style={{ color: colors.textMuted }}>Search lessons and track progress.</div>
+      </div>
 
-      <Card.Body className="pt-3 px-3 px-xl-4 pb-4" style={{ maxHeight: "75vh", overflowY: "auto" }}>
-        <InputGroup className="mb-4 shadow-sm rounded-pill overflow-hidden">
-          <InputGroup.Text className="bg-light border-0 ps-4">
-            <i className="bi bi-search text-muted" />
+      <div className="p-3 border-bottom" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
+        <InputGroup className="saas-input rounded-pill overflow-hidden bg-white">
+          <InputGroup.Text className="bg-transparent border-0 ps-3 pe-2 text-muted">
+            <i className="bi bi-search" />
           </InputGroup.Text>
           <Form.Control
-            className="bg-light border-0 shadow-none py-2"
+            className="border-0 shadow-none bg-transparent py-2"
             value={outlineQuery}
             onChange={(e) => setOutlineQuery(e.target.value)}
-            placeholder="Search chapter, lesson..."
+            placeholder="Search syllabus..."
+            style={{ fontSize: '0.85rem' }}
           />
         </InputGroup>
+      </div>
 
+      <div className="flex-grow-1 overflow-auto custom-scrollbar p-3" style={{ maxHeight: "70vh" }}>
         {filteredContent.map((chapter, chapterIndex) => {
           const isCollapsed = !!collapsedChapters[chapter._id];
           const chapterLessons = (chapter.materials || []).map((m) => {
@@ -277,39 +389,32 @@ export default function StudentLms() {
             <div key={chapter._id} className="mb-4">
               <button
                 type="button"
-                className="btn w-100 text-start p-0 border-0 bg-transparent"
+                className="w-100 text-start p-0 border-0 bg-transparent"
                 onClick={() => setCollapsedChapters((prev) => ({ ...prev, [chapter._id]: !prev[chapter._id] }))}
               >
-                <div className="d-flex align-items-center justify-content-between px-2 pb-2 border-bottom">
+                <div className="d-flex align-items-center justify-content-between px-2 pb-2 mb-2 border-bottom" style={{ borderColor: colors.border }}>
                   <div>
-                    <div className="fw-bolder text-dark">
+                    <div className="fw-semibold" style={{ color: colors.textMain, fontSize: '0.95rem' }}>
                       Chapter {chapterIndex + 1}: {chapter.title}
                     </div>
-                    <div className="text-muted" style={{ fontSize: "0.8rem", fontWeight: 500 }}>
-                      {completedInChapter} of {totalInChapter} lessons completed
+                    <div className="mt-1" style={{ fontSize: "0.75rem", fontWeight: 500, color: colors.textMuted }}>
+                      {completedInChapter} of {totalInChapter} completed
                     </div>
                   </div>
-                  <div className="text-muted bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
-                    <i className={`bi ${isCollapsed ? "bi-chevron-down" : "bi-chevron-up"}`} />
+                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '28px', height: '28px', backgroundColor: colors.bg, color: colors.textMuted }}>
+                    <i className={`bi ${isCollapsed ? "bi-chevron-down" : "bi-chevron-up"}`} style={{ fontSize: '0.8rem' }} />
                   </div>
                 </div>
               </button>
 
               {!isCollapsed && (
-                <div className="mt-3 d-flex flex-column gap-2 px-1">
+                <div className="d-flex flex-column gap-2 mt-2">
                   {(chapterLessons || []).map(({ m, lessonIndex, unlocked, isActive, isDone }) => (
                     <button
                       key={m._id}
                       type="button"
-                      className={`btn w-100 text-start d-flex align-items-center justify-content-between p-3 rounded-4 transition-all ${
-                        isActive 
-                          ? "bg-primary bg-opacity-10 border border-primary border-opacity-25 shadow-sm" 
-                          : "bg-white border border-light shadow-sm"
-                      }`}
-                      style={{ 
-                         transform: isActive ? "scale(1.01)" : "scale(1)",
-                         opacity: unlocked ? 1 : 0.6 
-                      }}
+                      className={`w-100 text-start d-flex align-items-center justify-content-between p-3 rounded-4 outline-item ${isActive ? 'active' : ''}`}
+                      style={{ opacity: unlocked ? 1 : 0.6 }}
                       disabled={!unlocked}
                       onClick={() => {
                         handleSelectLesson(m);
@@ -322,23 +427,23 @@ export default function StudentLms() {
                             isActive ? "bg-primary text-white" : 
                             unlocked ? "bg-light text-primary" : "bg-light text-muted"
                           }`} 
-                          style={{ width: '36px', height: '36px' }}
+                          style={{ width: '36px', height: '36px', boxShadow: isActive ? `0 2px 8px rgba(79,70,229,0.3)` : 'none' }}
                         >
                           {isDone ? (
                             <i className="bi bi-check" style={{ fontSize: '1.2rem' }} />
                           ) : unlocked ? (
                             <i className={m.type === 'video' ? "bi bi-play-fill" : "bi bi-file-earmark-text"} style={{ fontSize: '1rem' }} />
                           ) : (
-                            <i className="bi bi-lock-fill" style={{ fontSize: '0.9rem' }} />
+                            <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }} />
                           )}
                         </div>
                         <div className="text-truncate">
-                          <div className={`fw-semibold text-truncate ${isActive ? "text-primary" : "text-dark"}`} style={{ fontSize: '0.95rem' }}>
+                          <div className="fw-medium text-truncate" style={{ fontSize: '0.9rem', color: isActive ? colors.primary : colors.textMain }}>
                             {m.title}
                           </div>
-                          <div className="text-muted d-flex align-items-center gap-2 mt-1" style={{ fontSize: '0.75rem', fontWeight: 500 }}>
-                            <span className="text-uppercase tracking-wider">{m.type}</span>
-                            {m.duration ? <span>• {m.duration} min</span> : null}
+                          <div className="d-flex align-items-center gap-2 mt-1" style={{ fontSize: '0.7rem', fontWeight: 600, color: colors.textMuted, letterSpacing: '0.05em' }}>
+                            <span className="text-uppercase">{m.type}</span>
+                            {m.duration ? <span>• {m.duration} MIN</span> : null}
                           </div>
                         </div>
                       </div>
@@ -349,10 +454,11 @@ export default function StudentLms() {
             </div>
           );
         })}
-      </Card.Body>
-    </Card>
+      </div>
+    </div>
   );
 
+  // --- MATERIAL PLAYER RENDERER ---
   const renderMaterialContent = (lesson) => {
     const fileUrl = lesson.file ? `http://localhost:3000/${lesson.file}` : "";
     const isVideo = lesson.type === "video";
@@ -368,9 +474,7 @@ export default function StudentLms() {
             const current = progressByMaterial[lesson.id]?.watchedSeconds || 0;
             if (current > 0 && e.currentTarget.duration > 0) {
               const resumeTime = Math.min(current, e.currentTarget.duration - 1);
-              if (resumeTime > 0) {
-                e.currentTarget.currentTime = resumeTime;
-              }
+              if (resumeTime > 0) e.currentTarget.currentTime = resumeTime;
             }
           }}
           onTimeUpdate={(e) => {
@@ -378,6 +482,7 @@ export default function StudentLms() {
             const duration = e.currentTarget.duration || 0;
             if (!duration) return;
             const pct = Math.min(100, Math.round((current / duration) * 100));
+            
             setVideoProgress((prev) => ({ ...prev, [lesson.id]: pct }));
             setProgressByMaterial((prev) => ({
               ...prev,
@@ -409,19 +514,20 @@ export default function StudentLms() {
             }
           }}
           className="w-100 shadow-sm"
-          style={{ maxWidth: 980, borderRadius: '12px' }}
+          style={{ maxWidth: '100%', borderRadius: '12px', outline: 'none' }}
         />
       );
     }
 
     if (isVideo && lesson.externalUrl) {
       return (
-        <div className="ratio ratio-16x9 shadow-sm" style={{ maxWidth: 980, borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="ratio ratio-16x9 shadow-sm" style={{ width: '100%', maxWidth: '900px', borderRadius: '12px', overflow: 'hidden' }}>
           <iframe
             src={lesson.externalUrl}
             title={lesson.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
+            style={{ border: 'none' }}
           />
         </div>
       );
@@ -429,8 +535,8 @@ export default function StudentLms() {
 
     if (lesson.externalUrl) {
       return (
-        <a href={lesson.externalUrl} target="_blank" rel="noreferrer" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold">
-          <i className="bi bi-box-arrow-up-right me-2"/>
+        <a href={lesson.externalUrl} target="_blank" rel="noreferrer" className="btn btn-saas rounded-pill px-4 py-3 shadow-sm d-inline-flex align-items-center" style={{ backgroundColor: colors.primary, color: '#ffffff', border: 'none' }}>
+          <i className="bi bi-box-arrow-up-right me-2" />
           Open Resource in New Tab
         </a>
       );
@@ -438,341 +544,356 @@ export default function StudentLms() {
 
     if (fileUrl) {
       return (
-        <div className="ratio ratio-16x9 shadow-sm" style={{ maxWidth: 980, borderRadius: '12px', overflow: 'hidden' }}>
-          <iframe src={fileUrl} title={lesson.title} />
+        <div className="ratio ratio-16x9 shadow-sm" style={{ width: '100%', maxWidth: '900px', borderRadius: '12px', overflow: 'hidden' }}>
+          <iframe src={fileUrl} title={lesson.title} style={{ border: 'none' }} />
         </div>
       );
     }
 
     return (
       <div className="text-center py-5">
-        <i className="bi bi-file-earmark-x text-muted mb-3" style={{ fontSize: '3rem' }}/>
-        <h5 className="text-muted">No resource material provided</h5>
+        <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-4 mb-3" style={{ backgroundColor: '#1e293b' }}>
+           <i className="bi bi-file-earmark-x" style={{ fontSize: '2.5rem', color: colors.textMuted }} />
+        </div>
+        <h5 className="fw-medium" style={{ color: '#94a3b8' }}>No resource material provided</h5>
       </div>
     );
   };
 
   return (
-    <div className="container-fluid py-4 py-lg-5 bg-light min-vh-100">
+    <div className="pb-5 pt-3 fade-in" style={{ backgroundColor: colors.bg, minHeight: '100vh' }}>
+      <style>{styles}</style>
       
-      {/* Header Section */}
-      <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="bg-primary bg-opacity-10 rounded-4 d-flex align-items-center justify-content-center text-primary" style={{ width: '56px', height: '56px' }}>
-            <i className="bi bi-mortarboard-fill fs-3" />
-          </div>
-          <div>
-            <h2 className="mb-0 fw-bolder tracking-tight">Learning Workspace</h2>
-            <div className="text-secondary small fw-medium mt-1">
-              Master your curriculum step-by-step.
-            </div>
-          </div>
-        </div>
-
-        <div className="d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
-          <InputGroup className="shadow-sm rounded-pill overflow-hidden bg-white" style={{ minWidth: '280px' }}>
-            <InputGroup.Text className="bg-white border-0 ps-4 text-primary">
-              <i className="bi bi-journal-bookmark-fill" />
-            </InputGroup.Text>
-            <Form.Select
-              className="bg-white border-0 shadow-none py-2 fw-medium text-dark"
-              value={selectedCourseId}
-              onChange={(e) => {
-                setSelectedCourseId(e.target.value);
-                setSelectedLessonId("");
-                setMessage({ type: "", text: "" });
-                setIsSidebarOpen(false);
-              }}
-            >
-              <option value="">Select a course to begin...</option>
-              {courses.map((course) => (
-                <option key={course._id} value={course._id}>
-                  {course.title} (Class {course.classAssigned})
-                </option>
-              ))}
-            </Form.Select>
-          </InputGroup>
-
-          <div className="d-flex gap-2">
-            <Button
-              variant="white"
-              className="d-flex align-items-center gap-2 shadow-sm rounded-pill fw-semibold px-4 border"
-              onClick={() => {
-                setMessage({ type: "", text: "" });
-                fetchCourses();
-                if (selectedCourseId) {
-                  fetchContent(selectedCourseId);
-                  fetchProgress(selectedCourseId);
-                }
-              }}
-            >
-              <i className="bi bi-arrow-clockwise text-primary" />
-              Refresh
-            </Button>
-
-            <Button
-              variant="primary"
-              className="d-flex align-items-center gap-2 shadow-sm rounded-pill fw-semibold px-4 d-lg-none"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <i className="bi bi-list-task" />
-              Syllabus
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {message.text && (
-        <Alert variant={message.type} className="shadow-sm border-0 rounded-4 d-flex align-items-center justify-content-between p-3 mb-4">
+      {/* Full width container with responsive horizontal padding */}
+      <div className="container-fluid px-4 px-xl-5">
+        
+        {/* --- HEADER SECTION --- */}
+        <div className="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-4 mb-5">
           <div className="d-flex align-items-center gap-3">
-            <i className={`fs-4 ${message.type === "danger" ? "bi-exclamation-octagon-fill text-danger" : "bi-info-circle-fill text-info"}`} />
-            <div className="fw-medium">{message.text}</div>
-          </div>
-          <Button size="sm" variant="close" onClick={() => setMessage({ type: "", text: "" })} />
-        </Alert>
-      )}
-
-      {loading && (
-        <div className="text-center my-5 py-5">
-          <Spinner animation="grow" variant="primary" />
-          <div className="text-muted mt-3 fw-medium">Syncing course materials...</div>
-        </div>
-      )}
-
-      {/* Main Progress Banner */}
-      {selectedCourseId && !loading && (
-        <Card className="shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
-          <div className="bg-primary text-white p-4">
-            <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
-              <div>
-                <div className="fw-bold d-flex align-items-center gap-2 text-white-50 text-uppercase tracking-wider small mb-2">
-                  <i className="bi bi-graph-up-arrow" />
-                  Course Progress
-                </div>
-                <h3 className="mb-0 fw-bolder">
-                  {progressMeta.pctSafe}% <span className="fs-5 fw-medium text-white-50">Completed</span>
-                </h3>
-              </div>
-
-              <div className="d-flex flex-wrap gap-3">
-                <div className="bg-white bg-opacity-10 rounded-pill px-4 py-2 d-flex align-items-center gap-2 border border-white border-opacity-25">
-                  <i className="bi bi-check-all fs-5" />
-                  <span className="fw-semibold">{completedCount} / {totalLessons} Lessons</span>
-                </div>
-                {selectedCourse?.classAssigned && (
-                  <div className="bg-white bg-opacity-10 rounded-pill px-4 py-2 d-flex align-items-center gap-2 border border-white border-opacity-25">
-                    <i className="bi bi-mortarboard fs-5" />
-                    <span className="fw-semibold">Class {selectedCourse.classAssigned}</span>
-                  </div>
-                )}
+            <div className="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '56px', height: '56px', backgroundColor: colors.primaryLight, color: colors.primary }}>
+              <i className="bi bi-mortarboard-fill fs-3" />
+            </div>
+            <div>
+              <h2 className="mb-0 fw-bolder" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>Learning Workspace</h2>
+              <div className="small fw-medium mt-1" style={{ color: colors.textMuted }}>
+                Master your curriculum step-by-step.
               </div>
             </div>
           </div>
-          <ProgressBar
-            now={progressMeta.pctSafe}
-            variant="success"
-            className="rounded-0 border-0"
-            style={{ height: 8, backgroundColor: "rgba(0,0,0,0.05)" }}
-          />
-        </Card>
-      )}
 
-      {selectedCourseId && content.length === 0 && !loading && (
-        <div className="text-center py-5 bg-white rounded-4 shadow-sm border-0 mt-4">
-          <i className="bi bi-inbox text-muted mb-3" style={{ fontSize: '3rem' }} />
-          <h5 className="text-muted">The instructor hasn't uploaded any chapters yet.</h5>
-        </div>
-      )}
+          <div className="d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
+            <InputGroup className="saas-input rounded-pill overflow-hidden bg-white" style={{ minWidth: '280px' }}>
+              <InputGroup.Text className="bg-transparent border-0 ps-4 text-primary">
+                <i className="bi bi-journal-bookmark-fill" />
+              </InputGroup.Text>
+              <Form.Select
+                className="border-0 shadow-none py-2 fw-medium bg-transparent"
+                style={{ color: colors.textMain, fontSize: '0.9rem' }}
+                value={selectedCourseId}
+                onChange={(e) => {
+                  setSelectedCourseId(e.target.value);
+                  setSelectedLessonId("");
+                  setMessage({ type: "", text: "" });
+                  setIsSidebarOpen(false);
+                }}
+              >
+                <option value="">Select a course to begin...</option>
+                {courses.map((course) => (
+                  <option key={course._id} value={course._id}>
+                    {course.title} (Class {course.classAssigned})
+                  </option>
+                ))}
+              </Form.Select>
+            </InputGroup>
 
-      {/* Mobile Sidebar Overlay */}
-      {selectedCourseId && (
-        <>
-          <div
-            className={`position-fixed top-0 start-0 w-100 h-100 bg-dark ${isSidebarOpen ? "opacity-50" : "opacity-0"}`}
-            style={{
-              zIndex: 1040,
-              transition: "opacity .25s ease",
-              pointerEvents: isSidebarOpen ? "auto" : "none",
-            }}
-            onClick={() => setIsSidebarOpen(false)}
-          />
+            <div className="d-flex gap-2">
+              <button
+                className="btn btn-saas-outline rounded-pill px-4 py-2 d-flex align-items-center shadow-sm"
+                onClick={() => {
+                  setMessage({ type: "", text: "" });
+                  fetchCourses();
+                  if (selectedCourseId) {
+                    fetchContent(selectedCourseId);
+                    fetchProgress(selectedCourseId);
+                  }
+                }}
+              >
+                <i className="bi bi-arrow-clockwise me-2" style={{ color: colors.primary }} /> Refresh
+              </button>
 
-          <div
-            className={`position-fixed top-0 start-0 vh-100 shadow-lg d-lg-none`}
-            style={{
-              width: "85%",
-              maxWidth: 380,
-              zIndex: 1055,
-              transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)",
-              transition: "transform .3s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            {renderOutlinePanel()}
+              <button
+                className="btn btn-saas rounded-pill px-4 py-2 d-flex align-items-center shadow-sm d-lg-none"
+                style={{ backgroundColor: colors.primary, color: '#ffffff', border: 'none' }}
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <i className="bi bi-list-task me-2" /> Syllabus
+              </button>
+            </div>
           </div>
-        </>
-      )}
+        </div>
 
-      {selectedCourseId && content.length > 0 && !loading && (
-        <Row className="g-4">
-          {/* LEFT: Outline (Desktop) */}
-          <Col xs={12} lg={4} xxl={3} className="d-none d-lg-block">
-            {renderOutlinePanel()}
-          </Col>
+        {/* --- ALERTS --- */}
+        {message.text && (
+          <Alert variant={message.type} className="saas-alert d-flex align-items-center justify-content-between p-3 mb-4" style={{ borderLeftColor: colors[message.type] || colors.info }}>
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', backgroundColor: colors[`${message.type}Light`] || colors.infoLight, color: colors[message.type] || colors.info }}>
+                 <i className={`fs-5 ${message.type === "danger" ? "bi-exclamation-octagon-fill" : "bi-info-circle-fill"}`} />
+              </div>
+              <div className="fw-medium" style={{ color: colors.textMain }}>{message.text}</div>
+            </div>
+            <button type="button" className="btn-close" onClick={() => setMessage({ type: "", text: "" })} />
+          </Alert>
+        )}
 
-          {/* RIGHT: Player + Details */}
-          <Col xs={12} lg={8} xxl={9}>
+        {loading && (
+          <div className="text-center my-5 py-5">
+            <Spinner animation="border" style={{ color: colors.primary, width: '2.5rem', height: '2.5rem', borderWidth: '0.2em' }} />
+            <div className="mt-3 fw-medium text-uppercase" style={{ color: colors.textMuted, fontSize: '0.8rem', letterSpacing: '1px' }}>Syncing materials...</div>
+          </div>
+        )}
+
+        {/* --- MAIN PROGRESS BANNER --- */}
+        {selectedCourseId && !loading && (
+          <div className="saas-card overflow-hidden mb-4 border-0 shadow-sm">
+            <div className="p-4 p-md-5" style={{ background: colors.primaryGradient, color: '#ffffff' }}>
+              <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+                <div>
+                  <div className="fw-bold d-flex align-items-center gap-2 text-uppercase mb-2" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', letterSpacing: '0.1em' }}>
+                    <i className="bi bi-graph-up-arrow" /> Course Progress
+                  </div>
+                  <h2 className="mb-0 fw-bolder" style={{ letterSpacing: '-1px', fontSize: '2.5rem' }}>
+                    {progressMeta.pctSafe}% <span className="fs-5 fw-medium" style={{ color: 'rgba(255,255,255,0.8)' }}>Completed</span>
+                  </h2>
+                </div>
+
+                <div className="d-flex flex-wrap gap-3">
+                  <div className="rounded-pill px-4 py-2 d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                    <i className="bi bi-check-all fs-5" />
+                    <span className="fw-semibold">{completedCount} / {totalLessons} Lessons</span>
+                  </div>
+                  {selectedCourse?.classAssigned && (
+                    <div className="rounded-pill px-4 py-2 d-flex align-items-center gap-2" style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <i className="bi bi-mortarboard fs-5" />
+                      <span className="fw-semibold">Class {selectedCourse.classAssigned}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                 <div className="saas-progress-bg">
+                    <div className="saas-progress-fill" style={{ width: `${progressMeta.pctSafe}%` }}></div>
+                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- EMPTY STATE --- */}
+        {selectedCourseId && content.length === 0 && !loading && (
+          <div className="text-center py-5 saas-card mt-4">
+            <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-4 mb-3" style={{ backgroundColor: colors.bg }}>
+               <i className="bi bi-inbox" style={{ fontSize: '3rem', color: colors.textMuted, opacity: 0.5 }} />
+            </div>
+            <h5 className="fw-semibold" style={{ color: colors.textMain }}>No content available</h5>
+            <p className="small" style={{ color: colors.textMuted }}>The instructor hasn't uploaded any chapters yet.</p>
+          </div>
+        )}
+
+        {/* --- MOBILE SIDEBAR OVERLAY --- */}
+        {selectedCourseId && (
+          <>
+            <div
+              className={`position-fixed top-0 start-0 w-100 h-100 bg-dark ${isSidebarOpen ? "opacity-50" : "opacity-0"}`}
+              style={{
+                zIndex: 1040,
+                transition: "opacity .25s ease",
+                pointerEvents: isSidebarOpen ? "auto" : "none",
+              }}
+              onClick={() => setIsSidebarOpen(false)}
+            />
+            <div
+              className={`position-fixed top-0 start-0 vh-100 shadow-lg d-lg-none`}
+              style={{
+                width: "85%",
+                maxWidth: 380,
+                zIndex: 1055,
+                transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)",
+                transition: "transform .3s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+            >
+              {renderOutlinePanel()}
+            </div>
+          </>
+        )}
+
+        {/* --- MAIN SPLIT LAYOUT --- */}
+        {selectedCourseId && content.length > 0 && !loading && (
+          <Row className="g-4">
             
-            {/* Player Card */}
-            <Card className="shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
-              <Card.Body className="p-0">
+            {/* LEFT: Outline (Desktop) */}
+            <Col xs={12} lg={4} xxl={3} className="d-none d-lg-block">
+              {renderOutlinePanel()}
+            </Col>
+
+            {/* RIGHT: Player + Details */}
+            <Col xs={12} lg={8} xxl={9}>
+              
+              {/* Player Card */}
+              <div className="saas-card mb-4 overflow-hidden">
                 {selectedLesson ? (
                   <>
                     {/* Video Area */}
-                    <div className="bg-dark p-3 p-md-4 p-lg-5 d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
-                      {renderMaterialContent(selectedLesson)}
+                    <div className="d-flex justify-content-center align-items-center position-relative" style={{ backgroundColor: '#020617', minHeight: '400px' }}>
+                      {/* Top border accent */}
+                      <div className="position-absolute top-0 start-0 w-100" style={{ height: '3px', background: colors.primaryGradient, zIndex: 10 }}></div>
+                      <div className="p-0 w-100 d-flex justify-content-center">
+                        {renderMaterialContent(selectedLesson)}
+                      </div>
                     </div>
 
                     {/* Lesson Header Info */}
-                    <div className="p-4 p-xl-5 bg-white">
+                    <div className="p-4 p-xl-5">
                       <div className="d-flex flex-column flex-xl-row align-items-xl-start justify-content-between gap-4">
                         
                         <div className="flex-grow-1">
-                          <div className="d-flex align-items-center gap-2 text-primary fw-semibold small text-uppercase tracking-wider mb-2">
-                            <i className="bi bi-bookmark-star-fill" />
+                          <div className="d-flex align-items-center gap-2 fw-bold small text-uppercase mb-2" style={{ color: colors.primary, letterSpacing: '0.05em' }}>
+                            <i className="bi bi-bookmark-star" />
                             {selectedLesson.chapterTitle}
                           </div>
-                          <h3 className="fw-bolder text-dark mb-3">{selectedLesson.title}</h3>
+                          <h3 className="fw-bolder mb-3" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>{selectedLesson.title}</h3>
 
                           <div className="d-flex flex-wrap gap-2 align-items-center">
-                            <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill fw-medium">
+                            <span className="badge px-3 py-2 rounded-pill fw-medium" style={{ backgroundColor: colors.bg, color: colors.textMain, border: `1px solid ${colors.border}` }}>
                               <i className={`me-2 ${selectedLesson.type === 'video' ? 'bi-play-circle-fill text-danger' : 'bi-file-earmark-text-fill text-primary'}`} />
                               {selectedLesson.type.charAt(0).toUpperCase() + selectedLesson.type.slice(1)}
-                            </Badge>
+                            </span>
                             
                             {selectedLesson.duration ? (
-                              <Badge bg="light" text="dark" className="border px-3 py-2 rounded-pill fw-medium">
+                              <span className="badge px-3 py-2 rounded-pill fw-medium" style={{ backgroundColor: colors.bg, color: colors.textMain, border: `1px solid ${colors.border}` }}>
                                 <i className="bi bi-clock-fill text-warning me-2" />
                                 {selectedLesson.duration} min read/watch
-                              </Badge>
+                              </span>
                             ) : null}
 
                             {completedSet.has(selectedLesson.id) ? (
-                              <Badge bg="success" className="bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
-                                <i className="bi bi-check-circle-fill me-2" />
-                                Completed
-                              </Badge>
+                              <span className="badge px-3 py-2 rounded-pill fw-semibold" style={{ backgroundColor: colors.successLight, color: colors.success, border: '1px solid rgba(16,185,129,0.2)' }}>
+                                <i className="bi bi-check-circle-fill me-2" /> Completed
+                              </span>
                             ) : (
-                              <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
-                                <i className="bi bi-activity me-2" />
-                                Progress: {selectedVideoProgress}%
-                              </Badge>
+                              <span className="badge px-3 py-2 rounded-pill fw-semibold" style={{ backgroundColor: colors.primaryLight, color: colors.primary, border: '1px solid rgba(79,70,229,0.2)' }}>
+                                <i className="bi bi-activity me-2" /> Progress: {selectedVideoProgress}%
+                              </span>
                             )}
                           </div>
                         </div>
 
                         {/* Prev / Next Controls */}
-                        <div className="d-flex flex-wrap flex-xl-nowrap gap-2 shrink-0">
-                          <Button
-                            variant="light"
-                            className="rounded-pill px-4 fw-semibold border shadow-sm"
+                        <div className="d-flex flex-wrap flex-xl-nowrap gap-2 flex-shrink-0">
+                          <button
+                            className="btn btn-saas-outline rounded-pill px-4 py-2 d-flex align-items-center"
                             disabled={!previousLesson}
                             onClick={() => previousLesson && setSelectedLessonId(previousLesson.id)}
                           >
-                            <i className="bi bi-arrow-left me-2" /> Previous
-                          </Button>
-                          <Button
-                            variant="primary"
-                            className="rounded-pill px-4 fw-semibold shadow-sm"
+                            <i className="bi bi-arrow-left me-2" /> Prev
+                          </button>
+                          <button
+                            className="btn btn-saas rounded-pill px-4 py-2 d-flex align-items-center shadow-sm"
+                            style={{ backgroundColor: colors.primary, color: '#ffffff', border: 'none' }}
                             disabled={!nextLesson || !isLessonUnlocked(currentLessonIndex + 1)}
                             onClick={() => nextLesson && setSelectedLessonId(nextLesson.id)}
                           >
                             Next <i className="bi bi-arrow-right ms-2" />
-                          </Button>
+                          </button>
                         </div>
                       </div>
 
-                      <hr className="my-4 opacity-10" />
+                      <hr className="my-4" style={{ borderColor: colors.border }} />
 
                       {/* Manual Complete Action */}
-                      <div className="d-flex align-items-center justify-content-between bg-light rounded-4 p-3 border">
-                        <div className="fw-medium text-dark d-flex align-items-center gap-2">
-                          <i className="bi bi-info-circle text-primary" />
+                      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between rounded-4 p-3 border" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
+                        <div className="fw-medium d-flex align-items-center gap-2 mb-3 mb-sm-0" style={{ color: colors.textMain }}>
+                          <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                            <i className="bi bi-info-circle text-primary" />
+                          </div>
                           Finished learning this topic?
                         </div>
                         {completedSet.has(selectedLesson.id) ? (
-                          <div className="text-success fw-bold d-flex align-items-center gap-2 bg-success bg-opacity-10 px-4 py-2 rounded-pill">
-                            <i className="bi bi-check2-all fs-5" />
-                            Marked as Done
+                          <div className="fw-bold d-flex align-items-center gap-2 px-4 py-2 rounded-pill" style={{ backgroundColor: colors.successLight, color: colors.success }}>
+                            <i className="bi bi-check2-all fs-5" /> Marked as Done
                           </div>
                         ) : (
-                          <Button variant="success" className="rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2" onClick={() => handleComplete(selectedLesson.id)}>
+                          <button className="btn btn-saas rounded-pill px-4 shadow-sm d-flex align-items-center gap-2 py-2" style={{ backgroundColor: colors.success, color: '#ffffff', border: 'none' }} onClick={() => handleComplete(selectedLesson.id)}>
                             <i className="bi bi-check-circle" /> Mark Complete
-                          </Button>
+                          </button>
                         )}
                       </div>
 
                     </div>
                   </>
                 ) : (
-                  <div className="text-muted text-center py-5 my-5">
-                    <i className="bi bi-play-btn text-light mb-3" style={{ fontSize: '4rem' }} />
-                    <h4 className="fw-semibold text-secondary">Select a lesson from the syllabus to begin learning.</h4>
+                  <div className="text-center py-5 my-5">
+                    <div className="rounded-circle d-inline-flex align-items-center justify-content-center p-4 mb-3" style={{ backgroundColor: colors.bg }}>
+                       <i className="bi bi-play-btn" style={{ fontSize: '3rem', color: colors.textMuted, opacity: 0.5 }} />
+                    </div>
+                    <h5 className="fw-semibold" style={{ color: colors.textMain }}>Select a lesson from the syllabus to begin learning.</h5>
                   </div>
                 )}
-              </Card.Body>
-            </Card>
+              </div>
 
-            {/* Bottom Row Information Cards */}
-            <Row className="g-4">
-              <Col xs={12} lg={6}>
-                <Card className="shadow-sm border-0 rounded-4 h-100">
-                  <Card.Body className="p-4">
-                    <div className="fw-bolder mb-3 text-dark d-flex align-items-center gap-2 fs-5">
-                      <i className="bi bi-fast-forward-btn-fill text-primary" />
+              {/* Bottom Row Information Cards */}
+              <Row className="g-4">
+                
+                {/* Up Next Card */}
+                <Col xs={12} lg={6}>
+                  <div className="saas-card h-100 p-4">
+                    <div className="fw-bolder mb-4 d-flex align-items-center gap-2" style={{ color: colors.textMain, fontSize: '1.1rem' }}>
+                      <div className="rounded-3 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', backgroundColor: colors.primaryLight, color: colors.primary }}>
+                         <i className="bi bi-fast-forward-fill" />
+                      </div>
                       Up Next
                     </div>
                     {nextLesson ? (
-                      <div className="bg-light p-3 rounded-4 border">
-                        <div className="fw-bold text-dark">{nextLesson.title}</div>
-                        <div className="text-muted small mt-1 mb-3 d-flex align-items-center gap-2">
-                          <i className="bi bi-journal" />
-                          {nextLesson.chapterTitle}
+                      <div className="p-3 rounded-4" style={{ backgroundColor: colors.bg, border: `1px solid ${colors.border}` }}>
+                        <div className="fw-semibold text-truncate" style={{ color: colors.textMain, fontSize: '0.95rem' }}>{nextLesson.title}</div>
+                        <div className="small mt-1 mb-3 d-flex align-items-center gap-2" style={{ color: colors.textMuted, fontWeight: 500 }}>
+                          <i className="bi bi-journal" /> {nextLesson.chapterTitle}
                         </div>
-                        <Button
-                          variant="outline-primary"
-                          className="w-100 rounded-pill fw-semibold"
+                        <button
+                          className="btn btn-saas-outline w-100 rounded-pill fw-semibold py-2"
                           disabled={!isLessonUnlocked(currentLessonIndex + 1)}
                           onClick={() => setSelectedLessonId(nextLesson.id)}
                         >
                           {isLessonUnlocked(currentLessonIndex + 1) ? "Start Lesson Now" : (
-                            <><i className="bi bi-lock-fill me-2" /> Complete current to unlock</>
+                            <><i className="bi bi-lock-fill me-2 opacity-50" /> Complete current to unlock</>
                           )}
-                        </Button>
+                        </button>
                       </div>
                     ) : (
-                      <div className="text-center py-4 text-success fw-semibold bg-success bg-opacity-10 rounded-4">
-                        <i className="bi bi-trophy-fill fs-3 d-block mb-2" />
+                      <div className="text-center py-4 fw-semibold rounded-4" style={{ backgroundColor: colors.successLight, color: colors.success, border: '1px solid rgba(16,185,129,0.2)' }}>
+                        <i className="bi bi-trophy-fill fs-2 d-block mb-2" />
                         You're on the final lesson!
                       </div>
                     )}
-                  </Card.Body>
-                </Card>
-              </Col>
+                  </div>
+                </Col>
 
-              <Col xs={12} lg={6}>
-                <Card className="shadow-sm border-0 rounded-4 h-100">
-                  <Card.Body className="p-4">
-                    <div className="fw-bolder mb-3 text-dark d-flex align-items-center gap-2 fs-5">
-                      <i className="bi bi-check2-square text-success" />
+                {/* Milestones Card */}
+                <Col xs={12} lg={6}>
+                  <div className="saas-card h-100 p-4">
+                    <div className="fw-bolder mb-4 d-flex align-items-center gap-2" style={{ color: colors.textMain, fontSize: '1.1rem' }}>
+                      <div className="rounded-3 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', backgroundColor: colors.successLight, color: colors.success }}>
+                         <i className="bi bi-check2-square" />
+                      </div>
                       Milestones
                     </div>
-                    <div className="pe-2" style={{ maxHeight: 150, overflowY: "auto" }}>
+                    <div className="pe-2 custom-scrollbar" style={{ maxHeight: 180, overflowY: "auto" }}>
                       {lessons.length === 0 ? (
-                        <div className="text-muted small">Your syllabus is empty.</div>
+                        <div className="small" style={{ color: colors.textMuted }}>Your syllabus is empty.</div>
                       ) : (
                         lessons.map((lesson, idx) => (
-                          <div key={lesson.id} className="d-flex align-items-center gap-3 mb-3">
-                            <div className="flex-shrink-0">
+                          <div key={lesson.id} className="d-flex align-items-start gap-3 mb-3">
+                            <div className="flex-shrink-0 mt-1">
                               <i
                                 className={`fs-5 ${
                                   completedSet.has(lesson.id)
@@ -783,21 +904,21 @@ export default function StudentLms() {
                                 }`}
                               />
                             </div>
-                            <div className={`small fw-medium ${completedSet.has(lesson.id) ? "text-dark text-decoration-line-through opacity-75" : "text-dark"}`}>
+                            <div className={`small fw-medium ${completedSet.has(lesson.id) ? "text-decoration-line-through opacity-50" : ""}`} style={{ color: colors.textMain, lineHeight: '1.4' }}>
                               {lesson.title}
                             </div>
                           </div>
                         ))
                       )}
                     </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
+                  </div>
+                </Col>
 
-          </Col>
-        </Row>
-      )}
+              </Row>
+            </Col>
+          </Row>
+        )}
+      </div>
     </div>
   );
 }

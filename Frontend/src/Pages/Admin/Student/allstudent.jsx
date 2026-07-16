@@ -4,33 +4,72 @@ import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { Modal } from "react-bootstrap";
+import { toast } from "react-toastify";
 
 export default function AllStudents() {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [completedBatches, setCompletedBatches] = useState([]);
   const [expandedClass, setExpandedClass] = useState(null);
+  const [expandedBatch, setExpandedBatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [studentDetails, setStudentDetails] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchClass, setSearchClass] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+  const [promoteForm, setPromoteForm] = useState({
+    toClassId: "",
+    toSectionId: "",
+    stream: "",
+    note: "",
+  });
+
+  const fetchAllStudents = async () => {
+    try {
+      const res = await api.get("/api/students/admin/all");
+      setData(res.data);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get("/api/classes");
+      setClasses(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    }
+  };
+
+  const fetchCompletedBatches = async () => {
+    try {
+      const res = await api.get("/api/students/admin/completed-batches");
+      setCompletedBatches(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error("Error fetching completed student batches:", error);
+      setCompletedBatches([]);
+    }
+  };
 
   useEffect(() => {
-    const fetchAllStudents = async () => {
-      try {
-        const res = await api.get("/api/students/admin/all");
-        setData(res.data);
-      } catch (error) {
-        console.error("Error fetching students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAllStudents();
+    fetchClasses();
+    fetchCompletedBatches();
   }, []);
 
   const toggleClass = (className) => {
     setExpandedClass(expandedClass === className ? null : className);
+  };
+
+  const toggleBatch = (batch) => {
+    setExpandedBatch(expandedBatch === batch ? null : batch);
   };
 
   const flatStudents = useMemo(() => {
@@ -56,6 +95,115 @@ export default function AllStudents() {
   }, [flatStudents, searchTerm, searchClass]);
 
   const isSearching = searchTerm.trim().length > 0 || searchClass !== "";
+  const selectedStudentRows = useMemo(
+    () => flatStudents.filter((student) => selectedStudents.includes(student.id)),
+    [flatStudents, selectedStudents]
+  );
+  const selectedClassNames = [...new Set(selectedStudentRows.map((student) => Number(student.className || student.studentClass || 0)).filter(Boolean))];
+  const selectedSingleClass = selectedClassNames.length === 1 ? selectedClassNames[0] : null;
+  const isClassTwelveSelection = selectedSingleClass === 12;
+
+  const nextClassOption = useMemo(() => {
+    if (!selectedSingleClass || selectedSingleClass >= 12) return null;
+    return classes.find((cls) => Number(cls.className) === Number(selectedSingleClass + 1)) || null;
+  }, [classes, selectedSingleClass]);
+
+  const targetClassDoc = useMemo(
+    () => classes.find((cls) => String(cls._id) === String(promoteForm.toClassId)) || null,
+    [classes, promoteForm.toClassId]
+  );
+  const targetSections = useMemo(() => {
+    const allSections = Array.isArray(targetClassDoc?.sections) ? targetClassDoc.sections : [];
+    const normalizedStream = String(promoteForm.stream || "").trim().toLowerCase();
+
+    return allSections.filter((section) => {
+      if (section?.isActive === false || section?.isLocked === true) return false;
+      const sectionStream = String(section?.stream || "").trim().toLowerCase();
+      if (!normalizedStream) return true;
+      return !sectionStream || sectionStream === normalizedStream;
+    });
+  }, [targetClassDoc, promoteForm.stream]);
+
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents((prev) =>
+      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const toggleClassSelection = (classStudents) => {
+    const ids = classStudents.map((student) => student.id);
+    const allSelected = ids.every((id) => selectedStudents.includes(id));
+
+    setSelectedStudents((prev) => {
+      if (allSelected) {
+        return prev.filter((id) => !ids.includes(id));
+      }
+      return [...new Set([...prev, ...ids])];
+    });
+  };
+
+  const openPromoteModal = () => {
+    if (!selectedStudentRows.length) return;
+    if (selectedClassNames.length !== 1) {
+      toast.warning("Select students from the same current class only.");
+      return;
+    }
+
+    const initialClass = nextClassOption?._id || "";
+    const initialStream = selectedStudentRows[0]?.stream || "";
+    const initialSections = Array.isArray(nextClassOption?.sections) ? nextClassOption.sections : [];
+    const initialSection =
+      initialSections.find((section) => {
+        if (section?.isActive === false || section?.isLocked === true) return false;
+        const sectionStream = String(section?.stream || "").trim().toLowerCase();
+        if (!initialStream) return true;
+        return !sectionStream || sectionStream === String(initialStream).trim().toLowerCase();
+      })?.name || "";
+
+    setPromoteForm({
+      toClassId: isClassTwelveSelection ? "" : initialClass,
+      toSectionId: isClassTwelveSelection ? "" : initialSection,
+      stream: initialStream,
+      note: "",
+    });
+    setShowPromoteModal(true);
+  };
+
+  const handlePromote = async () => {
+    if (!isClassTwelveSelection && (!promoteForm.toClassId || !promoteForm.toSectionId)) {
+      toast.warning("Select target class and section.");
+      return;
+    }
+
+    try {
+      setPromoting(true);
+      await api.post("/api/students/promote", {
+        studentIds: selectedStudentRows.map((student) => student.id),
+        fromAcademicYear: "",
+        toAcademicYear: targetClassDoc?.academicYear || "",
+        toClassId: isClassTwelveSelection ? "" : promoteForm.toClassId,
+        toSectionId: isClassTwelveSelection ? "" : promoteForm.toSectionId,
+        stream: promoteForm.stream || "",
+        note: promoteForm.note || "",
+        assignmentMode: "manual",
+      });
+
+      setShowPromoteModal(false);
+      setSelectedStudents([]);
+      await fetchAllStudents();
+      await fetchCompletedBatches();
+      toast.success(
+        isClassTwelveSelection
+          ? "Class 12 students completed successfully. They are hidden from the active list and available in the completed batch list."
+          : "Students promoted successfully."
+      );
+    } catch (error) {
+      console.error("Promotion failed:", error);
+      toast.error(error?.response?.data?.message || "Promotion failed");
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   const handleStudentClick = async (studentId) => {
     try {
@@ -141,6 +289,26 @@ export default function AllStudents() {
             </div>
           </div>
         </div>
+
+        {selectedStudents.length > 0 && (
+          <div className="premium-card p-3 p-md-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 animate-fade-in">
+            <div>
+              <div className="fw-bolder text-dark">{selectedStudents.length} student{selectedStudents.length > 1 ? "s" : ""} selected</div>
+              <div className="text-muted small">
+                {selectedSingleClass ? `Current class: ${selectedSingleClass}` : "Select students from one class to promote together."}
+              </div>
+            </div>
+            <div className="d-flex gap-2">
+              <button type="button" className="btn btn-brand rounded-pill px-4 fw-bold" onClick={openPromoteModal}>
+                <i className="bi bi-arrow-up-circle me-2"></i>
+                Promote
+              </button>
+              <button type="button" className="btn btn-light border rounded-pill px-4 fw-semibold" onClick={() => setSelectedStudents([])}>
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Modern Filter Bar */}
         <div className="premium-card p-4 mb-5">
@@ -269,15 +437,31 @@ export default function AllStudents() {
                         {cls.students.length === 0 ? (
                           <div className="col-12 text-center py-4 text-muted fw-medium">No students enrolled in this class.</div>
                         ) : (
-                          cls.students.map((student) => (
-                            <StudentCard
-                              key={student.id}
-                              student={student}
-                              onClick={handleStudentClick}
-                              onViewReport={(id) => navigate(`/admin/reports/student/${id}`)}
-                              onViewPdf={(id) => navigate(`/admin/reports/student/${id}?pdf=1`)}
-                            />
-                          ))
+                          <>
+                            <div className="col-12 d-flex justify-content-end">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-light border rounded-pill px-3 fw-semibold"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleClassSelection(cls.students);
+                                }}
+                              >
+                                {cls.students.every((student) => selectedStudents.includes(student.id)) ? "Unselect Class" : "Select Class"}
+                              </button>
+                            </div>
+                            {cls.students.map((student) => (
+                              <StudentCard
+                                key={student.id}
+                                student={student}
+                                onClick={handleStudentClick}
+                                onViewReport={(id) => navigate(`/admin/reports/student/${id}`)}
+                                onViewPdf={(id) => navigate(`/admin/reports/student/${id}?pdf=1`)}
+                                selected={selectedStudents.includes(student.id)}
+                                onToggleSelect={toggleStudentSelection}
+                              />
+                            ))}
+                          </>
                         )}
                       </div>
                     </div>
@@ -287,6 +471,86 @@ export default function AllStudents() {
             );
           })
         )}
+
+        <div className="premium-card p-4 mt-5">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+              <h4 className="fw-bolder text-dark mb-1">Completed Batch Students</h4>
+              <p className="text-muted mb-0">Class 12 students hidden from the active registry are listed here by batch year.</p>
+            </div>
+            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-semibold">
+              {completedBatches.reduce((sum, batch) => sum + Number(batch.totalStudents || 0), 0)} Completed
+            </span>
+          </div>
+
+          {completedBatches.length === 0 ? (
+            <div className="text-center py-4 text-muted fw-medium">No completed student batches found.</div>
+          ) : (
+            completedBatches.map((batch, index) => {
+              const isExpanded = expandedBatch === batch.batch;
+              return (
+                <div className="mb-3" key={batch.batch || index}>
+                  <div
+                    className={`class-accordion p-4 d-flex justify-content-between align-items-center ${isExpanded ? 'class-accordion-active' : ''}`}
+                    onClick={() => toggleBatch(batch.batch)}
+                  >
+                    <div className="d-flex align-items-center">
+                      <div className="class-badge me-4 shadow-sm" style={{ background: isExpanded ? '#198754' : '#dcfce7', color: isExpanded ? '#fff' : '#198754' }}>
+                        <i className="bi bi-award-fill"></i>
+                      </div>
+                      <div>
+                        <h4 className="fw-bolder text-dark mb-1">Batch {batch.batch}</h4>
+                        <div className="small text-muted fw-medium">Completed Class 12 students</div>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-4">
+                      <div className="text-end d-none d-sm-block">
+                        <div className="fw-bolder text-dark fs-4 lh-1">{batch.totalStudents}</div>
+                        <div className="small fw-bold text-muted text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: '0.5px' }}>Students</div>
+                      </div>
+                      <div className={`chevron-circle shadow-sm ${isExpanded ? 'rotate-180' : ''}`}>
+                        <i className="bi bi-chevron-down fw-bold"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`expandable-content ${isExpanded ? 'expanded' : 'collapsed'}`}>
+                    <div className="expandable-inner">
+                      <div className="table-responsive pt-3">
+                        <table className="table align-middle">
+                          <thead>
+                            <tr>
+                              <th>Student</th>
+                              <th>ID</th>
+                              <th>Stream</th>
+                              <th>Section</th>
+                              <th>Completed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(batch.students || []).map((student) => (
+                              <tr key={student.id}>
+                                <td>
+                                  <div className="fw-semibold text-dark">{student.name}</div>
+                                  <div className="small text-muted">{student.email}</div>
+                                </td>
+                                <td className="fw-semibold">{student.studentId || "---"}</td>
+                                <td>{student.stream || "General"}</td>
+                                <td>{student.section || "-"}</td>
+                                <td>{student.completedAt ? new Date(student.completedAt).toLocaleDateString() : "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Premium Profile Modal */}
@@ -308,6 +572,11 @@ export default function AllStudents() {
                     {studentDetails.student.name.charAt(0).toUpperCase()}
                   </div>
                   <h4 className="fw-bolder mb-1 lh-sm">{studentDetails.student.name}</h4>
+                  {studentDetails.student.isNewPromotion && (
+                    <div className="mb-2">
+                      <span className="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">NEW</span>
+                    </div>
+                  )}
                   <div className="badge bg-white text-dark border shadow-sm px-3 py-2 rounded-pill mt-2 fw-bold">
                     ID: {studentDetails.student.studentId}
                   </div>
@@ -370,18 +639,135 @@ export default function AllStudents() {
         </Modal.Body>
       </Modal>
 
+      <Modal show={showPromoteModal} onHide={() => !promoting && setShowPromoteModal(false)} centered>
+        <Modal.Header closeButton={!promoting}>
+          <Modal.Title className="fw-bolder">Promote Students</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Selected Students</label>
+            <div className="small text-muted">{selectedStudentRows.length} selected from Class {selectedSingleClass || "-"}</div>
+          </div>
+
+          {isClassTwelveSelection ? (
+            <div className="alert alert-success border-0 rounded-4">
+              Class 12 students will be marked as completed successfully and removed from the active student list.
+            </div>
+          ) : (
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Target Class</label>
+              <select
+                className="form-select"
+                value={promoteForm.toClassId}
+                onChange={(e) => {
+                  const nextTarget = classes.find((cls) => String(cls._id) === String(e.target.value));
+                  const nextSections = Array.isArray(nextTarget?.sections) ? nextTarget.sections : [];
+                  setPromoteForm((prev) => ({
+                    ...prev,
+                    toClassId: e.target.value,
+                    toSectionId: nextSections.find((section) => section?.isActive !== false && section?.isLocked !== true)?.name || "",
+                  }));
+                }}
+              >
+                <option value="">Select Class</option>
+                {classes
+                  .sort((a, b) => Number(a.className) - Number(b.className))
+                  .map((cls) => (
+                    <option key={cls._id} value={cls._id}>
+                      Class {cls.className}{cls.academicYear ? ` (${cls.academicYear})` : ""}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {!isClassTwelveSelection && !!(targetClassDoc?.streams || []).length && (
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Stream</label>
+              <select
+                className="form-select"
+                value={promoteForm.stream}
+                onChange={(e) => setPromoteForm((prev) => ({ ...prev, stream: e.target.value, toSectionId: "" }))}
+              >
+                <option value="">General</option>
+                {(targetClassDoc?.streams || [])
+                  .filter((item) => item?.isActive !== false)
+                  .map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {!isClassTwelveSelection && (
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Target Section</label>
+              <select
+                className="form-select"
+                value={promoteForm.toSectionId}
+                onChange={(e) => setPromoteForm((prev) => ({ ...prev, toSectionId: e.target.value }))}
+              >
+                <option value="">Select Section</option>
+                {targetSections.map((section) => (
+                  <option key={section._id || section.name} value={section.name}>
+                    Section {section.name}{section.stream ? ` - ${section.stream}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="mb-0">
+            <label className="form-label fw-semibold">Note</label>
+            <textarea
+              rows="3"
+              className="form-control"
+              value={promoteForm.note}
+              onChange={(e) => setPromoteForm((prev) => ({ ...prev, note: e.target.value }))}
+              placeholder="Optional promotion note"
+            />
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <button type="button" className="btn btn-light border" disabled={promoting} onClick={() => setShowPromoteModal(false)}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn-primary" disabled={promoting} onClick={handlePromote}>
+            {promoting ? "Promoting..." : "Promote"}
+          </button>
+        </Modal.Footer>
+      </Modal>
+
     </div>
   );
 }
 
 // Subcomponent: Extracted and styled
-function StudentCard({ student, onClick, onViewReport, onViewPdf, showClass = false }) {
+function StudentCard({ student, onClick, onViewReport, onViewPdf, showClass = false, selected = false, onToggleSelect }) {
   return (
     <div className="col-12 col-md-6 col-lg-4 col-xl-3">
       <div 
         className="student-card p-4 h-100 d-flex flex-column" 
         onClick={() => onClick(student.id)}
+        style={selected ? { borderColor: "#4f46e5", boxShadow: "0 12px 24px -8px rgba(79, 70, 229, 0.25)" } : {}}
       >
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="form-check m-0">
+            <input
+              type="checkbox"
+              className="form-check-input"
+              checked={selected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleSelect?.(student.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+
         <div className="d-flex align-items-center mb-3">
           <div className="rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm fw-bolder fs-5" style={{ width: 48, height: 48, background: '#f1f5f9', color: '#4f46e5' }}>
             {student.name.charAt(0).toUpperCase()}
@@ -399,6 +785,11 @@ function StudentCard({ student, onClick, onViewReport, onViewPdf, showClass = fa
           </div>
           
           <div className="d-flex flex-wrap gap-2 mt-2">
+            {student.isNewPromotion && (
+              <span className="badge bg-warning text-dark px-2 py-1 fw-bold">
+                NEW
+              </span>
+            )}
             {showClass && (
               <span className="badge bg-light text-dark border px-2 py-1 fw-semibold">
                 Class {student.className}

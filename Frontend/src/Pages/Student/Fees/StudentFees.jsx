@@ -3,6 +3,185 @@ import api from "../../../api/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
+// --- SAAS COLOR PALETTE ---
+const colors = {
+  primary: "#4f46e5", // Indigo
+  primaryLight: "#eef2ff",
+  primaryGradient: "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)",
+  success: "#10b981", // Emerald
+  successLight: "#ecfdf5",
+  warning: "#f59e0b", // Amber
+  warningLight: "#fffbeb",
+  danger: "#ef4444", // Red
+  dangerLight: "#fef2f2",
+  info: "#3b82f6", // Blue
+  infoLight: "#eff6ff",
+  bg: "#f8fafc", // Slate 50
+  surface: "#ffffff",
+  textMain: "#0f172a", // Slate 900
+  textMuted: "#64748b", // Slate 500
+  border: "#e2e8f0" // Slate 200
+};
+
+// --- SAAS UI STYLES ---
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: ${colors.bg};
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SaaS Cards */
+  .saas-card {
+    background: ${colors.surface};
+    border-radius: 16px;
+    border: 1px solid ${colors.border};
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    border-color: #cbd5e1;
+  }
+
+  /* Seamless Tables */
+  .saas-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .saas-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: ${colors.textMuted};
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid ${colors.border};
+    background-color: #fcfcfd;
+  }
+  .saas-table td {
+    padding: 1.25rem 1.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    color: ${colors.textMain};
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+  }
+  .saas-table tr:last-child td { border-bottom: none; }
+  .saas-table tbody tr:hover td { background-color: #f8fafc; }
+
+  /* Form Inputs */
+  .saas-input {
+    border: 1px solid ${colors.border};
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: ${colors.textMain};
+    transition: all 0.2s ease;
+  }
+  .saas-input:focus, .saas-input:focus-within {
+    border-color: ${colors.primary};
+    box-shadow: 0 0 0 3px ${colors.primaryLight};
+    outline: none;
+  }
+  .saas-input-group-text {
+    background-color: #f8fafc;
+    border: 1px solid ${colors.border};
+    color: ${colors.textMuted};
+    font-weight: 600;
+  }
+
+  /* Custom Radio Selection Panels */
+  .saas-radio-panel {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid ${colors.border};
+    background-color: ${colors.surface};
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .saas-radio-panel:hover:not(.disabled) {
+    background-color: ${colors.bg};
+    border-color: #cbd5e1;
+  }
+  .saas-radio-panel.selected {
+    background-color: ${colors.primaryLight};
+    border-color: ${colors.primary};
+    box-shadow: 0 0 0 1px ${colors.primary};
+  }
+  .saas-radio-panel.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .saas-radio-circle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+  .saas-radio-panel.selected .saas-radio-circle {
+    border-color: ${colors.primary};
+  }
+  .saas-radio-panel.selected .saas-radio-circle::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: ${colors.primary};
+  }
+  .saas-radio-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* Buttons */
+  .btn-saas {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-weight: 600;
+  }
+  .btn-saas:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.15);
+  }
+  .btn-saas:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  .btn-saas-outline {
+    background-color: ${colors.surface};
+    color: ${colors.textMain};
+    border: 1px solid ${colors.border};
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .btn-saas-outline:hover:not(:disabled) {
+    background-color: ${colors.bg};
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+  }
+  .btn-saas-outline.active {
+    background-color: ${colors.textMain};
+    color: #ffffff;
+    border-color: ${colors.textMain};
+  }
+`;
+
 export default function StudentFees() {
   const [fees, setFees] = useState(null);
   const [studentMeta, setStudentMeta] = useState(null);
@@ -141,7 +320,7 @@ export default function StudentFees() {
   }, [fees, payMode, payAmount, totalDue]);
 
   const setQuickPay = (ratio) => {
-    if (!fees || totalDue <= 0) return;
+    if (!fees || totalDue <= 0 || paying) return;
     const amt = Math.max(1, Math.round(totalDue * ratio));
     setPayMode("custom");
     setPayAmount(String(amt));
@@ -236,7 +415,7 @@ export default function StudentFees() {
             setPaying(false);
           },
         },
-        theme: { color: "#000000" }, // Updated to sleek black
+        theme: { color: colors.textMain }, // Matches SaaS dark slate
       };
 
       const rzp = new window.Razorpay(options);
@@ -257,48 +436,51 @@ export default function StudentFees() {
 
   if (message && !fees && !loading) {
     return (
-      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
-        <i className="bi bi-wallet2 text-muted mb-3 opacity-50" style={{ fontSize: "4rem" }}></i>
-        <h5 className="fw-semibold text-muted">{message}</h5>
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100" style={{ backgroundColor: colors.bg }}>
+        <i className="bi bi-wallet2 mb-3" style={{ fontSize: "4rem", color: colors.textMuted, opacity: 0.5 }}></i>
+        <h5 className="fw-semibold" style={{ color: colors.textMain }}>{message}</h5>
       </div>
     );
   }
 
   if (loading || !fees) {
     return (
-      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light">
-        <div className="spinner-border text-dark mb-3" style={{ width: "2.5rem", height: "2.5rem", borderWidth: "3px" }}></div>
-        <div className="text-muted fw-medium text-uppercase tracking-wider small">Fetching Financial Data...</div>
+      <div className="d-flex flex-column justify-content-center align-items-center min-vh-100" style={{ backgroundColor: colors.bg }}>
+        <div className="spinner-border mb-3" style={{ color: colors.primary, width: "3rem", height: "3rem", borderWidth: '0.2em' }} role="status"></div>
+        <p className="fw-medium text-uppercase" style={{ color: colors.textMuted, letterSpacing: '1px', fontSize: '0.85rem' }}>Fetching Financial Data...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-light min-vh-100 py-4 py-md-5" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div className="container-fluid px-3 px-md-5">
+    <div className="pb-5 pt-3 fade-in" style={{ backgroundColor: colors.bg, minHeight: '100vh' }}>
+      <style>{styles}</style>
+      
+      {/* Full width container with responsive horizontal padding */}
+      <div className="container-fluid px-4 px-xl-5">
         
         {/* ---------- PAGE HEADER ---------- */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-4 border-bottom border-light-subtle gap-3">
+        <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end mb-5 gap-4">
           <div>
-            <span className="badge bg-dark bg-opacity-10 text-dark mb-2 px-3 py-2 rounded-pill fw-bold border border-dark border-opacity-25" style={{ letterSpacing: "0.5px" }}>
+            <div className="badge mb-2 px-3 py-2 rounded-pill fw-semibold shadow-sm" style={{ backgroundColor: colors.primaryLight, color: colors.primary, border: `1px solid rgba(79,70,229,0.2)`, letterSpacing: "0.5px" }}>
               <i className="bi bi-bank me-2"></i>Financial Center
-            </span>
-            <h2 className="fw-bolder text-dark mb-1" style={{ letterSpacing: "-0.5px" }}>
+            </div>
+            <h2 className="fw-bolder mb-1" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>
               Tuition & Fees
             </h2>
-            <p className="text-secondary mb-0 small">
+            <p className="mb-0 small fw-medium" style={{ color: colors.textMuted }}>
               Manage your academic payments, view transaction history, and download official receipts.
             </p>
           </div>
           
           <div>
             {isPaid ? (
-               <div className="d-flex align-items-center gap-2 bg-success bg-opacity-10 text-success px-4 py-2 rounded-pill fw-bold border border-success border-opacity-25 shadow-sm">
+               <div className="d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold shadow-sm" style={{ backgroundColor: colors.successLight, color: colors.success, border: '1px solid rgba(16,185,129,0.2)' }}>
                   <i className="bi bi-check-circle-fill fs-5"></i>
                   Account Up to Date
                </div>
             ) : (
-               <div className="d-flex align-items-center gap-2 bg-danger bg-opacity-10 text-danger px-4 py-2 rounded-pill fw-bold border border-danger border-opacity-25 shadow-sm">
+               <div className="d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold shadow-sm" style={{ backgroundColor: colors.dangerLight, color: colors.danger, border: '1px solid rgba(239,68,68,0.2)' }}>
                   <i className="bi bi-exclamation-circle-fill fs-5"></i>
                   Payment Due
                </div>
@@ -308,10 +490,14 @@ export default function StudentFees() {
 
         {/* Global Message Alert */}
         {message && (
-          <div className="alert alert-dark bg-white border border-dark shadow-sm d-flex align-items-center mb-4 rounded-4" role="alert">
-            <i className="bi bi-info-circle-fill fs-5 me-3 text-dark"></i>
-            <span className="fw-medium">{message}</span>
-            <button type="button" className="btn-close ms-auto" aria-label="Close" onClick={() => setMessage("")}></button>
+          <div className="alert d-flex align-items-center justify-content-between mb-4 rounded-4 shadow-sm" style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }} role="alert">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px', backgroundColor: colors.bg, color: colors.textMain }}>
+                 <i className="bi bi-info-circle-fill fs-5"></i>
+              </div>
+              <span className="fw-medium" style={{ color: colors.textMain }}>{message}</span>
+            </div>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setMessage("")}></button>
           </div>
         )}
 
@@ -324,13 +510,15 @@ export default function StudentFees() {
             <div className="row g-4">
                {/* Total Assessment */}
                <div className="col-md-4">
-                  <div className="card h-100 border-0 shadow-sm rounded-4 bg-white transition-hover">
-                     <div className="card-body p-4">
-                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider" style={{ fontSize: "0.7rem" }}>Annual Assessment</div>
-                        <h3 className="fw-bolder text-dark mb-1">{formatMoney(total)}</h3>
-                        <div className="text-muted small mt-2 d-flex flex-column gap-1 border-top pt-3">
-                           <span className="d-flex align-items-center gap-2"><i className="bi bi-building"></i> Class {studentMeta?.studentClass ?? fees.studentClass} {studentMeta?.section ? `(Sec ${studentMeta.section})` : ""}</span>
-                           <span className="d-flex align-items-center gap-2"><i className="bi bi-book"></i> {studentMeta?.stream || "General"} Plan</span>
+                  <div className="saas-card p-4 h-100 d-flex flex-column hover-lift">
+                     <div className="fw-bold mb-3 text-uppercase" style={{ color: colors.textMuted, fontSize: "0.75rem", letterSpacing: '0.05em' }}>Annual Assessment</div>
+                     <h3 className="fw-bolder mb-1" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>{formatMoney(total)}</h3>
+                     <div className="mt-auto pt-3 mt-3" style={{ borderTop: `1px solid ${colors.bg}` }}>
+                        <div className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '0.8rem', color: colors.textMuted, fontWeight: 500 }}>
+                          <i className="bi bi-building"></i> Class {studentMeta?.studentClass ?? fees.studentClass} {studentMeta?.section ? `(Sec ${studentMeta.section})` : ""}
+                        </div>
+                        <div className="d-flex align-items-center gap-2" style={{ fontSize: '0.8rem', color: colors.textMuted, fontWeight: 500 }}>
+                          <i className="bi bi-book"></i> {studentMeta?.stream || "General"} Plan
                         </div>
                      </div>
                   </div>
@@ -338,67 +526,63 @@ export default function StudentFees() {
 
                {/* Amount Paid */}
                <div className="col-md-4">
-                  <div className="card h-100 border-0 shadow-sm rounded-4 bg-white transition-hover">
-                     <div className="card-body p-4 d-flex flex-column">
-                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider" style={{ fontSize: "0.7rem" }}>Total Remitted</div>
-                        <h3 className="fw-bolder text-success mb-1">{formatMoney(paid)}</h3>
-                        <div className="text-success small fw-medium mt-auto bg-success bg-opacity-10 px-2 py-1 rounded d-inline-block w-auto align-self-start border border-success border-opacity-25">
-                           <i className="bi bi-arrow-up-right me-1"></i> Recorded to date
-                        </div>
+                  <div className="saas-card p-4 h-100 d-flex flex-column hover-lift">
+                     <div className="fw-bold mb-3 text-uppercase" style={{ color: colors.textMuted, fontSize: "0.75rem", letterSpacing: '0.05em' }}>Total Remitted</div>
+                     <h3 className="fw-bolder mb-1" style={{ color: colors.success, letterSpacing: '-0.5px' }}>{formatMoney(paid)}</h3>
+                     <div className="mt-auto fw-semibold rounded-pill d-inline-flex align-items-center w-auto align-self-start px-3 py-1" style={{ backgroundColor: colors.successLight, color: colors.success, fontSize: '0.8rem', border: '1px solid rgba(16,185,129,0.2)' }}>
+                        <i className="bi bi-arrow-up-right me-2"></i> Recorded to date
                      </div>
                   </div>
                </div>
 
                {/* Outstanding Balance */}
                <div className="col-md-4">
-                  <div className={`card h-100 shadow-sm rounded-4 transition-hover ${isPaid ? 'border-0 bg-white' : 'border border-dark bg-white'}`}>
-                     <div className="card-body p-4 d-flex flex-column">
-                        <div className="text-muted text-uppercase fw-bold mb-3 tracking-wider d-flex justify-content-between" style={{ fontSize: "0.7rem" }}>
-                           Outstanding Balance
-                           {!isPaid && <i className="bi bi-exclamation-triangle text-danger fs-6 lh-1"></i>}
-                        </div>
-                        <h3 className={`fw-bolder mb-1 ${isPaid ? "text-success" : "text-dark"}`}>
-                           {formatMoney(totalDue)}
-                        </h3>
-                        {/* Breakout pills */}
-                        <div className="d-flex gap-2 mt-auto">
-                           <span className="badge bg-light text-dark border px-2 py-1 fw-medium" title="Base Pending">
-                              Base: {formatMoney(baseRemaining)}
+                  <div className="saas-card p-4 h-100 d-flex flex-column hover-lift" style={{ border: isPaid ? `1px solid ${colors.border}` : `1px solid ${colors.textMain}`, boxShadow: isPaid ? '' : '0 4px 12px rgba(15,23,42,0.08)' }}>
+                     <div className="fw-bold mb-3 text-uppercase d-flex justify-content-between align-items-center" style={{ color: colors.textMuted, fontSize: "0.75rem", letterSpacing: '0.05em' }}>
+                        Outstanding Balance
+                        {!isPaid && <i className="bi bi-exclamation-triangle-fill fs-6" style={{ color: colors.danger }}></i>}
+                     </div>
+                     <h3 className="fw-bolder mb-1" style={{ color: isPaid ? colors.success : colors.textMain, letterSpacing: '-0.5px' }}>
+                        {formatMoney(totalDue)}
+                     </h3>
+                     {/* Breakout pills */}
+                     <div className="d-flex flex-wrap gap-2 mt-auto pt-3">
+                        <span className="badge rounded-pill fw-medium px-3 py-1" style={{ backgroundColor: colors.bg, color: colors.textMain, border: `1px solid ${colors.border}` }} title="Base Pending">
+                           Base: {formatMoney(baseRemaining)}
+                        </span>
+                        {lateFee > 0 && (
+                           <span className="badge rounded-pill fw-medium px-3 py-1" style={{ backgroundColor: colors.dangerLight, color: colors.danger, border: '1px solid rgba(239,68,68,0.2)' }} title="Late Fee Penalty">
+                              Late: {formatMoney(lateFee)}
                            </span>
-                           {lateFee > 0 && (
-                              <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 fw-medium" title="Late Fee Penalty">
-                                 Late: {formatMoney(lateFee)}
-                              </span>
-                           )}
-                        </div>
+                        )}
                      </div>
                   </div>
                </div>
             </div>
 
             {/* Payment History Table */}
-            <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden flex-grow-1">
-              <div className="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+            <div className="saas-card overflow-hidden flex-grow-1">
+              <div className="p-4 d-flex justify-content-between align-items-center border-bottom" style={{ borderColor: colors.border }}>
                  <div>
-                    <h5 className="fw-bold mb-1">Transaction Ledger</h5>
-                    <span className="text-muted small fw-medium">{(fees.paymentHistory || []).length} recorded payments</span>
+                    <h5 className="fw-bolder mb-1" style={{ color: colors.textMain }}>Transaction Ledger</h5>
+                    <span className="small fw-medium" style={{ color: colors.textMuted }}>{(fees.paymentHistory || []).length} recorded payments</span>
                  </div>
                  {lastPayment?._id && (
-                    <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm d-none d-sm-block" onClick={() => downloadReceipt(lastPayment._id)}>
+                    <button className="btn btn-saas-outline btn-sm rounded-pill px-3 fw-bold d-none d-sm-block" onClick={() => downloadReceipt(lastPayment._id)}>
                        <i className="bi bi-printer me-2"></i>Latest Receipt
                     </button>
                  )}
               </div>
 
               <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0 custom-table">
-                  <thead className="bg-light">
+                <table className="saas-table m-0">
+                  <thead>
                     <tr>
-                      <th className="py-3 ps-4 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Ref #</th>
-                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Date & Time</th>
-                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Method</th>
-                      <th className="py-3 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Amount</th>
-                      <th className="py-3 text-end pe-4 text-muted text-uppercase fw-bold tracking-wider border-bottom-0" style={{ fontSize: "0.7rem" }}>Receipt</th>
+                      <th className="ps-4">Ref #</th>
+                      <th>Date & Time</th>
+                      <th>Method</th>
+                      <th>Amount</th>
+                      <th className="text-end pe-4">Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -406,35 +590,35 @@ export default function StudentFees() {
                       fees.paymentHistory.map((p, idx) => {
                          const isOnline = String(p.mode).toLowerCase() === "online";
                          return (
-                           <tr key={p._id || idx} className="border-bottom border-light-subtle">
-                             <td className="ps-4 py-3">
-                                <div className="text-dark fw-bold" style={{ fontSize: "0.85rem" }}>{p.receiptNo || `TRX-${idx+1}`}</div>
-                                <div className="text-muted small text-truncate" style={{ maxWidth: "120px", fontSize: "0.7rem" }}>
+                           <tr key={p._id || idx}>
+                             <td className="ps-4">
+                                <div className="fw-bold" style={{ color: colors.textMain, fontSize: "0.9rem" }}>{p.receiptNo || `TRX-${idx+1}`}</div>
+                                <div className="text-truncate" style={{ color: colors.textMuted, maxWidth: "150px", fontSize: "0.75rem", fontWeight: 500 }}>
                                    {p.transactionId || p.orderId || "-"}
                                 </div>
                              </td>
-                             <td className="text-secondary small fw-medium">
+                             <td className="small fw-medium" style={{ color: colors.textMuted }}>
                                 {formatDateTime(p.date)}
                              </td>
                              <td>
                                <div className="d-flex align-items-center gap-2">
-                                  <div className={`rounded-circle d-flex align-items-center justify-content-center ${isOnline ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ width: "24px", height: "24px", fontSize: "10px" }}>
-                                     <i className={`bi ${isOnline ? 'bi-globe' : 'bi-cash'}`}></i>
+                                  <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: "28px", height: "28px", backgroundColor: isOnline ? colors.primaryLight : colors.successLight, color: isOnline ? colors.primary : colors.success }}>
+                                     <i className={`bi ${isOnline ? 'bi-globe' : 'bi-cash'}`} style={{ fontSize: '0.8rem' }}></i>
                                   </div>
-                                  <span className="fw-semibold text-dark small">{p.mode}</span>
+                                  <span className="fw-semibold small" style={{ color: colors.textMain }}>{p.mode}</span>
                                </div>
                              </td>
-                             <td className="fw-bolder text-dark">
+                             <td className="fw-bolder" style={{ color: colors.textMain }}>
                                 {formatMoney(p.amount)}
                              </td>
                              <td className="text-end pe-4">
                                <button 
-                                 className="btn btn-light border btn-sm rounded-circle d-flex align-items-center justify-content-center ms-auto shadow-sm btn-icon-hover" 
-                                 style={{ width: "32px", height: "32px" }}
+                                 className="btn btn-saas-outline btn-sm rounded-circle d-inline-flex align-items-center justify-content-center" 
+                                 style={{ width: "36px", height: "36px", padding: 0 }}
                                  onClick={() => downloadReceipt(p._id)}
                                  title="Download PDF Receipt"
                                >
-                                 <i className="bi bi-download text-dark"></i>
+                                 <i className="bi bi-download"></i>
                                </button>
                              </td>
                            </tr>
@@ -442,16 +626,16 @@ export default function StudentFees() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="5" className="text-center text-muted py-5">
-                           <i className="bi bi-journal-x fs-1 d-block mb-3 opacity-25"></i>
-                           No payment transactions recorded yet.
+                        <td colSpan="5" className="text-center py-5">
+                           <i className="bi bi-journal-x fs-2 d-block mb-3" style={{ color: colors.textMuted, opacity: 0.5 }}></i>
+                           <span style={{ color: colors.textMuted, fontWeight: 500 }}>No payment transactions recorded yet.</span>
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-              <div className="card-footer bg-white p-3 border-top text-center text-muted" style={{ fontSize: "0.75rem" }}>
+              <div className="p-3 border-top text-center fw-medium" style={{ backgroundColor: '#fcfcfd', borderColor: colors.border, color: colors.textMuted, fontSize: "0.8rem" }}>
                  Online transactions are secured by Razorpay. Cash payments are verified by administration.
               </div>
             </div>
@@ -459,46 +643,46 @@ export default function StudentFees() {
 
           {/* ---------- RIGHT COLUMN: PAYMENT PORTAL ---------- */}
           <div className="col-12 col-xl-4">
-            <div className="card border border-dark shadow-lg rounded-4 position-sticky bg-white overflow-hidden" style={{ top: 20 }}>
+            <div className="saas-card position-sticky overflow-hidden" style={{ top: '24px', border: `1px solid ${colors.textMain}`, boxShadow: '0 10px 25px rgba(15,23,42,0.1)' }}>
               
               {/* Portal Header */}
-              <div className="bg-dark text-white p-4">
-                 <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold m-0"><i className="bi bi-credit-card-2-front me-2 opacity-75"></i>Payment Portal</h5>
+              <div className="p-4" style={{ backgroundColor: colors.textMain, color: '#ffffff' }}>
+                 <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h5 className="fw-bolder m-0"><i className="bi bi-credit-card-2-front me-2" style={{ opacity: 0.7 }}></i>Payment Portal</h5>
                  </div>
-                 <div className="opacity-75 small fw-medium lh-sm" style={{ maxWidth: "90%" }}>
+                 <div className="small fw-medium" style={{ opacity: 0.8, lineHeight: '1.5' }}>
                     Secure online processing via UPI, Credit Card, or Netbanking.
                  </div>
               </div>
 
-              <div className="card-body p-4 bg-white">
+              <div className="p-4" style={{ backgroundColor: colors.surface }}>
                 {isPaid ? (
-                  <div className="text-center py-4">
-                    <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow" style={{ width: "64px", height: "64px" }}>
-                       <i className="bi bi-check-lg fs-1"></i>
+                  <div className="text-center py-5">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style={{ width: "72px", height: "72px", backgroundColor: colors.successLight, color: colors.success }}>
+                       <i className="bi bi-check-lg" style={{ fontSize: '2.5rem' }}></i>
                     </div>
-                    <h5 className="fw-bold text-dark mb-1">All Clear!</h5>
-                    <p className="text-muted small mb-0">Your account balance is currently zero.</p>
+                    <h4 className="fw-bolder mb-2" style={{ color: colors.textMain }}>All Clear!</h4>
+                    <p className="small mb-0" style={{ color: colors.textMuted }}>Your account balance is currently zero.</p>
                   </div>
                 ) : (
                   <>
                     {/* Bill Breakdown Box */}
-                    <div className="bg-light p-3 rounded-4 border border-light-subtle mb-4">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-muted small fw-semibold">Base Tuition Pending</span>
-                        <span className="fw-bold text-dark">{formatMoney(baseRemaining)}</span>
+                    <div className="p-4 rounded-4 mb-4" style={{ backgroundColor: colors.bg, border: `1px solid ${colors.border}` }}>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <span className="fw-semibold" style={{ color: colors.textMuted, fontSize: '0.9rem' }}>Base Tuition Pending</span>
+                        <span className="fw-bold" style={{ color: colors.textMain }}>{formatMoney(baseRemaining)}</span>
                       </div>
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-muted small fw-semibold">Late Penalties</span>
-                        <span className="fw-bold text-danger">{formatMoney(lateFee)}</span>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <span className="fw-semibold" style={{ color: colors.textMuted, fontSize: '0.9rem' }}>Late Penalties</span>
+                        <span className="fw-bold" style={{ color: colors.danger }}>{formatMoney(lateFee)}</span>
                       </div>
-                      <hr className="my-2 border-secondary opacity-10" />
+                      <hr className="my-3" style={{ borderColor: '#cbd5e1' }} />
                       <div className="d-flex justify-content-between align-items-center">
-                        <span className="text-dark fw-bold">Total Assessment Due</span>
-                        <span className="fs-4 fw-bolder text-dark">{formatMoney(totalDue)}</span>
+                        <span className="fw-bold" style={{ color: colors.textMain, fontSize: '1.05rem' }}>Total Due</span>
+                        <span className="fw-bolder fs-3" style={{ color: colors.textMain, letterSpacing: '-0.5px' }}>{formatMoney(totalDue)}</span>
                       </div>
                       {feeSummary?.dueDate && (
-                         <div className="text-end mt-1 text-danger fw-bold" style={{ fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                         <div className="text-end mt-2 fw-bold" style={{ color: colors.danger, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                             Due By: {new Date(feeSummary.dueDate).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric'})}
                          </div>
                       )}
@@ -506,84 +690,89 @@ export default function StudentFees() {
 
                     {/* Payment Form */}
                     <div className="mb-4">
-                      <h6 className="fw-bold text-dark mb-3 fs-6">Select Remittance Amount</h6>
+                      <h6 className="fw-bold mb-3" style={{ color: colors.textMain }}>Select Remittance Amount</h6>
 
                       {/* Custom Radio Cards */}
-                      <div className="d-flex flex-column gap-2 mb-3">
+                      <div className="d-flex flex-column gap-3 mb-3">
                          {/* Option 1: Full Payment */}
-                         <div 
-                           className={`p-3 rounded-3 border cursor-pointer transition-hover d-flex align-items-center gap-3 ${payMode === 'full' ? 'border-dark bg-dark text-white shadow-sm' : 'bg-white text-dark'}`}
-                           onClick={() => { if(!paying) setPayMode("full") }}
-                           style={{ cursor: paying ? 'not-allowed' : 'pointer' }}
-                         >
-                            <div className={`rounded-circle border d-flex align-items-center justify-content-center ${payMode === 'full' ? 'border-white bg-white text-dark' : 'border-secondary bg-light'}`} style={{ width: '20px', height: '20px' }}>
-                               {payMode === 'full' && <div className="bg-dark rounded-circle" style={{ width: '10px', height: '10px' }}></div>}
-                            </div>
+                         <label className={`saas-radio-panel ${payMode === 'full' ? 'selected' : ''} ${paying ? 'disabled' : ''}`}>
+                            <input 
+                              type="radio" 
+                              className="saas-radio-input" 
+                              checked={payMode === 'full'} 
+                              onChange={() => { if(!paying) setPayMode('full') }}
+                              disabled={paying}
+                            />
+                            <div className="saas-radio-circle"></div>
                             <div className="flex-grow-1">
-                               <div className="fw-bold" style={{ fontSize: "0.9rem" }}>Settle Full Balance</div>
+                               <div className="fw-bold" style={{ color: payMode === 'full' ? colors.primary : colors.textMain }}>Settle Full Balance</div>
                             </div>
-                            <div className="fw-bolder fs-6">{formatMoney(totalDue)}</div>
-                         </div>
+                            <div className="fw-bolder fs-6" style={{ color: payMode === 'full' ? colors.primary : colors.textMain }}>{formatMoney(totalDue)}</div>
+                         </label>
 
                          {/* Option 2: Custom Amount */}
-                         <div 
-                           className={`p-3 rounded-3 border cursor-pointer transition-hover d-flex align-items-center gap-3 ${payMode === 'custom' ? 'border-dark bg-dark text-white shadow-sm' : 'bg-white text-dark'}`}
-                           onClick={() => { if(!paying) setPayMode("custom") }}
-                           style={{ cursor: paying ? 'not-allowed' : 'pointer' }}
-                         >
-                            <div className={`rounded-circle border d-flex align-items-center justify-content-center ${payMode === 'custom' ? 'border-white bg-white text-dark' : 'border-secondary bg-light'}`} style={{ width: '20px', height: '20px' }}>
-                               {payMode === 'custom' && <div className="bg-dark rounded-circle" style={{ width: '10px', height: '10px' }}></div>}
+                         <label className={`saas-radio-panel ${payMode === 'custom' ? 'selected' : ''} ${paying ? 'disabled' : ''}`}>
+                            <input 
+                              type="radio" 
+                              className="saas-radio-input" 
+                              checked={payMode === 'custom'} 
+                              onChange={() => { if(!paying) setPayMode('custom') }}
+                              disabled={paying}
+                            />
+                            <div className="saas-radio-circle"></div>
+                            <div className="flex-grow-1">
+                               <div className="fw-bold" style={{ color: payMode === 'custom' ? colors.primary : colors.textMain }}>Custom Installment</div>
                             </div>
-                            <div className="fw-bold" style={{ fontSize: "0.9rem" }}>Custom Installment</div>
-                         </div>
+                         </label>
                       </div>
 
                       {/* Custom Input Field (Expands if selected) */}
                       {payMode === "custom" && (
-                        <div className="p-3 bg-light rounded-3 border border-dark border-opacity-25 mt-2 animate-fade-in">
-                          <label className="text-muted fw-semibold small mb-2 d-block text-uppercase" style={{ letterSpacing: "0.5px" }}>Enter Amount (₹)</label>
-                          <div className="input-group input-group-lg shadow-sm">
-                            <span className="input-group-text bg-white border-end-0 fw-bold text-dark">₹</span>
+                        <div className="p-4 rounded-4 mt-2 fade-in" style={{ backgroundColor: colors.bg, border: `1px solid ${colors.border}` }}>
+                          <label className="fw-semibold small mb-2 d-block text-uppercase" style={{ color: colors.textMuted, letterSpacing: "0.5px" }}>Enter Amount (₹)</label>
+                          <div className="input-group input-group-lg shadow-sm rounded-3 overflow-hidden">
+                            <span className="input-group-text saas-input-group-text border-end-0 fs-5">₹</span>
                             <input
                               type="number"
                               min="1"
-                              className="form-control border-start-0 fw-bold text-dark shadow-none"
+                              className="form-control saas-input border-start-0 py-2 shadow-none"
                               placeholder={`Max ${totalDue}`}
                               value={payAmount}
                               onChange={(e) => setPayAmount(e.target.value)}
                               disabled={paying}
-                              style={{ fontSize: "1.2rem" }}
+                              style={{ fontSize: "1.25rem", fontWeight: 700 }}
                             />
                           </div>
                           
                           {/* Quick Select Pills */}
                           <div className="d-flex flex-wrap gap-2 mt-3">
-                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.25)} disabled={paying}>25%</button>
-                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.50)} disabled={paying}>50%</button>
-                            <button type="button" className="btn btn-sm btn-white border fw-bold flex-fill rounded-pill text-dark shadow-sm btn-icon-hover" onClick={() => setQuickPay(0.75)} disabled={paying}>75%</button>
+                            <button type="button" className="btn btn-sm btn-saas-outline flex-fill rounded-pill" onClick={() => setQuickPay(0.25)} disabled={paying}>25%</button>
+                            <button type="button" className="btn btn-sm btn-saas-outline flex-fill rounded-pill" onClick={() => setQuickPay(0.50)} disabled={paying}>50%</button>
+                            <button type="button" className="btn btn-sm btn-saas-outline flex-fill rounded-pill" onClick={() => setQuickPay(0.75)} disabled={paying}>75%</button>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Checkout Button Area */}
-                    <div className="mt-4 pt-4 border-top">
+                    <div className="mt-4 pt-4 border-top" style={{ borderColor: colors.border }}>
                       <button 
-                         className="btn btn-dark w-100 py-3 fw-bolder fs-6 rounded-pill shadow d-flex justify-content-center align-items-center gap-2 btn-checkout" 
+                         className="btn btn-saas w-100 py-3 fw-bolder fs-6 rounded-pill d-flex justify-content-center align-items-center gap-2" 
+                         style={{ backgroundColor: colors.textMain, color: '#ffffff', border: 'none' }}
                          onClick={payOnline} 
                          disabled={paying}
                       >
                         {paying ? (
-                           <><div className="spinner-border spinner-border-sm text-light" /> Establishing secure link...</>
+                           <><div className="spinner-border spinner-border-sm text-light" style={{ borderWidth: '0.15em' }} /> Establishing secure link...</>
                         ) : (
-                           <><i className="bi bi-shield-lock-fill"></i> Proceed to Pay {formatMoney(calculatedPayAmount || 0)}</>
+                           <><i className="bi bi-shield-lock-fill fs-5"></i> Proceed to Pay {formatMoney(calculatedPayAmount || 0)}</>
                         )}
                       </button>
 
-                      <div className="d-flex align-items-center justify-content-center gap-3 mt-3 opacity-50">
-                         <i className="bi bi-credit-card-fill fs-5"></i>
-                         <i className="bi bi-bank fs-5"></i>
-                         <i className="bi bi-phone-fill fs-5"></i>
+                      <div className="d-flex align-items-center justify-content-center gap-4 mt-4" style={{ color: colors.textMuted, opacity: 0.6 }}>
+                         <i className="bi bi-credit-card-fill fs-4"></i>
+                         <i className="bi bi-bank fs-4"></i>
+                         <i className="bi bi-phone-fill fs-4"></i>
                       </div>
                     </div>
                   </>
@@ -593,10 +782,10 @@ export default function StudentFees() {
             
             {/* Developer Testing Note (Optional) */}
             <div className="mt-4 text-center">
-               <div className="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-2 fw-medium">
+               <div className="badge rounded-pill px-3 py-2 fw-medium" style={{ backgroundColor: colors.bg, color: colors.textMuted, border: `1px solid ${colors.border}` }}>
                   <i className="bi bi-tools me-1"></i> Testing Gateway
                </div>
-               <div className="small text-muted mt-2 px-4" style={{ fontSize: "0.7rem", lineHeight: "1.5" }}>
+               <div className="small mt-2 px-4" style={{ color: colors.textMuted, fontSize: "0.75rem", lineHeight: "1.6" }}>
                   For testing, use card <strong>5267 3181 8797 5449</strong>, any future date, CVV 123, and OTP 123456.
                </div>
             </div>
@@ -604,43 +793,6 @@ export default function StudentFees() {
           </div>
         </div>
       </div>
-
-      {/* --- CUSTOM CSS --- */}
-      <style>{`
-        .tracking-wider {
-          letter-spacing: 0.5px;
-        }
-        .transition-hover {
-          transition: all 0.2s ease;
-        }
-        .transition-hover:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-        }
-        .btn-icon-hover:hover {
-          background-color: #f8f9fa;
-          border-color: #ced4da !important;
-        }
-        .custom-table tbody tr { transition: background-color 0.2s ease; }
-        .custom-table tbody tr:hover { background-color: #f8f9fa; }
-        .btn-checkout {
-          transition: all 0.2s ease;
-        }
-        .btn-checkout:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
-        }
-        .btn-checkout:active:not(:disabled) {
-          transform: translateY(0);
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

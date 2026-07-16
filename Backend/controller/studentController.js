@@ -5,6 +5,23 @@ const Counter = require("../models/counter");
 const Timetable = require("../models/timetable");
 const TeacherRegister = require("../models/techerregister");
 const TeacherInfo = require("../models/teacherinfo");
+const PROMOTION_TAG_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+const clearExpiredPromotionTags = async () => {
+  const cutoff = new Date(Date.now() - PROMOTION_TAG_TTL_MS);
+  await Student.updateMany(
+    {
+      isNewPromotion: true,
+      promotedAt: { $lt: cutoff },
+    },
+    {
+      $set: {
+        isNewPromotion: false,
+        promotedAt: null,
+      },
+    }
+  );
+};
 
 const getTeacherAssignmentScope = async (teacherMongoId) => {
   const teacher = await TeacherRegister.findById(teacherMongoId).lean();
@@ -95,6 +112,7 @@ exports.getStudentsByClass = async (req, res) => {
       }
 
       const studentsRaw = await Student.find({
+        isActive: { $ne: false },
         $or: [{ classId: cls._id }, { studentClass: cls.className }],
       });
 
@@ -149,6 +167,7 @@ exports.getStudentsOfClass = async (req, res) => {
     if (!allowedRows.length) return res.status(200).json([]);
 
     const studentsRaw = await Student.find({
+      isActive: { $ne: false },
       $or: [{ classId: cls._id }, { studentClass: cls.className }],
     });
 
@@ -196,6 +215,7 @@ exports.updateStudent = async (req, res) => {
 // ✅ Get single student (basic + extra info)
 exports.getStudentDetails = async (req, res) => {
   try {
+    await clearExpiredPromotionTags();
     const { id } = req.params;
 
     const student = await Student.findById(id);
@@ -310,6 +330,7 @@ exports.getStudentsByClassId = async (req, res) => {
     if (!cls) return res.status(404).json({ message: "Class not found!" });
 
     const students = await Student.find({
+      isActive: { $ne: false },
       $or: [{ classId }, { studentClass: cls.className }],
     });
     if (!students.length) return res.status(404).json({ message: "No students found for this class!" });
@@ -323,6 +344,7 @@ exports.getStudentsByClassId = async (req, res) => {
 
 /* ==================== SECTION ASSIGNMENT & PROMOTION ==================== */
 const getUserId = (req) => req.user?.id || null;
+const normalizeUpper = (value) => String(value || "").trim().toUpperCase();
 
 const pushSectionLog = async (studentId, data) => {
   await Student.updateOne(
@@ -331,9 +353,13 @@ const pushSectionLog = async (studentId, data) => {
       $push: {
         sectionChangeLog: {
           fromClassId: data.fromClassId || null,
-          fromSectionId: data.fromSectionId || null,
+          fromClassName: Number(data.fromClassName || 0) || null,
+          fromSection: normalizeUpper(data.fromSection || ""),
           toClassId: data.toClassId || null,
-          toSectionId: data.toSectionId || null,
+          toClassName: Number(data.toClassName || 0) || null,
+          toSection: normalizeUpper(data.toSection || ""),
+          fromAcademicYear: String(data.fromAcademicYear || "").trim(),
+          toAcademicYear: String(data.toAcademicYear || "").trim(),
           action: data.action || "Changed",
           changedBy: data.changedBy || null,
           note: data.note || "",
@@ -344,27 +370,177 @@ const pushSectionLog = async (studentId, data) => {
   );
 };
 
-const validateSection = (cls, sectionId) => {
-  const section = cls.sections.id(sectionId);
+const findSectionInClass = (cls, sectionValue) => {
+  const sectionKey = normalizeUpper(sectionValue);
+  const rawKey = String(sectionValue || "").trim();
+  const section = (cls.sections || []).find(
+    (item) => normalizeUpper(item?.name) === sectionKey || String(item?._id || "") === rawKey
+  );
   if (!section) return { ok: false, message: "Section not found" };
   if (!section.isActive) return { ok: false, message: "Section is inactive" };
   if (section.isLocked) return { ok: false, message: "Section is locked" };
   return { ok: true, section };
 };
 
-const countSectionStudents = async (classId, sectionId) => {
-  return await Student.countDocuments({ classId, sectionId });
+const countStudentsInSection = async ({ classDoc, sectionName }) => {
+  const safeSection = normalizeUpper(sectionName);
+  const filters = [{ classId: classDoc._id, section: safeSection }];
+
+  if (classDoc.academicYear) {
+    filters.push({
+      studentClass: classDoc.className,
+      section: safeSection,
+      academicYear: classDoc.academicYear,
+    });
+  } else {
+    filters.push({ studentClass: classDoc.className, section: safeSection });
+  }
+
+  return Student.countDocuments({ $or: filters });
+};
+
+const getPlacementUpdate = ({ classDoc, sectionName, stream }) => ({
+  classId: classDoc._id,
+  studentClass: Number(classDoc.className),
+  section: normalizeUpper(sectionName),
+  academicYear: String(classDoc.academicYear || "").trim(),
+  stream: String(stream ?? "").trim(),
+  isNewPromotion: true,
+  promotedAt: new Date(),
+  completionStatus: "",
+  completedAt: null,
+});
+
+const buildStudentQueryForClass = ({ classDoc, academicYear, studentIds }) => {
+  const filters = [{ classId: classDoc._id }];
+
+  if (academicYear || classDoc.academicYear) {
+    filters.push({
+      studentClass: classDoc.className,
+      academicYear: String(academicYear || classDoc.academicYear || "").trim(),
+    });
+  } else {
+    filters.push({ studentClass: classDoc.className });
+  }
+
+  const query = { $or: filters };
+  if (Array.isArray(studentIds) && studentIds.length) {
+    query._id = { $in: studentIds };
+  }
+  return query;
+};
+
+const getStudentsForPlacement = async ({ classDoc, academicYear, studentIds }) => {
+  return Student.find({
+    isActive: { $ne: false },
+    ...buildStudentQueryForClass({ classDoc, academicYear, studentIds }),
+  }).lean();
+};
+
+const allocateStudentsAcrossSections = async ({
+  students,
+  classDoc,
+  sectionNames,
+  rule = "even",
+  genderBalanced = false,
+  stream = "",
+}) => {
+  const sections = sectionNames
+    .map((name) => findSectionInClass(classDoc, name))
+    .filter((row) => row.ok)
+    .map((row) => row.section);
+
+  if (!sections.length) {
+    return { ok: false, message: "No valid sections found" };
+  }
+
+  if (sections.some((section) => !section.isActive || section.isLocked)) {
+    return { ok: false, message: "One or more sections are inactive or locked" };
+  }
+
+  const baseList = sortStudents(students, rule);
+  let list = baseList;
+
+  if (genderBalanced) {
+    const infoDocs = await StudentInfo.find({ student: { $in: baseList.map((s) => s._id) } }).lean();
+    const genderMap = new Map(infoDocs.map((i) => [String(i.student), i.gender]));
+    const buckets = { Girl: [], Boy: [], Other: [], Unknown: [] };
+    baseList.forEach((s) => {
+      const g = genderMap.get(String(s._id)) || "Unknown";
+      (buckets[g] || buckets.Unknown).push(s);
+    });
+    const order = ["Girl", "Boy", "Other", "Unknown"];
+    const combined = [];
+    let remaining = true;
+    while (remaining) {
+      remaining = false;
+      for (const key of order) {
+        if (buckets[key].length) {
+          combined.push(buckets[key].shift());
+          remaining = true;
+        }
+      }
+    }
+    list = combined;
+  }
+
+  const sectionCounts = {};
+  for (const section of sections) {
+    sectionCounts[section.name] = await countStudentsInSection({ classDoc, sectionName: section.name });
+  }
+
+  const allocations = {};
+  sections.forEach((section) => {
+    allocations[section.name] = [];
+  });
+
+  let secIndex = 0;
+  for (const student of list) {
+    let tries = 0;
+    let assigned = false;
+    while (tries < sections.length && !assigned) {
+      const target = sections[secIndex % sections.length];
+      if (sectionCounts[target.name] < Number(target.capacity || 0)) {
+        allocations[target.name].push(student._id);
+        sectionCounts[target.name] += 1;
+        assigned = true;
+      }
+      secIndex += 1;
+      tries += 1;
+    }
+    if (!assigned) {
+      return { ok: false, message: `No seat available for student ${student.name || student.studentId || student._id}` };
+    }
+  }
+
+  return {
+    ok: true,
+    allocations,
+    update: getPlacementUpdate({
+      classDoc,
+      sectionName: "",
+      stream,
+    }),
+  };
 };
 
 exports.getStudentsForAssignment = async (req, res) => {
   try {
+    await clearExpiredPromotionTags();
     const { classId, academicYear } = req.query;
     if (!classId) {
       return res.status(400).json({ message: "classId is required" });
     }
-    const query = { classId };
-    if (academicYear) query.academicYear = academicYear;
-    const students = await Student.find(query).select("_id studentId name email sectionId academicYear");
+    const cls = await Class.findById(classId).lean();
+    if (!cls) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    const students = await Student.find({
+      isActive: { $ne: false },
+      ...buildStudentQueryForClass({ classDoc: cls, academicYear }),
+    })
+      .select("_id studentId name email section academicYear studentClass classId stream");
     res.json(students);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -373,36 +549,50 @@ exports.getStudentsForAssignment = async (req, res) => {
 
 exports.assignStudentsManual = async (req, res) => {
   try {
-    const { studentIds, classId, sectionId, academicYear, stream, note } = req.body;
-    if (!Array.isArray(studentIds) || !studentIds.length || !classId || !sectionId || !academicYear) {
-      return res.status(400).json({ message: "studentIds, classId, sectionId, academicYear are required" });
+    const { studentIds, classId, sectionId, section: requestedSection, academicYear, stream, note } = req.body;
+    const targetSection = requestedSection || sectionId;
+
+    if (!Array.isArray(studentIds) || !studentIds.length || !classId || !targetSection) {
+      return res.status(400).json({ message: "studentIds, classId and section are required" });
     }
 
     const cls = await Class.findById(classId);
     if (!cls) return res.status(404).json({ message: "Class not found" });
 
-    const guard = validateSection(cls, sectionId);
+    const guard = findSectionInClass(cls, targetSection);
     if (!guard.ok) return res.status(400).json({ message: guard.message });
 
     const section = guard.section;
-    const currentCount = await countSectionStudents(classId, sectionId);
+    const currentCount = await countStudentsInSection({ classDoc: cls, sectionName: section.name });
     if (currentCount + studentIds.length > section.capacity) {
       return res.status(400).json({ message: "Section capacity exceeded" });
     }
 
-    const studentsBefore = await Student.find({ _id: { $in: studentIds } }).select("_id classId sectionId");
+    const studentsBefore = await Student.find({ _id: { $in: studentIds } })
+      .select("_id classId studentClass section academicYear");
+
+    const placement = getPlacementUpdate({
+      classDoc: { ...cls.toObject(), academicYear: academicYear ?? cls.academicYear },
+      sectionName: section.name,
+      stream,
+    });
+
     await Student.updateMany(
       { _id: { $in: studentIds } },
-      { $set: { classId, sectionId, academicYear, stream: stream || "" } }
+      { $set: placement }
     );
 
     await Promise.all(
       studentsBefore.map((s) =>
         pushSectionLog(s._id, {
           fromClassId: s.classId,
-          fromSectionId: s.sectionId,
-          toClassId: classId,
-          toSectionId: sectionId,
+          fromClassName: s.studentClass,
+          fromSection: s.section,
+          fromAcademicYear: s.academicYear,
+          toClassId: cls._id,
+          toClassName: cls.className,
+          toSection: section.name,
+          toAcademicYear: placement.academicYear,
           action: "Assigned",
           changedBy: getUserId(req),
           note,
@@ -438,85 +628,48 @@ const sortStudents = (students, rule) => {
 
 exports.assignStudentsAuto = async (req, res) => {
   try {
-    const { classId, academicYear, sectionIds, rule = "even", genderBalanced = false, stream, note } = req.body;
-    if (!classId || !academicYear || !Array.isArray(sectionIds) || !sectionIds.length) {
-      return res.status(400).json({ message: "classId, academicYear, sectionIds are required" });
+    const { classId, academicYear, sectionIds, sectionNames, studentIds, rule = "even", genderBalanced = false, stream, note } = req.body;
+    const requestedSections = Array.isArray(sectionNames) && sectionNames.length ? sectionNames : sectionIds;
+
+    if (!classId || !Array.isArray(requestedSections) || !requestedSections.length) {
+      return res.status(400).json({ message: "classId and sectionNames are required" });
     }
 
     const cls = await Class.findById(classId);
     if (!cls) return res.status(404).json({ message: "Class not found" });
 
-    const sections = sectionIds.map((id) => cls.sections.id(id)).filter(Boolean);
-    if (!sections.length) return res.status(404).json({ message: "No sections found" });
-    if (sections.some((s) => !s.isActive || s.isLocked)) {
-      return res.status(400).json({ message: "One or more sections are inactive or locked" });
-    }
-
-    const students = await Student.find({ classId, academicYear }).lean();
+    const students = await getStudentsForPlacement({ classDoc: cls, academicYear, studentIds });
     if (!students.length) return res.status(404).json({ message: "No students found for this class/year" });
 
-    const baseList = sortStudents(students, rule);
+    const allocation = await allocateStudentsAcrossSections({
+      students,
+      classDoc: { ...cls.toObject(), academicYear: academicYear ?? cls.academicYear },
+      sectionNames: requestedSections,
+      rule,
+      genderBalanced,
+      stream,
+    });
+    if (!allocation.ok) return res.status(400).json({ message: allocation.message });
 
-    let list = baseList;
-    if (genderBalanced) {
-      const infoDocs = await StudentInfo.find({ student: { $in: baseList.map((s) => s._id) } }).lean();
-      const genderMap = new Map(infoDocs.map((i) => [String(i.student), i.gender]));
-      const buckets = { Girl: [], Boy: [], Other: [], Unknown: [] };
-      baseList.forEach((s) => {
-        const g = genderMap.get(String(s._id)) || "Unknown";
-        (buckets[g] || buckets.Unknown).push(s);
-      });
-      const order = ["Girl", "Boy", "Other", "Unknown"];
-      const combined = [];
-      let remaining = true;
-      while (remaining) {
-        remaining = false;
-        for (const key of order) {
-          if (buckets[key].length) {
-            combined.push(buckets[key].shift());
-            remaining = true;
-          }
-        }
-      }
-      list = combined;
-    }
-
-    const sectionCounts = {};
-    for (const s of sections) {
-      sectionCounts[s._id] = await countSectionStudents(classId, s._id);
-    }
-
-    const allocations = {};
-    sections.forEach((s) => (allocations[s._id] = []));
-
-    let secIndex = 0;
-    for (const student of list) {
-      let tries = 0;
-      let assigned = false;
-      while (tries < sections.length && !assigned) {
-        const target = sections[secIndex % sections.length];
-        if (sectionCounts[target._id] < target.capacity) {
-          allocations[target._id].push(student._id);
-          sectionCounts[target._id] += 1;
-          assigned = true;
-        }
-        secIndex += 1;
-        tries += 1;
-      }
-      if (!assigned) break;
-    }
-
-    for (const [sectionId, ids] of Object.entries(allocations)) {
+    for (const [sectionName, ids] of Object.entries(allocation.allocations)) {
       if (!ids.length) continue;
+      const placement = getPlacementUpdate({
+        classDoc: { ...cls.toObject(), academicYear: academicYear ?? cls.academicYear },
+        sectionName,
+        stream,
+      });
+
       await Student.updateMany(
         { _id: { $in: ids } },
-        { $set: { classId, sectionId, academicYear, stream: stream || "" } }
+        { $set: placement }
       );
       await Promise.all(
         ids.map((id) =>
           pushSectionLog(id, {
-            toClassId: classId,
-            toSectionId: sectionId,
+            toClassId: cls._id,
+            toClassName: cls.className,
+            toSection: sectionName,
+            toAcademicYear: placement.academicYear,
             action: "Assigned",
             changedBy: getUserId(req),
             note,
@@ -551,49 +704,145 @@ exports.promoteStudents = async (req, res) => {
     if (!Array.isArray(studentIds) || !studentIds.length) {
       return res.status(400).json({ message: "studentIds are required" });
     }
-    if (!fromAcademicYear || !toAcademicYear || !toClassId) {
-      return res.status(400).json({ message: "fromAcademicYear, toAcademicYear, toClassId are required" });
+    const studentsBefore = await Student.find({ _id: { $in: studentIds } })
+      .select("_id classId studentClass section academicYear stream isActive");
+    if (!studentsBefore.length) {
+      return res.status(404).json({ message: "No students found" });
     }
 
+    const allClassTwelve = studentsBefore.every((student) => Number(student.studentClass) === 12);
+    if (allClassTwelve) {
+      await Student.updateMany(
+        { _id: { $in: studentIds } },
+        {
+          $set: {
+            isActive: false,
+            isNewPromotion: false,
+            promotedAt: null,
+            completionStatus: "Completed Class 12",
+            completedAt: new Date(),
+          },
+        }
+      );
+
+      await Promise.all(
+        studentsBefore.map((student) =>
+          pushSectionLog(student._id, {
+            fromClassId: student.classId,
+            fromClassName: student.studentClass,
+            fromSection: student.section,
+            fromAcademicYear: student.academicYear || fromAcademicYear,
+            toClassId: null,
+            toClassName: null,
+            toSection: "",
+            toAcademicYear: "",
+            action: "Completed",
+            changedBy: getUserId(req),
+            note: note || "Completed Class 12 successfully",
+          })
+        )
+      );
+
+      return res.json({
+        message: "Class 12 students completed successfully and were removed from the active student list.",
+        count: studentIds.length,
+        completed: true,
+      });
+    }
+
+    if (!toClassId) {
+      return res.status(400).json({ message: "toClassId is required" });
+    }
+
+    const targetClass = await Class.findById(toClassId);
+    if (!targetClass) return res.status(404).json({ message: "Class not found" });
+
     if (assignmentMode === "auto") {
-      req.body = {
-        classId: toClassId,
-        academicYear: toAcademicYear,
-        sectionIds: toSectionIds,
+      const promotedStudents = studentsBefore.map((student) => ({
+        ...student.toObject(),
+        studentClass: Number(targetClass.className),
+        academicYear: String(toAcademicYear || targetClass.academicYear || "").trim(),
+      }));
+
+      const allocation = await allocateStudentsAcrossSections({
+        students: promotedStudents,
+        classDoc: { ...targetClass.toObject(), academicYear: toAcademicYear ?? targetClass.academicYear },
+        sectionNames: toSectionIds,
         rule,
         genderBalanced,
         stream,
-        note,
-      };
-      return exports.assignStudentsAuto(req, res);
+      });
+      if (!allocation.ok) return res.status(400).json({ message: allocation.message });
+
+      for (const [sectionName, ids] of Object.entries(allocation.allocations)) {
+        if (!ids.length) continue;
+        const placement = getPlacementUpdate({
+          classDoc: { ...targetClass.toObject(), academicYear: toAcademicYear ?? targetClass.academicYear },
+          sectionName,
+          stream,
+        });
+
+        await Student.updateMany({ _id: { $in: ids } }, { $set: placement });
+      }
+
+      await Promise.all(
+        studentsBefore.map((student) => {
+          const targetSection = Object.entries(allocation.allocations).find(([, ids]) =>
+            ids.some((id) => String(id) === String(student._id))
+          )?.[0];
+
+          return pushSectionLog(student._id, {
+            fromClassId: student.classId,
+            fromClassName: student.studentClass,
+            fromSection: student.section,
+            fromAcademicYear: student.academicYear || fromAcademicYear,
+            toClassId: targetClass._id,
+            toClassName: targetClass.className,
+            toSection: targetSection,
+            toAcademicYear: String(toAcademicYear || targetClass.academicYear || "").trim(),
+            action: "Promoted",
+            changedBy: getUserId(req),
+            note,
+          });
+        })
+      );
+
+      return res.json({ message: "Promotion completed", count: studentIds.length, allocations: allocation.allocations });
     }
 
     if (!toSectionId) return res.status(400).json({ message: "toSectionId required" });
 
-    const cls = await Class.findById(toClassId);
-    if (!cls) return res.status(404).json({ message: "Class not found" });
-    const guard = validateSection(cls, toSectionId);
+    const guard = findSectionInClass(targetClass, toSectionId);
     if (!guard.ok) return res.status(400).json({ message: guard.message });
 
     const section = guard.section;
-    const currentCount = await countSectionStudents(toClassId, toSectionId);
+    const currentCount = await countStudentsInSection({ classDoc: targetClass, sectionName: section.name });
     if (currentCount + studentIds.length > section.capacity) {
       return res.status(400).json({ message: "Section capacity exceeded" });
     }
 
-    const studentsBefore = await Student.find({ _id: { $in: studentIds } }).select("_id classId sectionId");
+    const placement = getPlacementUpdate({
+      classDoc: { ...targetClass.toObject(), academicYear: toAcademicYear ?? targetClass.academicYear },
+      sectionName: section.name,
+      stream,
+    });
+
     await Student.updateMany(
       { _id: { $in: studentIds } },
-      { $set: { classId: toClassId, sectionId: toSectionId, academicYear: toAcademicYear, stream: stream || "" } }
+      { $set: placement }
     );
 
     await Promise.all(
       studentsBefore.map((s) =>
         pushSectionLog(s._id, {
           fromClassId: s.classId,
-          fromSectionId: s.sectionId,
-          toClassId,
-          toSectionId,
+          fromClassName: s.studentClass,
+          fromSection: s.section,
+          fromAcademicYear: s.academicYear || fromAcademicYear,
+          toClassId: targetClass._id,
+          toClassName: targetClass.className,
+          toSection: section.name,
+          toAcademicYear: placement.academicYear,
           action: "Promoted",
           changedBy: getUserId(req),
           note,
@@ -611,6 +860,7 @@ exports.promoteStudents = async (req, res) => {
 // ✅ Get all students grouped by class (for Admin only)
 exports.getAllStudentsForAdmin = async (req, res) => {
   try {
+    await clearExpiredPromotionTags();
     // Get all classes
     const classes = await Class.find({})
       .sort({ className: 1 })
@@ -627,6 +877,7 @@ exports.getAllStudentsForAdmin = async (req, res) => {
       // some records may have numeric studentClass, others string.
       const classValue = String(cls.className);
       const students = await Student.find({
+        isActive: { $ne: false },
         $or: [{ studentClass: cls.className }, { studentClass: classValue }],
       }).sort({ name: 1 });
 
@@ -643,6 +894,7 @@ exports.getAllStudentsForAdmin = async (req, res) => {
           section: s.section || "",
           stream: s.stream || "",
           subjectChoice: s.subjectChoice || "",
+          isNewPromotion: !!s.isNewPromotion,
         })),
       });
     }
@@ -654,14 +906,63 @@ exports.getAllStudentsForAdmin = async (req, res) => {
   }
 };
 
+exports.getCompletedStudentsByBatch = async (req, res) => {
+  try {
+    await clearExpiredPromotionTags();
+    const students = await Student.find({
+      isActive: false,
+      completionStatus: "Completed Class 12",
+    })
+      .sort({ academicYear: -1, completedAt: -1, name: 1 })
+      .lean();
+
+    const grouped = students.reduce((acc, student) => {
+      const batch = String(student.academicYear || "").trim() || (
+        student.completedAt ? new Date(student.completedAt).getFullYear().toString() : "Unknown Batch"
+      );
+
+      if (!acc[batch]) {
+        acc[batch] = {
+          batch,
+          totalStudents: 0,
+          students: [],
+        };
+      }
+
+      acc[batch].students.push({
+        id: student._id,
+        studentId: student.studentId,
+        name: student.name,
+        email: student.email,
+        studentClass: student.studentClass,
+        section: student.section || "",
+        stream: student.stream || "",
+        academicYear: student.academicYear || "",
+        completionStatus: student.completionStatus || "",
+        completedAt: student.completedAt || null,
+        isNewPromotion: !!student.isNewPromotion,
+      });
+      acc[batch].totalStudents += 1;
+      return acc;
+    }, {});
+
+    const result = Object.values(grouped).sort((a, b) => String(b.batch).localeCompare(String(a.batch)));
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching completed students by batch:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // controllers/studentController.js
 exports.searchStudents = async (req, res) => {
   try {
+    await clearExpiredPromotionTags();
     const { name } = req.query;
     const query = {};
     if (name) query.name = { $regex: name, $options: "i" };
 
-    const students = await Student.find(query);
+    const students = await Student.find({ isActive: { $ne: false }, ...query });
     res.json(students);
   } catch (err) {
     res.status(500).json({ error: "Server error" });
