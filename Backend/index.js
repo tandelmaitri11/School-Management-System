@@ -57,11 +57,27 @@ const app = express();
 const server = http.createServer(app);
 app.use(express.json());
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://school-management-system-roan-seven.vercel.app"
+];
+
 app.use(cors({
+<<<<<<< HEAD
     origin:[
         "http://localhost:5173",
     process.env.FRONTEND_URL
     ],
+=======
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+>>>>>>> 9956da3 (update index.js.)
     credentials: true
 }));
 
