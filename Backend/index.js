@@ -63,12 +63,6 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-<<<<<<< HEAD
-    origin:[
-        "http://localhost:5173",
-    process.env.FRONTEND_URL
-    ],
-=======
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
@@ -77,7 +71,6 @@ app.use(cors({
         }
         return callback(null, true);
     },
->>>>>>> 9956da3 (update index.js.)
     credentials: true
 }));
 
