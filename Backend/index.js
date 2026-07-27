@@ -59,7 +59,7 @@ app.use(express.json());
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://school-management-system-roan-seven.vercel.app"
+  "https://school-management-system-schooly.vercel.app/"
 ];
 
 app.use(cors({
